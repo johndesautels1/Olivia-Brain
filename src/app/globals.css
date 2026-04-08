@@ -379,6 +379,8 @@ h2 {
 .admin-gate,
 .admin-groups,
 .admin-card-grid,
+.admin-feed-grid,
+.admin-feed-list,
 .key-list,
 .test-detail-list {
   display: grid;
@@ -423,6 +425,11 @@ h2 {
   gap: 14px;
 }
 
+.admin-feed-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
 .integration-admin-card {
   display: grid;
   gap: 14px;
@@ -447,6 +454,26 @@ h2 {
 
 .key-list,
 .test-detail-list {
+  gap: 8px;
+}
+
+.admin-feed-list {
+  gap: 12px;
+}
+
+.admin-feed-row {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(5, 11, 21, 0.6);
+  border: 1px solid rgba(245, 227, 191, 0.08);
+}
+
+.admin-feed-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -484,7 +511,8 @@ h2 {
 @media (max-width: 1100px) {
   .hero,
   .workspace-grid,
-  .bottom-grid {
+  .bottom-grid,
+  .admin-feed-grid {
     grid-template-columns: 1fr;
   }
 
@@ -516,6 +544,7 @@ h2 {
   .admin-gate-row,
   .integration-admin-top,
   .admin-action-row,
+  .admin-feed-badges,
   .key-row,
   .key-metrics {
     flex-direction: column;

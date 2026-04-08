@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { getAdminAuditStore } from "@/lib/admin/audit-store";
 import { getServerEnv } from "@/lib/config/env";
 import {
   INTEGRATION_CATALOG,
@@ -8,10 +9,12 @@ import {
 import { isEnvKeyConfigured, isIntegrationConfigured } from "@/lib/foundation/status";
 import { getTwilioClient } from "@/lib/twilio/server";
 import type {
+  AdminDashboardData,
   AdminIntegrationStatus,
   IntegrationKeyStatus,
   IntegrationTestAction,
   IntegrationTestResult,
+  PersistedIntegrationTestResult,
 } from "@/lib/integrations/types";
 
 function getIntegrationKeys(
@@ -97,6 +100,41 @@ export function getAdminIntegrationStatuses(): AdminIntegrationStatus[] {
       supportedActions: getSupportedActions(integration.id),
     };
   });
+}
+
+async function listRecentAdminActivity() {
+  const store = getAdminAuditStore();
+  const [recentTests, recentAuditLogs] = await Promise.all([
+    store.listRecentIntegrationTestRuns(12),
+    store.listRecentAuditLogs(20),
+  ]);
+
+  return {
+    recentTests,
+    recentAuditLogs,
+  };
+}
+
+export async function getAdminDashboardData(actor: string): Promise<AdminDashboardData> {
+  const integrations = getAdminIntegrationStatuses();
+  const store = getAdminAuditStore();
+
+  await store.appendAuditLog({
+    eventType: "dashboard_view",
+    actor,
+    summary: "Viewed the admin integrations dashboard.",
+    metadata: {
+      integrationCount: integrations.length,
+    },
+  });
+
+  const { recentTests, recentAuditLogs } = await listRecentAdminActivity();
+
+  return {
+    integrations,
+    recentTests,
+    recentAuditLogs,
+  };
 }
 
 function buildValidationResult(integrationId: string): IntegrationTestResult {
@@ -285,5 +323,45 @@ export async function runIntegrationTest(
     details: result.details,
     testedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
+  };
+}
+
+export async function runTrackedIntegrationTest(
+  integrationId: string,
+  action: IntegrationTestAction,
+  actor: string,
+): Promise<{
+  result: PersistedIntegrationTestResult;
+  dashboard: AdminDashboardData;
+}> {
+  const store = getAdminAuditStore();
+  const result = await runIntegrationTest(integrationId, action);
+  const persistedResult = await store.appendIntegrationTestRun({
+    ...result,
+    actor,
+  });
+
+  await store.appendAuditLog({
+    eventType: "integration_test",
+    actor,
+    summary: `${action} ran for ${integrationId}. ${persistedResult.ok ? "Result OK." : "Attention required."}`,
+    metadata: {
+      integrationId,
+      action,
+      ok: persistedResult.ok,
+      durationMs: persistedResult.durationMs,
+      source: persistedResult.source,
+    },
+  });
+
+  const { recentTests, recentAuditLogs } = await listRecentAdminActivity();
+
+  return {
+    result: persistedResult,
+    dashboard: {
+      integrations: getAdminIntegrationStatuses(),
+      recentTests,
+      recentAuditLogs,
+    },
   };
 }

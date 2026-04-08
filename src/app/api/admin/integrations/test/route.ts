@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireAdminAccess } from "@/lib/admin/auth";
-import { runIntegrationTest } from "@/lib/integrations/admin";
+import { runTrackedIntegrationTest } from "@/lib/integrations/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,21 +26,28 @@ export async function POST(request: Request) {
 
   try {
     const payload = requestSchema.parse(await request.json());
-    const result = await runIntegrationTest(payload.integrationId, payload.action);
+    const { result, dashboard } = await runTrackedIntegrationTest(
+      payload.integrationId,
+      payload.action,
+      access.actor,
+    );
 
     return NextResponse.json({
       mode: access.mode,
       result,
+      dashboard,
     });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unexpected integration test error.";
+    const status =
+      error instanceof z.ZodError || message.startsWith("Unknown integration") ? 400 : 500;
 
     return NextResponse.json(
       {
         error: message,
       },
-      { status: 400 },
+      { status },
     );
   }
 }

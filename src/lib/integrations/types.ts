@@ -32,3 +32,25 @@ export interface IntegrationTestResult {
   testedAt: string;
   durationMs: number;
 }
+
+export interface PersistedIntegrationTestResult extends IntegrationTestResult {
+  id: string;
+  source: "supabase" | "memory";
+  actor: string;
+}
+
+export interface AdminAuditLogEntry {
+  id: string;
+  eventType: "dashboard_view" | "integration_test";
+  actor: string;
+  summary: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  source: "supabase" | "memory";
+}
+
+export interface AdminDashboardData {
+  integrations: AdminIntegrationStatus[];
+  recentTests: PersistedIntegrationTestResult[];
+  recentAuditLogs: AdminAuditLogEntry[];
+}

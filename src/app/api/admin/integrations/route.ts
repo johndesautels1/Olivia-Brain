@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireAdminAccess } from "@/lib/admin/auth";
-import { getAdminIntegrationStatuses } from "@/lib/integrations/admin";
+import { getAdminDashboardData } from "@/lib/integrations/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,8 +18,24 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.json({
-    mode: access.mode,
-    integrations: getAdminIntegrationStatuses(),
-  });
+  try {
+    const dashboard = await getAdminDashboardData(access.actor);
+
+    return NextResponse.json({
+      mode: access.mode,
+      dashboard,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unexpected admin dashboard storage error.";
+
+    return NextResponse.json(
+      {
+        error: message,
+      },
+      { status: 500 },
+    );
+  }
 }

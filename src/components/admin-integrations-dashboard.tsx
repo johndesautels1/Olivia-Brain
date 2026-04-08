@@ -5,8 +5,10 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import type { IntegrationGroup } from "@/lib/foundation/types";
 import type {
+  AdminAuditLogEntry,
+  AdminDashboardData,
   AdminIntegrationStatus,
-  IntegrationTestResult,
+  PersistedIntegrationTestResult,
 } from "@/lib/integrations/types";
 
 const integrationGroupLabels: Record<IntegrationGroup, string> = {
@@ -21,7 +23,7 @@ const integrationGroupLabels: Record<IntegrationGroup, string> = {
 
 type DashboardResponse = {
   mode: "secured" | "dev-open";
-  integrations: AdminIntegrationStatus[];
+  dashboard: AdminDashboardData;
 };
 
 async function fetchDashboardPayload(key: string) {
@@ -43,13 +45,47 @@ async function fetchDashboardPayload(key: string) {
   return payload;
 }
 
+function formatActor(actor: string) {
+  return actor.replace(":", " / ");
+}
+
+function formatMetadataValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "yes" : "no";
+  }
+
+  if (value && typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
+function formatMetadata(metadata: Record<string, unknown>) {
+  const entries = Object.entries(metadata);
+
+  if (entries.length === 0) {
+    return "No metadata recorded.";
+  }
+
+  return entries
+    .slice(0, 4)
+    .map(([key, value]) => `${key}: ${formatMetadataValue(value)}`)
+    .join(" | ");
+}
+
 export function AdminIntegrationsDashboard() {
   const [adminKey, setAdminKey] = useState("");
   const [connectedMode, setConnectedMode] = useState<"secured" | "dev-open" | null>(
     null,
   );
   const [integrations, setIntegrations] = useState<AdminIntegrationStatus[]>([]);
-  const [results, setResults] = useState<Record<string, IntegrationTestResult>>({});
+  const [recentTests, setRecentTests] = useState<PersistedIntegrationTestResult[]>([]);
+  const [recentAuditLogs, setRecentAuditLogs] = useState<AdminAuditLogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const storedAdminKeyRef = useRef("");
@@ -72,6 +108,21 @@ export function AdminIntegrationsDashboard() {
     () => integrations.filter((integration) => integration.status === "partial").length,
     [integrations],
   );
+  const latestResultsByIntegration = useMemo(() => {
+    return recentTests.reduce<Record<string, PersistedIntegrationTestResult>>((map, result) => {
+      if (!map[result.integrationId]) {
+        map[result.integrationId] = result;
+      }
+
+      return map;
+    }, {});
+  }, [recentTests]);
+
+  function applyDashboardData(dashboard: AdminDashboardData) {
+    setIntegrations(dashboard.integrations);
+    setRecentTests(dashboard.recentTests);
+    setRecentAuditLogs(dashboard.recentAuditLogs);
+  }
 
   async function loadDashboard(keyOverride?: string) {
     const key = keyOverride ?? (adminKey || storedAdminKeyRef.current);
@@ -80,7 +131,7 @@ export function AdminIntegrationsDashboard() {
     const payload = await fetchDashboardPayload(key);
 
     setConnectedMode(payload.mode);
-    setIntegrations(payload.integrations);
+    applyDashboardData(payload.dashboard);
   }
 
   async function handleConnect() {
@@ -115,7 +166,7 @@ export function AdminIntegrationsDashboard() {
         const payload = await fetchDashboardPayload(savedKey);
 
         setConnectedMode(payload.mode);
-        setIntegrations(payload.integrations);
+        applyDashboardData(payload.dashboard);
       } catch (caughtError) {
         setError(
           caughtError instanceof Error
@@ -159,7 +210,11 @@ export function AdminIntegrationsDashboard() {
     });
 
     const payload = (await response.json()) as
-      | { mode: "secured" | "dev-open"; result: IntegrationTestResult }
+      | {
+          mode: "secured" | "dev-open";
+          result: PersistedIntegrationTestResult;
+          dashboard: AdminDashboardData;
+        }
       | { error: string };
 
     if (!response.ok || "error" in payload) {
@@ -167,10 +222,7 @@ export function AdminIntegrationsDashboard() {
     }
 
     setConnectedMode(payload.mode);
-    setResults((current) => ({
-      ...current,
-      [integrationId]: payload.result,
-    }));
+    applyDashboardData(payload.dashboard);
   }
 
   return (
@@ -255,7 +307,7 @@ export function AdminIntegrationsDashboard() {
             </div>
             <div className="admin-card-grid">
               {group.items.map((integration) => {
-                const result = results[integration.id];
+                const result = latestResultsByIntegration[integration.id];
 
                 return (
                   <div className="integration-admin-card" key={integration.id}>
@@ -336,6 +388,9 @@ export function AdminIntegrationsDashboard() {
                         <p className="test-meta">
                           {result.action} in {result.durationMs} ms at {new Date(result.testedAt).toLocaleString()}
                         </p>
+                        <p className="test-meta">
+                          {formatActor(result.actor)} via {result.source}
+                        </p>
                         <div className="test-detail-list">
                           {result.details.map((detail) => (
                             <p key={detail}>{detail}</p>
@@ -349,6 +404,111 @@ export function AdminIntegrationsDashboard() {
             </div>
           </article>
         ))}
+      </section>
+
+      <section className="admin-feed-grid">
+        <article className="card">
+          <div className="section-heading">
+            <div>
+              <p className="card-kicker">History</p>
+              <h2>Recent Integration Tests</h2>
+            </div>
+          </div>
+          {recentTests.length === 0 ? (
+            <p className="muted">No integration test history has been recorded yet.</p>
+          ) : (
+            <div className="admin-feed-list">
+              {recentTests.map((result) => {
+                const integration = integrations.find((item) => item.id === result.integrationId);
+
+                return (
+                  <div className="admin-feed-row" key={result.id}>
+                    <div className="integration-admin-top">
+                      <div>
+                        <strong>{integration?.label ?? result.integrationId}</strong>
+                        <p>{result.summary}</p>
+                      </div>
+                      <div className="admin-feed-badges">
+                        <span
+                          className={`status-badge ${
+                            result.ok ? "status-ready" : "status-missing"
+                          }`}
+                        >
+                          {result.ok ? "ok" : "attention"}
+                        </span>
+                        <span
+                          className={`status-badge ${
+                            result.source === "supabase" ? "status-ready" : "status-warn"
+                          }`}
+                        >
+                          {result.source}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="test-meta">
+                      {result.action} by {formatActor(result.actor)} in {result.durationMs} ms at{" "}
+                      {new Date(result.testedAt).toLocaleString()}
+                    </p>
+                    <div className="test-detail-list">
+                      {result.details.slice(0, 3).map((detail) => (
+                        <p key={`${result.id}-${detail}`}>{detail}</p>
+                      ))}
+                      {result.details.length > 3 ? (
+                        <p>Additional details: {result.details.length - 3} more lines.</p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </article>
+
+        <article className="card">
+          <div className="section-heading">
+            <div>
+              <p className="card-kicker">Audit Trail</p>
+              <h2>Recent Admin Events</h2>
+            </div>
+          </div>
+          {recentAuditLogs.length === 0 ? (
+            <p className="muted">No admin audit events have been recorded yet.</p>
+          ) : (
+            <div className="admin-feed-list">
+              {recentAuditLogs.map((entry) => (
+                <div className="admin-feed-row" key={entry.id}>
+                  <div className="integration-admin-top">
+                    <div>
+                      <strong>{entry.summary}</strong>
+                      <p>{formatMetadata(entry.metadata)}</p>
+                    </div>
+                    <div className="admin-feed-badges">
+                      <span
+                        className={`status-badge ${
+                          entry.eventType === "dashboard_view"
+                            ? "status-ready"
+                            : "status-warn"
+                        }`}
+                      >
+                        {entry.eventType.replace("_", " ")}
+                      </span>
+                      <span
+                        className={`status-badge ${
+                          entry.source === "supabase" ? "status-ready" : "status-warn"
+                        }`}
+                      >
+                        {entry.source}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="test-meta">
+                    {formatActor(entry.actor)} at {new Date(entry.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
       </section>
     </main>
   );

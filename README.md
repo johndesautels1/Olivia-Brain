@@ -57,7 +57,14 @@ The admin integrations dashboard is available at `/admin/integrations`.
 - It shows required and optional environment keys per integration.
 - It can run environment validation for every integration.
 - It can run safe live checks for selected integrations such as Supabase, Twilio, and Tavily.
+- It stores recent integration test history and admin audit events in Supabase when the admin audit tables are available.
+- If Supabase is not configured for this app yet, it falls back to local in-memory history so the dashboard still works during setup.
 - In production, set `ADMIN_API_KEY` so the admin APIs are not exposed without a shared secret.
+
+Apply both Supabase migrations before expecting durable storage:
+
+- `supabase/migrations/20260407_phase1_foundation.sql`
+- `supabase/migrations/20260408_admin_integration_logs.sql`
 
 ## Notes on provider choices
 
