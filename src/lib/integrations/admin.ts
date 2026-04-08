@@ -7,6 +7,7 @@ import {
   type IntegrationCatalogEntry,
 } from "@/lib/foundation/catalog";
 import { isEnvKeyConfigured, isIntegrationConfigured } from "@/lib/foundation/status";
+import { getHubSpotHealthSnapshot } from "@/lib/hubspot/server";
 import { getTwilioClient } from "@/lib/twilio/server";
 import type {
   AdminDashboardData,
@@ -71,7 +72,7 @@ function getIntegrationStatusSummary(
 }
 
 function getSupportedActions(integrationId: string): IntegrationTestAction[] {
-  const liveCheckSupported = new Set(["supabase", "twilio", "tavily"]);
+  const liveCheckSupported = new Set(["supabase", "twilio", "tavily", "hubspot"]);
 
   return liveCheckSupported.has(integrationId)
     ? ["validate-env", "live-check"]
@@ -272,6 +273,28 @@ async function runTavilyLiveCheck(): Promise<{ ok: boolean; summary: string; det
   };
 }
 
+async function runHubSpotLiveCheck(): Promise<{
+  ok: boolean;
+  summary: string;
+  details: string[];
+}> {
+  const snapshot = await getHubSpotHealthSnapshot();
+
+  return {
+    ok: true,
+    summary: "HubSpot account and CRM object queries succeeded.",
+    details: [
+      `Portal ID: ${snapshot.account.portalId}`,
+      `Account type: ${snapshot.account.accountType}`,
+      `Timezone: ${snapshot.account.timeZone}`,
+      `UI domain: ${snapshot.account.uiDomain ?? "none"}`,
+      `Contacts visible: ${snapshot.objects.contacts.countVisible > 0 ? "yes" : "no"}${snapshot.objects.contacts.sampleId ? ` (sample ${snapshot.objects.contacts.sampleId})` : ""}`,
+      `Companies visible: ${snapshot.objects.companies.countVisible > 0 ? "yes" : "no"}${snapshot.objects.companies.sampleId ? ` (sample ${snapshot.objects.companies.sampleId})` : ""}`,
+      `Deals visible: ${snapshot.objects.deals.countVisible > 0 ? "yes" : "no"}${snapshot.objects.deals.sampleId ? ` (sample ${snapshot.objects.deals.sampleId})` : ""}`,
+    ],
+  };
+}
+
 export async function runIntegrationTest(
   integrationId: string,
   action: IntegrationTestAction,
@@ -296,23 +319,41 @@ export async function runIntegrationTest(
 
   let result: { ok: boolean; summary: string; details: string[] };
 
-  switch (integrationId) {
-    case "supabase":
-      result = await runSupabaseLiveCheck();
-      break;
-    case "twilio":
-      result = await runTwilioLiveCheck();
-      break;
-    case "tavily":
-      result = await runTavilyLiveCheck();
-      break;
-    default:
-      result = {
-        ok: false,
-        summary: "Live test is not implemented for this integration yet.",
-        details: ["Only environment validation is currently supported for this integration."],
-      };
-      break;
+  try {
+    switch (integrationId) {
+      case "supabase":
+        result = await runSupabaseLiveCheck();
+        break;
+      case "twilio":
+        result = await runTwilioLiveCheck();
+        break;
+      case "tavily":
+        result = await runTavilyLiveCheck();
+        break;
+      case "hubspot":
+        result = await runHubSpotLiveCheck();
+        break;
+      default:
+        result = {
+          ok: false,
+          summary: "Live test is not implemented for this integration yet.",
+          details: [
+            "Only environment validation is currently supported for this integration.",
+          ],
+        };
+        break;
+    }
+  } catch (error) {
+    const integration = getAdminIntegrationStatuses().find((item) => item.id === integrationId);
+    const label = integration?.label ?? integrationId;
+    const message =
+      error instanceof Error ? error.message : "Unexpected integration live-check error.";
+
+    result = {
+      ok: false,
+      summary: `${label} live check failed.`,
+      details: [message],
+    };
   }
 
   return {

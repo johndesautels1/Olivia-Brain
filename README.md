@@ -34,6 +34,7 @@ If no model keys are configured, the app still works in deterministic mock mode 
 - `src/components`: frontend control surface
 - `src/lib/config`: environment parsing
 - `src/lib/foundation`: static Phase 1 metadata and readiness summaries
+- `src/lib/hubspot`: HubSpot server adapter for account details and CRM object operations
 - `src/lib/memory`: Supabase and in-memory conversation storage
 - `src/lib/orchestration`: LangGraph request pipeline
 - `src/lib/services`: model routing and provider execution
@@ -56,10 +57,18 @@ The admin integrations dashboard is available at `/admin/integrations`.
 
 - It shows required and optional environment keys per integration.
 - It can run environment validation for every integration.
-- It can run safe live checks for selected integrations such as Supabase, Twilio, and Tavily.
+- It can run safe live checks for selected integrations such as Supabase, Twilio, Tavily, and HubSpot.
 - It stores recent integration test history and admin audit events in Supabase when the admin audit tables are available.
 - If Supabase is not configured for this app yet, it falls back to local in-memory history so the dashboard still works during setup.
 - In production, set `ADMIN_API_KEY` so the admin APIs are not exposed without a shared secret.
+
+## HubSpot server adapter
+
+The HubSpot integration lives in `src/lib/hubspot/server.ts`.
+
+- It supports account detail lookup plus generic contact, company, and deal record operations.
+- The admin live check stays read-only and only fetches account details plus up to one visible contact, company, and deal.
+- Keep the token scoped to the CRM objects this app actually needs. The read paths work with object read scopes, and create or update paths need the corresponding write scopes.
 
 Apply both Supabase migrations before expecting durable storage:
 
