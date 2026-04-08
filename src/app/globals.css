@@ -286,6 +286,21 @@ h2 {
   gap: 12px;
 }
 
+.integration-group {
+  display: grid;
+  gap: 10px;
+}
+
+.group-label {
+  margin: 0;
+  padding-left: 2px;
+  color: var(--gold);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .stack-row,
 .trace-row {
   display: flex;

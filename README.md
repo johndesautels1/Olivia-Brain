@@ -44,6 +44,11 @@ If no model keys are configured, the app still works in deterministic mock mode 
 
 The implementation uses the Vercel AI SDK provider surface because it keeps Anthropic, OpenAI, Google, xAI, Perplexity, and Mistral behind one interface. Defaults are environment-driven so model IDs can be tuned without code changes.
 
+## Long-term stack planning
+
+- `docs/final-stack.md`: target-state architecture aligned to the master roadmap
+- `.env.full.example`: full target environment contract for later phases
+
 ## Suggested next steps after Phase 1
 
 1. Apply the Supabase migration and connect service credentials.

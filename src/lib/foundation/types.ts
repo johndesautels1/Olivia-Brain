@@ -9,6 +9,14 @@ export type ProviderId =
 export type RouteIntent = "planning" | "research" | "operations" | "general";
 export type RuntimeMode = "mock" | "live";
 export type StatusLevel = "configured" | "missing";
+export type IntegrationGroup =
+  | "platform"
+  | "search"
+  | "ops"
+  | "telephony"
+  | "avatar"
+  | "execution"
+  | "observability";
 
 export interface ProviderStatus {
   id: ProviderId;
@@ -22,6 +30,7 @@ export interface ProviderStatus {
 export interface IntegrationStatus {
   id: string;
   label: string;
+  group: IntegrationGroup;
   configured: boolean;
   status: StatusLevel;
   purpose: string;

@@ -1,4 +1,4 @@
-import type { ProviderId } from "@/lib/foundation/types";
+import type { IntegrationGroup, ProviderId } from "@/lib/foundation/types";
 
 export const PHASE_ONE_PILLARS = [
   {
@@ -24,7 +24,7 @@ export const PHASE_ONE_PILLARS = [
   {
     title: "Integrations",
     detail:
-      "Email, CRM, Composio, and observability are represented as first-class readiness surfaces so production keys can be added without restructuring the app.",
+      "Email, CRM, search, telephony, durable execution, and avatar vendors are represented as first-class readiness surfaces so final-stack systems can be added without restructuring the app.",
   },
 ];
 
@@ -93,52 +93,129 @@ export const PROVIDER_CATALOG: Array<{
   },
 ];
 
-export const INTEGRATION_CATALOG = [
+export const INTEGRATION_CATALOG: Array<{
+  id: string;
+  label: string;
+  group: IntegrationGroup;
+  keys: string[];
+  purpose: string;
+}> = [
   {
     id: "supabase",
     label: "Supabase",
+    group: "platform",
     keys: ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
     purpose: "Conversation storage, pgvector memory, and backend persistence.",
   },
   {
     id: "mem0",
     label: "Mem0",
+    group: "platform",
     keys: ["MEM0_API_KEY"],
     purpose: "Cross-session personalization layer.",
   },
   {
     id: "composio",
     label: "Composio",
+    group: "platform",
     keys: ["COMPOSIO_API_KEY"],
     purpose: "Future tool-use and integration execution layer.",
   },
   {
+    id: "tavily",
+    label: "Tavily",
+    group: "search",
+    keys: ["TAVILY_API_KEY"],
+    purpose: "Search-grounded web retrieval for the model cascade.",
+  },
+  {
     id: "nylas",
     label: "Nylas",
+    group: "ops",
     keys: ["NYLAS_API_KEY"],
     purpose: "Unified inbox and calendar workflows.",
   },
   {
     id: "resend",
     label: "Resend",
+    group: "ops",
     keys: ["RESEND_API_KEY"],
     purpose: "Transactional email delivery.",
   },
   {
     id: "instantly",
     label: "Instantly.ai",
+    group: "ops",
     keys: ["INSTANTLY_API_KEY"],
     purpose: "Outbound email sequencing.",
   },
   {
     id: "hubspot",
     label: "HubSpot",
+    group: "ops",
     keys: ["HUBSPOT_ACCESS_TOKEN"],
     purpose: "CRM sync for leads, contacts, and pipeline state.",
   },
   {
+    id: "twilio",
+    label: "Twilio",
+    group: "telephony",
+    keys: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"],
+    purpose: "Canonical telephony backbone for numbers, SMS, SIP, and callbacks.",
+  },
+  {
+    id: "livekit",
+    label: "LiveKit",
+    group: "avatar",
+    keys: ["LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"],
+    purpose: "Realtime browser transport for voice and avatar sessions.",
+  },
+  {
+    id: "simli",
+    label: "Simli",
+    group: "avatar",
+    keys: ["SIMLI_API_KEY"],
+    purpose: "Primary realtime avatar runtime for Olivia.",
+  },
+  {
+    id: "heygen",
+    label: "HeyGen",
+    group: "avatar",
+    keys: ["HEYGEN_API_KEY"],
+    purpose: "Fallback avatar and async branded video generation.",
+  },
+  {
+    id: "did",
+    label: "D-ID",
+    group: "avatar",
+    keys: ["DID_API_KEY"],
+    purpose: "Fallback interactive avatar and async video surface.",
+  },
+  {
+    id: "replicate",
+    label: "Replicate",
+    group: "avatar",
+    keys: ["REPLICATE_API_TOKEN"],
+    purpose: "Model-hosted avatar workflows such as SadTalker judge surfaces.",
+  },
+  {
+    id: "elevenlabs",
+    label: "ElevenLabs",
+    group: "avatar",
+    keys: ["ELEVENLABS_API_KEY"],
+    purpose: "Persona voice synthesis for Olivia, Cristiano, and Emelia.",
+  },
+  {
+    id: "trigger",
+    label: "Trigger.dev",
+    group: "execution",
+    keys: ["TRIGGER_SECRET_KEY"],
+    purpose: "Durable execution for long-running jobs and scheduled work.",
+  },
+  {
     id: "langfuse",
     label: "Langfuse",
+    group: "observability",
     keys: ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY"],
     purpose: "Tracing and production observability export.",
   },

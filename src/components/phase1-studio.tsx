@@ -7,6 +7,7 @@ import type {
   ChatResponsePayload,
   FoundationStatus,
   FoundationTrace,
+  IntegrationGroup,
 } from "@/lib/foundation/types";
 
 type ChatMessage = {
@@ -14,6 +15,16 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   meta?: string;
+};
+
+const integrationGroupLabels: Record<IntegrationGroup, string> = {
+  platform: "Platform",
+  search: "Search",
+  ops: "Ops",
+  telephony: "Telephony",
+  avatar: "Avatar And Voice",
+  execution: "Durable Execution",
+  observability: "Observability",
 };
 
 function createInitialAssistantMessage(): ChatMessage {
@@ -43,6 +54,20 @@ export function Phase1Studio() {
     () => status?.providers.filter((provider) => provider.configured).length ?? 0,
     [status],
   );
+  const configuredIntegrationCount = useMemo(
+    () => status?.integrations.filter((integration) => integration.configured).length ?? 0,
+    [status],
+  );
+  const groupedIntegrations = useMemo(() => {
+    const entries = Object.entries(integrationGroupLabels).map(([group, label]) => ({
+      group: group as IntegrationGroup,
+      label,
+      items:
+        status?.integrations.filter((integration) => integration.group === group) ?? [],
+    }));
+
+    return entries.filter((entry) => entry.items.length > 0);
+  }, [status]);
 
   useEffect(() => {
     void refreshStatus();
@@ -149,6 +174,12 @@ export function Phase1Studio() {
             <span>Memory backend</span>
             <strong>{status?.memory.backend ?? "loading"}</strong>
           </div>
+          <div className="hero-stat">
+            <span>Configured systems</span>
+            <strong>
+              {status ? `${configuredIntegrationCount}/${status.integrations.length}` : "loading"}
+            </strong>
+          </div>
         </div>
       </section>
 
@@ -254,23 +285,34 @@ export function Phase1Studio() {
                 <h2>Integration Surface</h2>
               </div>
             </div>
-            <div className="stack-list">
-              {status?.integrations.map((integration) => (
-                <div className="stack-row" key={integration.id}>
-                  <div>
-                    <strong>{integration.label}</strong>
-                    <p>{integration.purpose}</p>
+            {status ? (
+              <div className="stack-list">
+                {groupedIntegrations.map((group) => (
+                  <div className="integration-group" key={group.group}>
+                    <p className="group-label">{group.label}</p>
+                    <div className="stack-list">
+                      {group.items.map((integration) => (
+                        <div className="stack-row" key={integration.id}>
+                          <div>
+                            <strong>{integration.label}</strong>
+                            <p>{integration.purpose}</p>
+                          </div>
+                          <span
+                            className={`status-badge ${
+                              integration.configured ? "status-ready" : "status-missing"
+                            }`}
+                          >
+                            {integration.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <span
-                    className={`status-badge ${
-                      integration.configured ? "status-ready" : "status-missing"
-                    }`}
-                  >
-                    {integration.status}
-                  </span>
-                </div>
-              )) ?? <p className="muted">Loading integration status...</p>}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">Loading integration status...</p>
+            )}
           </article>
         </aside>
       </section>

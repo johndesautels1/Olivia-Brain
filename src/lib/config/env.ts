@@ -43,12 +43,37 @@ const serverEnvSchema = z.object({
   MISTRAL_API_KEY: optionalSecret,
   MISTRAL_MODEL_PRIMARY: z.string().default("mistral-large-latest"),
 
+  TAVILY_API_KEY: optionalSecret,
   MEM0_API_KEY: optionalSecret,
   COMPOSIO_API_KEY: optionalSecret,
   NYLAS_API_KEY: optionalSecret,
   RESEND_API_KEY: optionalSecret,
   INSTANTLY_API_KEY: optionalSecret,
   HUBSPOT_ACCESS_TOKEN: optionalSecret,
+
+  TWILIO_ACCOUNT_SID: optionalSecret,
+  TWILIO_AUTH_TOKEN: optionalSecret,
+  TWILIO_API_KEY: optionalSecret,
+  TWILIO_API_SECRET: optionalSecret,
+  TWILIO_PHONE_NUMBER: optionalSecret,
+  TWILIO_MESSAGING_SERVICE_SID: optionalSecret,
+  TWILIO_CONVERSATION_RELAY_URL: optionalUrl,
+  TWILIO_STATUS_CALLBACK_URL: optionalUrl,
+  TWILIO_RECORDING_CALLBACK_URL: optionalUrl,
+
+  LIVEKIT_API_KEY: optionalSecret,
+  LIVEKIT_API_SECRET: optionalSecret,
+  VAPI_API_KEY: optionalSecret,
+  RETELL_API_KEY: optionalSecret,
+
+  SIMLI_API_KEY: optionalSecret,
+  HEYGEN_API_KEY: optionalSecret,
+  DID_API_KEY: optionalSecret,
+  REPLICATE_API_TOKEN: optionalSecret,
+  ELEVENLABS_API_KEY: optionalSecret,
+
+  TRIGGER_SECRET_KEY: optionalSecret,
+  TRIGGER_API_URL: optionalUrl,
 
   LANGFUSE_PUBLIC_KEY: optionalSecret,
   LANGFUSE_SECRET_KEY: optionalSecret,

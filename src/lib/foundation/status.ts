@@ -41,6 +41,7 @@ export function getIntegrationStatuses(): IntegrationStatus[] {
     return {
       id: integration.id,
       label: integration.label,
+      group: integration.group,
       configured,
       status: configured ? "configured" : "missing",
       purpose: integration.purpose,
@@ -62,6 +63,19 @@ export function getFoundationStatus(): FoundationStatus {
   const langfuseConfigured = integrations.find(
     (integration) => integration.id === "langfuse",
   )?.configured;
+  const tavilyConfigured = integrations.find(
+    (integration) => integration.id === "tavily",
+  )?.configured;
+  const twilioConfigured = integrations.find(
+    (integration) => integration.id === "twilio",
+  )?.configured;
+  const triggerConfigured = integrations.find(
+    (integration) => integration.id === "trigger",
+  )?.configured;
+  const avatarConfigured = integrations.some(
+    (integration) =>
+      integration.group === "avatar" && integration.configured,
+  );
 
   const recommendedNextActions: string[] = [];
 
@@ -83,11 +97,35 @@ export function getFoundationStatus(): FoundationStatus {
     );
   }
 
+  if (!tavilyConfigured) {
+    recommendedNextActions.push(
+      "Add Tavily before research-heavy workflows land so search-grounded retrieval is part of the stack, not a later patch.",
+    );
+  }
+
   if (
     !integrations.find((integration) => integration.id === "hubspot")?.configured
   ) {
     recommendedNextActions.push(
       "Connect HubSpot before Phase 1 leaves the foundation stage so lead state is authoritative.",
+    );
+  }
+
+  if (!twilioConfigured) {
+    recommendedNextActions.push(
+      "Add Twilio before Phase 2 so telephony remains the canonical carrier layer instead of becoming an afterthought.",
+    );
+  }
+
+  if (!triggerConfigured) {
+    recommendedNextActions.push(
+      "Add Trigger.dev before long-running jobs and report generation work begin to avoid bolting durable execution on later.",
+    );
+  }
+
+  if (!avatarConfigured) {
+    recommendedNextActions.push(
+      "Configure the first avatar vendor set, with Simli primary and HeyGen or D-ID fallback, before voice-and-avatar implementation starts.",
     );
   }
 
