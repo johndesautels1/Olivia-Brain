@@ -37,6 +37,7 @@ If no model keys are configured, the app still works in deterministic mock mode 
 - `src/lib/hubspot`: HubSpot server adapter for account details and CRM object operations
 - `src/lib/memory`: Supabase and in-memory conversation storage
 - `src/lib/orchestration`: LangGraph request pipeline
+- `src/lib/resend`: Resend server adapter for transactional email and domain health checks
 - `src/lib/services`: model routing and provider execution
 - `src/lib/twilio`: Twilio server helpers, client bootstrapping, webhook validation, and TwiML generation
 - `src/lib/observability`: tracing helpers and local trace store
@@ -57,7 +58,7 @@ The admin integrations dashboard is available at `/admin/integrations`.
 
 - It shows required and optional environment keys per integration.
 - It can run environment validation for every integration.
-- It can run safe live checks for selected integrations such as Supabase, Twilio, Tavily, and HubSpot.
+- It can run safe live checks for selected integrations such as Supabase, Twilio, Tavily, HubSpot, and Resend.
 - It stores recent integration test history and admin audit events in Supabase when the admin audit tables are available.
 - If Supabase is not configured for this app yet, it falls back to local in-memory history so the dashboard still works during setup.
 - In production, set `ADMIN_API_KEY` so the admin APIs are not exposed without a shared secret.
@@ -69,6 +70,14 @@ The HubSpot integration lives in `src/lib/hubspot/server.ts`.
 - It supports account detail lookup plus generic contact, company, and deal record operations.
 - The admin live check stays read-only and only fetches account details plus up to one visible contact, company, and deal.
 - Keep the token scoped to the CRM objects this app actually needs. The read paths work with object read scopes, and create or update paths need the corresponding write scopes.
+
+## Resend server adapter
+
+The Resend integration lives in `src/lib/resend/server.ts`.
+
+- It supports transactional sends through a typed server-side helper.
+- The admin live check stays read-only and only queries Resend domains.
+- If the API key is valid but no domains are configured yet, the live check returns a clean warning instead of pretending email is production-ready.
 
 Apply both Supabase migrations before expecting durable storage:
 

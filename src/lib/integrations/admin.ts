@@ -8,6 +8,7 @@ import {
 } from "@/lib/foundation/catalog";
 import { isEnvKeyConfigured, isIntegrationConfigured } from "@/lib/foundation/status";
 import { getHubSpotHealthSnapshot } from "@/lib/hubspot/server";
+import { getResendHealthSnapshot } from "@/lib/resend/server";
 import { getTwilioClient } from "@/lib/twilio/server";
 import type {
   AdminDashboardData,
@@ -72,7 +73,13 @@ function getIntegrationStatusSummary(
 }
 
 function getSupportedActions(integrationId: string): IntegrationTestAction[] {
-  const liveCheckSupported = new Set(["supabase", "twilio", "tavily", "hubspot"]);
+  const liveCheckSupported = new Set([
+    "supabase",
+    "twilio",
+    "tavily",
+    "hubspot",
+    "resend",
+  ]);
 
   return liveCheckSupported.has(integrationId)
     ? ["validate-env", "live-check"]
@@ -295,6 +302,38 @@ async function runHubSpotLiveCheck(): Promise<{
   };
 }
 
+async function runResendLiveCheck(): Promise<{
+  ok: boolean;
+  summary: string;
+  details: string[];
+}> {
+  const snapshot = await getResendHealthSnapshot();
+
+  if (!snapshot.hasConfiguredDomain) {
+    return {
+      ok: false,
+      summary: "Resend API key is valid but no sending domains are configured.",
+      details: [
+        "The account responded successfully, but /domains returned no domains.",
+        "Add and verify at least one sending domain before using Resend for production email.",
+      ],
+    };
+  }
+
+  return {
+    ok: true,
+    summary: "Resend domain query succeeded.",
+    details: [
+      `Configured domains visible: ${snapshot.domainCount}`,
+      `Top domain: ${snapshot.topDomain?.name ?? "none"}`,
+      `Top domain status: ${snapshot.topDomain?.status ?? "unknown"}`,
+      `Sending capability: ${snapshot.topDomain?.capabilities?.sending ?? "unknown"}`,
+      `Receiving capability: ${snapshot.topDomain?.capabilities?.receiving ?? "unknown"}`,
+      `Region: ${snapshot.topDomain?.region ?? "unknown"}`,
+    ],
+  };
+}
+
 export async function runIntegrationTest(
   integrationId: string,
   action: IntegrationTestAction,
@@ -332,6 +371,9 @@ export async function runIntegrationTest(
         break;
       case "hubspot":
         result = await runHubSpotLiveCheck();
+        break;
+      case "resend":
+        result = await runResendLiveCheck();
         break;
       default:
         result = {
