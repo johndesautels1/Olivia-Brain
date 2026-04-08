@@ -37,8 +37,18 @@ If no model keys are configured, the app still works in deterministic mock mode 
 - `src/lib/memory`: Supabase and in-memory conversation storage
 - `src/lib/orchestration`: LangGraph request pipeline
 - `src/lib/services`: model routing and provider execution
+- `src/lib/twilio`: Twilio server helpers, client bootstrapping, webhook validation, and TwiML generation
 - `src/lib/observability`: tracing helpers and local trace store
 - `supabase/migrations`: schema for conversations, traces, and vector-ready knowledge chunks
+
+## Twilio inbound voice webhook
+
+The first Twilio voice entrypoint is available at `/api/twilio/voice/inbound`.
+
+- In development, you can hit the route directly and it will return TwiML even without a Twilio signature.
+- In production, if `TWILIO_AUTH_TOKEN` is configured, the route validates `X-Twilio-Signature`.
+- If `TWILIO_CONVERSATION_RELAY_URL` is configured, the route connects the caller into Twilio ConversationRelay.
+- Otherwise, it returns a fallback spoken message and hangs up cleanly.
 
 ## Notes on provider choices
 

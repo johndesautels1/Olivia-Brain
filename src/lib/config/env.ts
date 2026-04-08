@@ -18,6 +18,7 @@ const optionalUrl = z.preprocess(
 const serverEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   NEXT_PUBLIC_APP_NAME: z.string().default("Olivia Brain"),
+  NEXT_PUBLIC_APP_URL: optionalUrl,
   APP_AI_MODE: z.enum(["auto", "mock", "live"]).default("auto"),
 
   SUPABASE_URL: optionalUrl,
