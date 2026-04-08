@@ -6,6 +6,7 @@ export type ProviderId =
   | "xai"
   | "perplexity"
   | "mistral"
+  | "groq"
   | "tavily";
 
 export type RouteIntent = "planning" | "research" | "operations" | "general" | "questionnaire" | "math" | "judge";

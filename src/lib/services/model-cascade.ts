@@ -21,6 +21,7 @@
 
 import { anthropic } from "@ai-sdk/anthropic";
 import { google } from "@ai-sdk/google";
+import { groq } from "@ai-sdk/groq";
 import { mistral } from "@ai-sdk/mistral";
 import { openai } from "@ai-sdk/openai";
 import { perplexity } from "@ai-sdk/perplexity";
@@ -87,6 +88,9 @@ function buildProviderBindings(): ProviderBinding[] {
           return perplexity(env.PERPLEXITY_MODEL_PRIMARY);
         case "mistral":
           return mistral(env.MISTRAL_MODEL_PRIMARY);
+        case "groq":
+          // Groq LPU - ultra-low latency inference
+          return groq(env.GROQ_MODEL_PRIMARY);
         case "tavily":
           // Tavily is a search API, not a text generation model
           // It will be handled separately in the pipeline

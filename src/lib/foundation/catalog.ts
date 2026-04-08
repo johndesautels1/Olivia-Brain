@@ -92,6 +92,15 @@ export const PROVIDER_CATALOG: Array<{
     purpose: "Multilingual reasoning for international clients.",
   },
   {
+    id: "groq",
+    label: "Groq LPU",
+    envKey: "GROQ_API_KEY",
+    modelKey: "GROQ_MODEL_PRIMARY",
+    defaultModel: "llama-3.3-70b-versatile",
+    priority: 4,
+    purpose: "LPU inference for near-instant responses. Ultra-low latency fallback.",
+  },
+  {
     id: "tavily",
     label: "Tavily",
     envKey: "TAVILY_API_KEY",

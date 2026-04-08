@@ -46,15 +46,15 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [x] Twilio voice webhook (basic)
 - [x] HubSpot, Resend, Instantly adapters (read operations)
 
-### Sprint 1.2 - Model Cascade Enhancement
+### Sprint 1.2 - Model Cascade Enhancement (COMPLETE)
 - [x] Update model names to correct versions (Sonnet 4.6, Opus 4.6, GPT-5.4, Gemini 3.1 Pro)
 - [x] Add Tavily as provider
 - [x] Add Opus 4.6 as Judge model (Cristiano™)
 - [x] Implement 9-model cascade firing order
 - [x] Add new intents: questionnaire, math, judge
-- [ ] Add Tavily search integration (web research MCP)
-- [ ] Implement judge endpoint for Cristiano™ verdicts
-- [ ] Add Groq for LPU inference (near-instant responses)
+- [x] Add Tavily search integration (web research MCP) - `/api/search`
+- [x] Implement judge endpoint for Cristiano™ verdicts - `/api/judge`
+- [x] Add Groq for LPU inference (near-instant responses)
 
 ### Sprint 1.3 - Memory & Personalization
 - [ ] Apply Supabase migrations to production

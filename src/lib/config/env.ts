@@ -45,6 +45,9 @@ const serverEnvSchema = z.object({
   MISTRAL_API_KEY: optionalSecret,
   MISTRAL_MODEL_PRIMARY: z.string().default("mistral-large-latest"),
 
+  GROQ_API_KEY: optionalSecret,
+  GROQ_MODEL_PRIMARY: z.string().default("llama-3.3-70b-versatile"),
+
   TAVILY_API_KEY: optionalSecret,
   MEM0_API_KEY: optionalSecret,
   COMPOSIO_API_KEY: optionalSecret,
