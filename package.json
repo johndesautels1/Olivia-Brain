@@ -24,6 +24,7 @@
     "@supabase/supabase-js": "^2.102.1",
     "@tavily/core": "^0.7.2",
     "ai": "^6.0.151",
+    "mem0ai": "^2.4.6",
     "next": "^16.2.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
