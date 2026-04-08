@@ -33,6 +33,7 @@ If no model keys are configured, the app still works in deterministic mock mode 
 - `src/app`: Next.js app shell and API routes
 - `src/components`: frontend control surface
 - `src/lib/config`: environment parsing
+- `src/lib/adapters`: cross-app adapter registry and contract types
 - `src/lib/foundation`: static Phase 1 metadata and readiness summaries
 - `src/lib/hubspot`: HubSpot server adapter for account details and CRM object operations
 - `src/lib/instantly`: Instantly server adapter for outbound account, campaign, and lead workflows
@@ -100,11 +101,13 @@ The implementation uses the Vercel AI SDK provider surface because it keeps Anth
 ## Long-term stack planning
 
 - `docs/final-stack.md`: target-state architecture aligned to the master roadmap
+- `docs/olivia-core-architecture.md`: multi-app core architecture for Olivia across the CLUES portfolio
+- `docs/london-calendar-adapter-contract.md`: recommended private adapter contract for the London calendar system
 - `.env.full.example`: full target environment contract for later phases
 
 ## Suggested next steps after Phase 1
 
 1. Apply the Supabase migration and connect service credentials.
 2. Add at least one live model provider key and validate the cascade.
-3. Wire HubSpot and Nylas with scoped server-side adapters.
-4. Add Phase 2 voice and avatar transport on top of this foundation instead of mixing it into the core now.
+3. Build the first private cross-app adapter against the London calendar system instead of duplicating that subsystem.
+4. Add approval-gated LangGraph tools on top of the calendar, CRM, and communications adapters.
