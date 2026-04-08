@@ -2,6 +2,13 @@
 
 This repository turns the roadmap artifact into a real Phase 1 foundation application.
 
+## Protected repo boundary
+
+- `D:\london-tech-map` is a protected external codebase and must not be edited from the Olivia Brain workflow.
+- All implementation work for Olivia happens in `D:\Olivia Brain`.
+- Integration with the London calendar system must happen through adapter contracts and server-to-server clients in this repo, not by changing `D:\london-tech-map`.
+- If future work appears to require touching `D:\london-tech-map`, stop and get explicit approval before making any change there.
+
 ## What Phase 1 includes
 
 - React + TypeScript application shell built for Vercel deployment
