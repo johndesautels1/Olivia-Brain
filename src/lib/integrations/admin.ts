@@ -8,6 +8,7 @@ import {
 } from "@/lib/foundation/catalog";
 import { isEnvKeyConfigured, isIntegrationConfigured } from "@/lib/foundation/status";
 import { getHubSpotHealthSnapshot } from "@/lib/hubspot/server";
+import { getInstantlyHealthSnapshot } from "@/lib/instantly/server";
 import { getResendHealthSnapshot } from "@/lib/resend/server";
 import { getTwilioClient } from "@/lib/twilio/server";
 import type {
@@ -79,6 +80,7 @@ function getSupportedActions(integrationId: string): IntegrationTestAction[] {
     "tavily",
     "hubspot",
     "resend",
+    "instantly",
   ]);
 
   return liveCheckSupported.has(integrationId)
@@ -334,6 +336,39 @@ async function runResendLiveCheck(): Promise<{
   };
 }
 
+async function runInstantlyLiveCheck(): Promise<{
+  ok: boolean;
+  summary: string;
+  details: string[];
+}> {
+  const snapshot = await getInstantlyHealthSnapshot();
+
+  return {
+    ok: true,
+    summary: "Instantly account and campaign queries succeeded.",
+    details: [
+      `Accounts visible: ${snapshot.accountCount}`,
+      `Campaigns visible: ${snapshot.campaignCount}`,
+      `Top account email: ${snapshot.topAccount?.email ?? "none"}`,
+      `Top account status: ${snapshot.topAccount?.status ?? "unknown"}`,
+      `Top account provider: ${snapshot.topAccount?.provider ?? "unknown"}`,
+      `Top campaign name: ${snapshot.topCampaign?.name ?? "none"}`,
+      `Top campaign status: ${
+        snapshot.topCampaign?.campaign_status ??
+        snapshot.topCampaign?.status ??
+        "unknown"
+      }`,
+      `Top campaign active: ${
+        typeof snapshot.topCampaign?.is_active === "boolean"
+          ? snapshot.topCampaign.is_active
+            ? "yes"
+            : "no"
+          : "unknown"
+      }`,
+    ],
+  };
+}
+
 export async function runIntegrationTest(
   integrationId: string,
   action: IntegrationTestAction,
@@ -374,6 +409,9 @@ export async function runIntegrationTest(
         break;
       case "resend":
         result = await runResendLiveCheck();
+        break;
+      case "instantly":
+        result = await runInstantlyLiveCheck();
         break;
       default:
         result = {
