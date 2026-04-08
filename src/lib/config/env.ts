@@ -52,6 +52,8 @@ const serverEnvSchema = z.object({
   RESEND_API_KEY: optionalSecret,
   INSTANTLY_API_KEY: optionalSecret,
   HUBSPOT_ACCESS_TOKEN: optionalSecret,
+  CLUES_LONDON_BASE_URL: optionalUrl,
+  CLUES_LONDON_INTERNAL_API_KEY: optionalSecret,
 
   TWILIO_ACCOUNT_SID: optionalSecret,
   TWILIO_AUTH_TOKEN: optionalSecret,

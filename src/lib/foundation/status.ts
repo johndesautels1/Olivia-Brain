@@ -136,6 +136,15 @@ export function getFoundationStatus(): FoundationStatus {
     );
   }
 
+  if (
+    !integrations.find((integration) => integration.id === "clues_london_calendar")
+      ?.configured
+  ) {
+    recommendedNextActions.push(
+      "Connect the CLUES London calendar adapter so Olivia can present the in-house calendar as a native surface instead of forking that subsystem.",
+    );
+  }
+
   if (!twilioConfigured) {
     recommendedNextActions.push(
       "Add Twilio before Phase 2 so telephony remains the canonical carrier layer instead of becoming an afterthought.",

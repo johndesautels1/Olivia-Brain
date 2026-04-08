@@ -160,6 +160,14 @@ export const INTEGRATION_CATALOG: IntegrationCatalogEntry[] = [
     purpose: "CRM sync for leads, contacts, and pipeline state.",
   },
   {
+    id: "clues_london_calendar",
+    label: "CLUES London Calendar",
+    group: "platform",
+    requiredKeys: ["CLUES_LONDON_BASE_URL", "CLUES_LONDON_INTERNAL_API_KEY"],
+    purpose:
+      "Private server-to-server calendar adapter so Olivia can wrap the London calendar natively without duplicating the subsystem.",
+  },
+  {
     id: "twilio",
     label: "Twilio",
     group: "telephony",

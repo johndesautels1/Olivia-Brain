@@ -9,6 +9,7 @@ This repository turns the roadmap artifact into a real Phase 1 foundation applic
 - LangGraph orchestration flow for runtime hydration, memory recall, intent routing, response generation, and persistence
 - Supabase-ready memory layer with local in-memory fallback
 - Readiness tracking for Supabase, Mem0, Composio, Nylas, Resend, Instantly, HubSpot, and Langfuse
+- Private adapter client for the CLUES London calendar system so Olivia can consume that subsystem without duplicating it
 - Local trace store plus optional Langfuse OpenTelemetry export
 
 ## What is intentionally not in Phase 1
@@ -34,6 +35,7 @@ If no model keys are configured, the app still works in deterministic mock mode 
 - `src/components`: frontend control surface
 - `src/lib/config`: environment parsing
 - `src/lib/adapters`: cross-app adapter registry and contract types
+- `src/lib/adapters/london-calendar.ts`: server-to-server client for the CLUES London calendar adapter
 - `src/lib/foundation`: static Phase 1 metadata and readiness summaries
 - `src/lib/hubspot`: HubSpot server adapter for account details and CRM object operations
 - `src/lib/instantly`: Instantly server adapter for outbound account, campaign, and lead workflows
@@ -60,10 +62,19 @@ The admin integrations dashboard is available at `/admin/integrations`.
 
 - It shows required and optional environment keys per integration.
 - It can run environment validation for every integration.
-- It can run safe live checks for selected integrations such as Supabase, Twilio, Tavily, HubSpot, Resend, and Instantly.
+- It can run safe live checks for selected integrations such as Supabase, CLUES London Calendar, Twilio, Tavily, HubSpot, Resend, and Instantly.
 - It stores recent integration test history and admin audit events in Supabase when the admin audit tables are available.
 - If Supabase is not configured for this app yet, it falls back to local in-memory history so the dashboard still works during setup.
 - In production, set `ADMIN_API_KEY` so the admin APIs are not exposed without a shared secret.
+
+## CLUES London calendar adapter client
+
+The Olivia-side client for the London calendar system lives in `src/lib/adapters/london-calendar.ts`.
+
+- It targets the private `/api/internal/olivia/calendar/*` contract documented in `docs/london-calendar-adapter-contract.md`.
+- It uses `CLUES_LONDON_BASE_URL` and `CLUES_LONDON_INTERNAL_API_KEY` for server-to-server auth.
+- It supports health, entry list/create/update/archive, attendee replacement, prep-task reads and writes, parser delegation, and recommendations.
+- The admin live check only calls the health endpoint so it stays read-only.
 
 ## HubSpot server adapter
 
@@ -109,5 +120,5 @@ The implementation uses the Vercel AI SDK provider surface because it keeps Anth
 
 1. Apply the Supabase migration and connect service credentials.
 2. Add at least one live model provider key and validate the cascade.
-3. Build the first private cross-app adapter against the London calendar system instead of duplicating that subsystem.
+3. Build the Olivia UI surface that wraps the CLUES London calendar in a native-feeling shell.
 4. Add approval-gated LangGraph tools on top of the calendar, CRM, and communications adapters.

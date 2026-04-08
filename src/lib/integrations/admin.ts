@@ -7,6 +7,7 @@ import {
   type IntegrationCatalogEntry,
 } from "@/lib/foundation/catalog";
 import { isEnvKeyConfigured, isIntegrationConfigured } from "@/lib/foundation/status";
+import { getLondonCalendarHealthSnapshot } from "@/lib/adapters/london-calendar";
 import { getHubSpotHealthSnapshot } from "@/lib/hubspot/server";
 import { getInstantlyHealthSnapshot } from "@/lib/instantly/server";
 import { getResendHealthSnapshot } from "@/lib/resend/server";
@@ -79,6 +80,7 @@ function getSupportedActions(integrationId: string): IntegrationTestAction[] {
     "twilio",
     "tavily",
     "hubspot",
+    "clues_london_calendar",
     "resend",
     "instantly",
   ]);
@@ -304,6 +306,31 @@ async function runHubSpotLiveCheck(): Promise<{
   };
 }
 
+async function runCluesLondonCalendarLiveCheck(): Promise<{
+  ok: boolean;
+  summary: string;
+  details: string[];
+}> {
+  const snapshot = await getLondonCalendarHealthSnapshot();
+
+  return {
+    ok: snapshot.ok,
+    summary: snapshot.ok
+      ? "CLUES London calendar adapter responded successfully."
+      : "CLUES London calendar adapter health check reported attention required.",
+    details: [
+      `Service: ${snapshot.service}`,
+      `Version: ${snapshot.version}`,
+      `Caller acknowledged: ${snapshot.caller ?? "unknown"}`,
+      `Capabilities: ${
+        snapshot.capabilities.length > 0
+          ? snapshot.capabilities.join(", ")
+          : "none reported"
+      }`,
+    ],
+  };
+}
+
 async function runResendLiveCheck(): Promise<{
   ok: boolean;
   summary: string;
@@ -406,6 +433,9 @@ export async function runIntegrationTest(
         break;
       case "hubspot":
         result = await runHubSpotLiveCheck();
+        break;
+      case "clues_london_calendar":
+        result = await runCluesLondonCalendarLiveCheck();
         break;
       case "resend":
         result = await runResendLiveCheck();
