@@ -25,7 +25,7 @@ const Phase1State = new StateSchema({
   userMessage: z.string(),
   forceMock: z.boolean().default(false),
   intent: z
-    .enum(["planning", "research", "operations", "general"])
+    .enum(["planning", "research", "operations", "general", "questionnaire", "math", "judge"])
     .default("general"),
   runtimeMode: z.enum(["mock", "live"]).default("mock"),
   recalledContext: z.array(z.string()).default(() => []),
@@ -44,6 +44,22 @@ type Phase1GraphState = typeof Phase1State.State;
 function inferIntent(message: string): RouteIntent {
   const normalized = message.toLowerCase();
 
+  // Judge intent - final verdicts, LifeScore decisions
+  if (/(judge|verdict|final decision|lifescore|cristiano|ruling)/.test(normalized)) {
+    return "judge";
+  }
+
+  // Math intent - equations, calculations, numerical analysis
+  if (/(calculate|equation|math|formula|percentage|ratio|average|sum|multiply|divide)/.test(normalized)) {
+    return "math";
+  }
+
+  // Questionnaire intent - biographical extraction, preferences
+  if (/(questionnaire|survey|preference|biographical|profile|intake|onboarding)/.test(normalized)) {
+    return "questionnaire";
+  }
+
+  // Planning intent - architecture, roadmaps, implementation
   if (
     /(phase|roadmap|build|architecture|stack|scaffold|implement|system|design)/.test(
       normalized,
@@ -52,10 +68,12 @@ function inferIntent(message: string): RouteIntent {
     return "planning";
   }
 
+  // Research intent - citations, comparisons, web search
   if (/(research|cite|compare|latest|market|source|web|news)/.test(normalized)) {
     return "research";
   }
 
+  // Operations intent - CRM, email, calendar workflows
   if (/(crm|hubspot|email|calendar|lead|pipeline|outreach|inbox)/.test(normalized)) {
     return "operations";
   }
