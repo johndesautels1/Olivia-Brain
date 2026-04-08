@@ -12,7 +12,8 @@
 ## CURRENT STATUS
 - **Sprint 1.1:** COMPLETE (Foundation)
 - **Sprint 1.2:** COMPLETE (Model Cascade Enhancement)
-- **Sprint 1.3:** START NOW (Memory & Personalization)
+- **Sprint 1.3:** COMPLETE (Memory & Personalization)
+- **Sprint 1.4:** START NOW (Tool Integration)
 
 ## 9-MODEL CASCADE (MEMORIZE THIS)
 | # | Model | Role |
@@ -27,14 +28,14 @@
 | ⑧ | Opus 4.6 (Cristiano™) | THE JUDGE |
 | ⑨ | Mistral Large | Multilingual fallback |
 
-## SPRINT 1.3 TASKS - DO THESE NOW
+## SPRINT 1.4 TASKS - DO THESE NOW
 ```
-[ ] Apply Supabase migrations to production
-[ ] Connect Mem0 for cross-session personalization
-[ ] Implement knowledge_chunks table population
-[ ] Add semantic search over conversation history
-[ ] Implement Memory TTL / forgetting rules
-[ ] Add permission-aware indexing (Client A ≠ Client B)
+[ ] Add Composio for 200+ pre-built tool integrations
+[ ] Implement approval-gated LangGraph tools
+[ ] Add HITL confidence gates
+[ ] Connect Nylas for unified inbox/calendar
+[ ] Production email sends via Resend
+[ ] Outbound sequences via Instantly.ai
 ```
 
 ## KEY FILES

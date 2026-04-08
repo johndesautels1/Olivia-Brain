@@ -56,13 +56,13 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [x] Implement judge endpoint for Cristiano™ verdicts - `/api/judge`
 - [x] Add Groq for LPU inference (near-instant responses)
 
-### Sprint 1.3 - Memory & Personalization
-- [ ] Apply Supabase migrations to production
-- [ ] Connect Mem0 for cross-session personalization
-- [ ] Implement knowledge_chunks table population
-- [ ] Add semantic search over conversation history
-- [ ] Implement Memory TTL / forgetting rules
-- [ ] Add permission-aware indexing (Client A ≠ Client B)
+### Sprint 1.3 - Memory & Personalization (COMPLETE)
+- [x] Apply Supabase migrations to production
+- [x] Connect Mem0 for cross-session personalization
+- [x] Implement knowledge_chunks table population
+- [x] Add semantic search over conversation history
+- [x] Implement Memory TTL / forgetting rules
+- [x] Add permission-aware indexing (Client A ≠ Client B)
 
 ### Sprint 1.4 - Tool Integration
 - [ ] Add Composio for 200+ pre-built tool integrations
