@@ -1,12 +1,14 @@
 export type ProviderId =
   | "anthropic"
+  | "anthropic_judge"
   | "openai"
   | "google"
   | "xai"
   | "perplexity"
-  | "mistral";
+  | "mistral"
+  | "tavily";
 
-export type RouteIntent = "planning" | "research" | "operations" | "general";
+export type RouteIntent = "planning" | "research" | "operations" | "general" | "questionnaire" | "math" | "judge";
 export type RuntimeMode = "mock" | "live";
 export type StatusLevel = "configured" | "missing";
 export type IntegrationGroup =

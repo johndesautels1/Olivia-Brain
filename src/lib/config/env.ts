@@ -30,11 +30,11 @@ const serverEnvSchema = z.object({
   ANTHROPIC_MODEL_JUDGE: z.string().default("claude-opus-4-6"),
 
   OPENAI_API_KEY: optionalSecret,
-  OPENAI_MODEL_PRIMARY: z.string().default("gpt-4o"),
-  OPENAI_MODEL_REASONING: z.string().default("gpt-5"),
+  OPENAI_MODEL_PRIMARY: z.string().default("gpt-5.4-pro"),
+  OPENAI_MODEL_REASONING: z.string().default("gpt-5.4-pro"),
 
   GOOGLE_GENERATIVE_AI_API_KEY: optionalSecret,
-  GOOGLE_MODEL_PRIMARY: z.string().default("gemini-2.5-pro"),
+  GOOGLE_MODEL_PRIMARY: z.string().default("gemini-3.1-pro"),
 
   XAI_API_KEY: optionalSecret,
   XAI_MODEL_PRIMARY: z.string().default("grok-4"),

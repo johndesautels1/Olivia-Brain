@@ -1,3 +1,24 @@
+/**
+ * OLIVIA BRAIN 9-MODEL CASCADE ARCHITECTURE
+ * ==========================================
+ *
+ * ACTUAL FIRING ORDER (from Championship Stack):
+ * ① Gemini 3.1 Pro    - Biographical/paragraphical extraction, massive context
+ * ② Sonnet 4.6        - Primary city evaluator, report generation
+ * ③ GPT-5.4 Pro       - Secondary evaluator, multimodal execution
+ * ④ Gemini 3.1 Pro    - Verification pass with Google Search integration
+ * ⑤ Grok 4            - Math/equations specialist ONLY
+ * ⑥ Perplexity Sonar  - Module questionnaires + citations, fact verification
+ * ⑦ Tavily            - Web research MCP, real-time search
+ * ⑧ Opus 4.6          - CRISTIANO™ THE JUDGE - Final verdict (unilateral only)
+ *
+ * Mistral is used for multilingual reasoning when international clients are detected.
+ *
+ * The cascade supports both:
+ * - Fallback mode: Try providers in order until one succeeds
+ * - Pipeline mode: Each model has a specific role in multi-stage evaluation
+ */
+
 import { anthropic } from "@ai-sdk/anthropic";
 import { google } from "@ai-sdk/google";
 import { mistral } from "@ai-sdk/mistral";
@@ -53,6 +74,9 @@ function buildProviderBindings(): ProviderBinding[] {
       switch (status.id) {
         case "anthropic":
           return anthropic(env.ANTHROPIC_MODEL_PRIMARY);
+        case "anthropic_judge":
+          // Cristiano™ - THE JUDGE (Opus 4.6)
+          return anthropic(env.ANTHROPIC_MODEL_JUDGE);
         case "openai":
           return openai(env.OPENAI_MODEL_PRIMARY);
         case "google":
@@ -63,40 +87,87 @@ function buildProviderBindings(): ProviderBinding[] {
           return perplexity(env.PERPLEXITY_MODEL_PRIMARY);
         case "mistral":
           return mistral(env.MISTRAL_MODEL_PRIMARY);
+        case "tavily":
+          // Tavily is a search API, not a text generation model
+          // It will be handled separately in the pipeline
+          return anthropic(env.ANTHROPIC_MODEL_PRIMARY); // Fallback for type safety
       }
     },
   }));
 }
 
+/**
+ * 9-MODEL CASCADE - PROVIDER ORDER BY INTENT
+ *
+ * The Championship Stack defines specific roles for each model:
+ * - Gemini: Biographical/paragraphical extraction (first pass)
+ * - Sonnet: Primary city evaluator, report generation
+ * - GPT-5.4: Secondary evaluator
+ * - Grok: Math/equations ONLY
+ * - Perplexity: Questionnaires + citations
+ * - Tavily: Web research (handled separately)
+ * - Opus: THE JUDGE (final verdict)
+ * - Mistral: Multilingual fallback
+ */
 function providerOrderForIntent(intent: RouteIntent): ProviderId[] {
   switch (intent) {
-    case "planning":
-      return ["anthropic", "openai", "google", "mistral", "xai", "perplexity"];
+    // Questionnaire extraction starts with Gemini for paragraphical processing
+    case "questionnaire":
+      return ["google", "anthropic", "perplexity", "openai", "mistral", "xai"];
+
+    // Math tasks go directly to Grok
+    case "math":
+      return ["xai", "openai", "google", "anthropic", "mistral", "perplexity"];
+
+    // Research uses Perplexity for citations, then Gemini for context
     case "research":
       return ["perplexity", "google", "anthropic", "openai", "xai", "mistral"];
+
+    // Planning uses Sonnet as primary, GPT as secondary
+    case "planning":
+      return ["anthropic", "openai", "google", "mistral", "xai", "perplexity"];
+
+    // Operations: Sonnet → GPT → Gemini
     case "operations":
       return ["anthropic", "openai", "google", "mistral", "perplexity", "xai"];
+
+    // Judge intent uses Opus (Cristiano™) - handled specially
+    case "judge":
+      return ["anthropic_judge", "anthropic", "openai", "google", "perplexity", "mistral"];
+
+    // Default: 9-model cascade order
+    // Gemini (extract) → Sonnet (evaluate) → GPT (secondary) → Grok (math) → Perplexity (citations)
     default:
-      return ["anthropic", "openai", "google", "xai", "mistral", "perplexity"];
+      return ["google", "anthropic", "openai", "xai", "perplexity", "mistral"];
   }
 }
 
 function buildSystemPrompt(intent: RouteIntent) {
-  const intentBrief =
-    intent === "planning"
-      ? "You are operating as an architecture and implementation lead."
-      : intent === "research"
-        ? "You are operating as a research and synthesis lead."
-        : intent === "operations"
-          ? "You are operating as an operations lead for CRM, email, and workflow readiness."
-          : "You are operating as the executive assistant brain for a modular AI platform.";
+  const intentBrief = (() => {
+    switch (intent) {
+      case "planning":
+        return "You are operating as an architecture and implementation lead.";
+      case "research":
+        return "You are operating as a research and synthesis lead with citation-first retrieval.";
+      case "operations":
+        return "You are operating as an operations lead for CRM, email, and workflow readiness.";
+      case "questionnaire":
+        return "You are operating as the CLUES Questionnaire Engine, extracting biographical and preference data with Bayesian precision.";
+      case "math":
+        return "You are operating as the math and equations specialist. Focus exclusively on numerical calculations and quantitative analysis.";
+      case "judge":
+        return "You are Cristiano™, THE JUDGE. You provide final, authoritative verdicts on city match, financial packages, and LifeScore decisions. Your word is final. Be decisive.";
+      default:
+        return "You are operating as the executive assistant brain for a modular AI platform.";
+    }
+  })();
 
   return [
-    "You are Olivia Brain, the Phase 1 orchestration layer for CLUES.",
+    "You are Olivia Brain, the intelligence and orchestration layer for the CLUES portfolio.",
     intentBrief,
     "Respond with concrete implementation guidance, not generic motivation.",
     "If a provider or integration is not configured, say so plainly and continue with the best available path.",
-    "Stay aligned to Phase 1 only: app shell, model routing, memory, orchestration, integrations, and observability.",
+    "The avatar is the face, not the brain. Intelligence lives in this orchestration layer.",
   ].join(" ");
 }
 
