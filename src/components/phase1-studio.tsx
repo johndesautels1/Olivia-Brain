@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { PHASE_ONE_PILLARS } from "@/lib/foundation/catalog";
@@ -160,6 +161,11 @@ export function Phase1Studio() {
             graph, model cascade, memory layer, and readiness tracking for the
             external systems that Phase 1 depends on.
           </p>
+          <div className="admin-hero-actions">
+            <Link className="secondary-link" href="/admin/integrations">
+              Open admin integrations
+            </Link>
+          </div>
         </div>
         <div className="hero-panel">
           <div className="hero-stat">

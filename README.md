@@ -50,6 +50,15 @@ The first Twilio voice entrypoint is available at `/api/twilio/voice/inbound`.
 - If `TWILIO_CONVERSATION_RELAY_URL` is configured, the route connects the caller into Twilio ConversationRelay.
 - Otherwise, it returns a fallback spoken message and hangs up cleanly.
 
+## Admin integrations dashboard
+
+The admin integrations dashboard is available at `/admin/integrations`.
+
+- It shows required and optional environment keys per integration.
+- It can run environment validation for every integration.
+- It can run safe live checks for selected integrations such as Supabase, Twilio, and Tavily.
+- In production, set `ADMIN_API_KEY` so the admin APIs are not exposed without a shared secret.
+
 ## Notes on provider choices
 
 The implementation uses the Vercel AI SDK provider surface because it keeps Anthropic, OpenAI, Google, xAI, Perplexity, and Mistral behind one interface. Defaults are environment-driven so model IDs can be tuned without code changes.

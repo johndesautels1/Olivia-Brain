@@ -1,6 +1,7 @@
 import { getServerEnv } from "@/lib/config/env";
 import {
   INTEGRATION_CATALOG,
+  type IntegrationCatalogEntry,
   PROVIDER_CATALOG,
 } from "@/lib/foundation/catalog";
 import type {
@@ -30,13 +31,37 @@ export function getProviderStatuses(): ProviderStatus[] {
   });
 }
 
+export function isEnvKeyConfigured(
+  env: ReturnType<typeof getServerEnv>,
+  key: string,
+) {
+  return Boolean(env[key as keyof typeof env]);
+}
+
+export function isIntegrationConfigured(
+  integration: IntegrationCatalogEntry,
+  env: ReturnType<typeof getServerEnv>,
+) {
+  if (integration.id === "twilio") {
+    const hasBase =
+      isEnvKeyConfigured(env, "TWILIO_ACCOUNT_SID") &&
+      isEnvKeyConfigured(env, "TWILIO_PHONE_NUMBER");
+    const hasAuth =
+      isEnvKeyConfigured(env, "TWILIO_AUTH_TOKEN") ||
+      (isEnvKeyConfigured(env, "TWILIO_API_KEY") &&
+        isEnvKeyConfigured(env, "TWILIO_API_SECRET"));
+
+    return hasBase && hasAuth;
+  }
+
+  return integration.requiredKeys.every((key) => isEnvKeyConfigured(env, key));
+}
+
 export function getIntegrationStatuses(): IntegrationStatus[] {
   const env = getServerEnv();
 
   return INTEGRATION_CATALOG.map((integration) => {
-    const configured = integration.keys.every((key) =>
-      Boolean(env[key as keyof typeof env]),
-    );
+    const configured = isIntegrationConfigured(integration, env);
 
     return {
       id: integration.id,
