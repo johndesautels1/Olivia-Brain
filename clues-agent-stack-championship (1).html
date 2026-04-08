@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CLUES™ Championship Agent Stack — Master Reference</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap');
+
+:root {
+  --bg: #0a0c10;
+  --surface: #12151c;
+  --surface2: #1a1e28;
+  --border: #252a36;
+  --text: #e2e4e9;
+  --text2: #8b90a0;
+  --gold: #d4a853;
+  --gold-dim: #b8922e;
+  --cyan: #4ecdc4;
+  --blue: #5b8def;
+  --purple: #a78bfa;
+  --pink: #f472b6;
+  --green: #6ee7b7;
+  --red: #fb7185;
+  --orange: #fb923c;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; line-height:1.6; }
+.app { max-width:1600px; margin:0 auto; padding:20px; }
+
+/* HEADER */
+.header { text-align:center; padding:40px 20px 30px; border-bottom:1px solid var(--border); margin-bottom:30px; }
+.header h1 { font-family:'Playfair Display',serif; font-size:2.4em; font-weight:900; background:linear-gradient(135deg,var(--gold),#f0d078,var(--gold-dim)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+.header p { color:var(--text2); font-size:1em; max-width:800px; margin:0 auto; }
+
+/* TABS */
+.tabs { display:flex; gap:4px; margin-bottom:24px; flex-wrap:wrap; border-bottom:1px solid var(--border); padding-bottom:0; }
+.tab { padding:10px 18px; background:transparent; border:none; color:var(--text2); cursor:pointer; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; border-bottom:2px solid transparent; transition:all .2s; }
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+
+/* STATS BAR */
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:24px; }
+.stat { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px; text-align:center; }
+.stat .num { font-family:'JetBrains Mono',monospace; font-size:1.8em; font-weight:700; color:var(--gold); }
+.stat .label { font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
+
+/* FILTERS */
+.filters { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
+.filters input { background:var(--surface); border:1px solid var(--border); color:var(--text); padding:8px 14px; border-radius:6px; font-size:13px; width:260px; font-family:'DM Sans',sans-serif; }
+.filters input::placeholder { color:var(--text2); }
+.filters select { background:var(--surface); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:6px; font-size:13px; font-family:'DM Sans',sans-serif; cursor:pointer; }
+.pill { display:inline-block; padding:3px 10px; border-radius:10px; font-size:11px; font-weight:600; }
+.pill-cp { background:#3b82f620; color:#60a5fa; }
+.pill-gm { background:#a78bfa20; color:#a78bfa; }
+.pill-gk { background:#fb923c20; color:#fb923c; }
+.pill-ms { background:#f4728620; color:#f472b6; }
+.pill-px { background:#4ecdc420; color:#4ecdc4; }
+.pill-oa { background:#6ee7b720; color:#6ee7b7; }
+.pill-cl { background:#d4a85320; color:#d4a853; }
+
+/* TABLE */
+.table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:8px; }
+table { width:100%; border-collapse:collapse; font-size:12.5px; }
+thead th { background:var(--surface2); padding:10px 8px; text-align:left; font-weight:600; color:var(--text2); font-size:11px; text-transform:uppercase; letter-spacing:.4px; position:sticky; top:0; z-index:2; border-bottom:1px solid var(--border); white-space:nowrap; }
+tbody td { padding:8px; border-bottom:1px solid var(--border); vertical-align:top; }
+tbody tr:hover { background:var(--surface); }
+td.tool-name { font-weight:600; color:var(--text); min-width:140px; }
+td.category { color:var(--text2); font-size:11px; min-width:100px; }
+.check { color:var(--green); font-weight:700; text-align:center; }
+.miss { color:var(--border); text-align:center; }
+.unique { color:var(--gold); font-weight:700; text-align:center; }
+
+/* SECTIONS */
+.section { margin-bottom:32px; }
+.section h2 { font-family:'Playfair Display',serif; font-size:1.5em; color:var(--gold); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.section h3 { font-size:1.1em; color:var(--cyan); margin:16px 0 8px; }
+
+/* OVERLAP TABLE */
+.overlap-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.overlap-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px; }
+.overlap-card .name { font-weight:700; color:var(--text); margin-bottom:4px; }
+.overlap-card .count { font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:12px; }
+.overlap-card .llms { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+
+/* EXEC SUMMARY */
+.exec { background:var(--surface); border:1px solid var(--gold-dim); border-radius:10px; padding:24px; }
+.exec p { margin-bottom:12px; color:var(--text); }
+.exec strong { color:var(--gold); }
+.phase { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:12px; }
+.phase h4 { color:var(--cyan); margin-bottom:6px; }
+.phase ul { padding-left:18px; }
+.phase li { margin-bottom:4px; color:var(--text2); }
+.phase li strong { color:var(--text); }
+
+/* RESPONSIVE */
+@media(max-width:768px) {
+  .header h1 { font-size:1.6em; }
+  .tabs { gap:0; }
+  .tab { padding:8px 12px; font-size:12px; }
+  .filters { flex-direction:column; }
+  .filters input { width:100%; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+// ===== MASTER DATA =====
+const LLMs = ['CoPilot','Gemini','Grok','Mistral','Perplexity','OpenAI','Claude'];
+const LLM_KEYS = ['cp','gm','gk','ms','px','oa','cl'];
+const LLM_COLORS = {'cp':'#60a5fa','gm':'#a78bfa','gk':'#fb923c','ms':'#f472b6','px':'#4ecdc4','oa':'#6ee7b7','cl':'#d4a853'};
+
+const CATEGORIES = [
+  'Avatar & Video','Voice & Speech','Realtime Transport','Core LLMs & Inference','Agent Frameworks',
+  'Memory & Context','Vector & Graph DBs','RAG & Knowledge Ingestion','Email & Outbound','Inbound & Telephony',
+  'CRM & Client Ops','Real Estate Data','Relocation & Mobility','Scheduling & Docs','Security & Compliance',
+  'Observability & Eval','Durable Execution','Prompting & Techniques','Architecture Patterns','CLUES-Specific'
+];
+
+// Each row: [name, category, cp,gm,gk,ms,px,oa,cl, notes]
+// 1=present, 0=absent, 2=unique to that LLM
+const DATA = [
+// ── Avatar & Video ──
+['HeyGen','Avatar & Video',1,1,1,1,1,1,1,'Consensus #1 avatar. LiveAvatar API, 175+ langs. All 7 LLMs agree.'],
+['Synthesia','Avatar & Video',1,1,1,1,1,1,1,'Enterprise-grade scripted video. 140+ languages. Universal pick.'],
+['D-ID','Avatar & Video',1,1,1,1,1,1,1,'Real-time interactive agents + lip-sync. All 7 picked it.'],
+['Tavus','Avatar & Video',1,1,1,0,0,1,1,'CVI premium face-to-face. OpenAI ranked it #1 for presence.'],
+['Creatify','Avatar & Video',1,1,0,0,1,0,0,'URL-to-video for listings. Quick ad creation.'],
+['Colossyan','Avatar & Video',0,0,1,0,1,0,0,'Interactive e-learning style onboarding avatars.'],
+['DeepBrain AI','Avatar & Video',0,0,1,1,0,0,0,'AI news anchors, enterprise-ready real-time rendering.'],
+['Argil AI','Avatar & Video',0,0,1,0,1,0,0,'Fast real estate walkthroughs with avatar clones.'],
+['NVIDIA ACE / Inworld','Avatar & Video',0,0,1,0,0,0,0,'Real-time 3D digital humans. Grok unique.'],
+['UneeQ','Avatar & Video',0,0,1,0,0,0,0,'Lifelike 3D avatars for global client meetings.'],
+['Leadde','Avatar & Video',0,0,1,0,0,0,0,'Bulk listing videos from docs. Real estate specific.'],
+['Pika Labs','Avatar & Video',0,0,0,1,0,0,0,'Text-to-video, style transfer. Mistral unique.'],
+['Runway ML','Avatar & Video',0,0,0,1,0,0,0,'Professional video editing + avatar. Mistral unique.'],
+['Reallusion iClone','Avatar & Video',0,0,0,1,0,0,0,'3D avatar animation w/ facial capture. Mistral unique.'],
+['Vidyard','Avatar & Video',0,0,0,0,1,0,0,'CRM-integrated video messaging. Perplexity unique.'],
+['Life Inside','Avatar & Video',0,0,0,0,1,0,0,'24/7 conversational avatars on knowledge base.'],
+['Pictory','Avatar & Video',1,0,1,0,1,0,0,'Script-to-video for market reports and explainers.'],
+['AutoReel / Reel-E','Avatar & Video',0,0,0,0,1,0,0,'Real estate video makers with AI avatars.'],
+['Descript','Avatar & Video',0,0,0,1,0,0,0,'Overdub + voice cloning + editing. Mistral unique.'],
+['SenseNet','Avatar & Video',0,0,0,1,0,0,0,'Real-time video avatar interactions API. Mistral unique.'],
+
+// ── Voice & Speech ──
+['ElevenLabs','Voice & Speech',1,1,1,1,0,1,1,'#1 TTS. Expressive, emotion-driven, voice cloning.'],
+['Deepgram','Voice & Speech',1,1,1,0,1,0,1,'Lightning-fast STT. Sub-200ms latency leader.'],
+['Whisper (OpenAI)','Voice & Speech',1,1,0,0,0,0,0,'Multilingual transcription. Open-source.'],
+['PlayHT','Voice & Speech',1,1,0,0,0,0,0,'Voice cloning for consistent executive branding.'],
+['Cartesia','Voice & Speech',0,0,1,0,0,0,0,'Expressive TTS alternative. Grok unique pick.'],
+
+// ── Realtime Transport ──
+['LiveKit','Realtime Transport',1,1,1,0,0,1,1,'WebRTC for voice/video agents. Production-grade.'],
+['Daily.co','Realtime Transport',1,1,0,0,0,0,1,'WebRTC video/audio with AI agent integrations.'],
+['Agora','Realtime Transport',1,1,0,0,0,0,0,'Real-time voice & video engagement APIs.'],
+['Twilio Video/Voice','Realtime Transport',1,1,1,0,0,1,1,'YOUR STACK. Gold standard programmatic SMS/voice/WhatsApp.'],
+['Pipecat','Realtime Transport',0,0,0,0,0,1,0,'Open-source real-time multimodal framework. OpenAI unique.'],
+['OpenAI Realtime API','Realtime Transport',0,0,0,0,0,1,0,'Low-latency speech-to-speech. OpenAI unique pick.'],
+
+// ── Core LLMs & Inference ──
+['GPT-4o / GPT-5.4','Core LLMs & Inference',1,1,0,0,0,1,1,'YOUR STACK. Flagship reasoning. GPT-4o + GPT-5.4 in production.'],
+['Claude Sonnet 4.6 / Opus 4.6','Core LLMs & Inference',1,1,0,0,0,1,1,'YOUR STACK. Primary report gen + agentic workflows. Opus as judge.'],
+['Gemini 3.1 Pro','Core LLMs & Inference',1,1,0,0,0,0,1,'YOUR STACK. Massive context. Questionnaire plain-language extraction.'],
+['Grok 4','Core LLMs & Inference',0,0,0,0,0,0,1,'YOUR STACK. Real-time X/Twitter data + alternative perspectives.'],
+['Perplexity Sonar Reasoning Pro','Core LLMs & Inference',0,0,0,0,0,0,1,'YOUR STACK. Search-grounded reasoning. Fact verification layer.'],
+['Mistral AI','Core LLMs & Inference',1,1,0,0,0,0,1,'YOUR STACK. Multilingual reasoning for international clients.'],
+['Tavily','Core LLMs & Inference',0,0,0,0,0,0,1,'YOUR STACK. Real-time web search agent. Final cascade layer.'],
+['Llama 3','Core LLMs & Inference',1,1,0,0,0,0,0,'Open-weight for edge deployments.'],
+['Groq','Core LLMs & Inference',1,1,0,0,0,0,1,'LPU inference for near-instant responses.'],
+['Fireworks AI','Core LLMs & Inference',1,1,0,0,0,0,0,'Fast scalable API for open-source models.'],
+['Together AI','Core LLMs & Inference',1,1,0,0,0,0,0,'Custom fine-tuning and inference.'],
+['vLLM','Core LLMs & Inference',1,1,0,0,0,0,0,'High-throughput LLM serving.'],
+['Ollama','Core LLMs & Inference',1,1,0,0,0,0,0,'Local model testing.'],
+
+// ── Agent Frameworks ──
+['LangGraph','Agent Frameworks',1,1,1,1,1,1,1,'All 7 agree. Stateful multi-agent graphs. Production king.'],
+['CrewAI','Agent Frameworks',1,1,1,1,1,1,1,'All 7 agree. Role-based multi-agent crews.'],
+['AutoGen / AG2','Agent Frameworks',1,1,1,1,1,1,1,'All 7. Conversational multi-agent. AG2 is successor.'],
+['LlamaIndex','Agent Frameworks',1,1,1,1,1,0,1,'Document-heavy RAG agents. 6 of 7.'],
+['LangChain','Agent Frameworks',1,1,0,0,1,0,1,'Flexible chains. Broad integrations. Base toolkit.'],
+['Semantic Kernel','Agent Frameworks',1,1,1,1,0,1,0,'Microsoft enterprise orchestration.'],
+['OpenAI Agents SDK','Agent Frameworks',0,0,1,1,1,1,1,'Native tool-calling + handoffs + tracing.'],
+['Google ADK','Agent Frameworks',0,0,1,1,0,1,0,'Cloud-native, model-agnostic agents.'],
+['Phidata','Agent Frameworks',1,1,0,0,0,0,0,'Agents with memory and tools.'],
+['SuperAGI','Agent Frameworks',1,1,0,0,0,0,0,'Autonomous agent infrastructure.'],
+['MemGPT / Letta','Agent Frameworks',1,1,1,0,1,1,0,'OS-level memory management. Infinite context.'],
+['RASA Pro','Agent Frameworks',0,0,0,1,0,0,0,'Hybrid agentic chatbots. Mistral unique.'],
+['Oracle AI Database','Agent Frameworks',0,0,0,1,0,0,0,'Pre-built agents, no-code. Mistral unique.'],
+['Aisera','Agent Frameworks',0,0,0,1,0,0,0,'IT/HR/support agents. Mistral unique.'],
+['Kore.ai','Agent Frameworks',0,0,1,0,1,0,0,'250+ connectors. Enterprise orchestration.'],
+['Pydantic AI','Agent Frameworks',0,0,1,0,0,0,0,'Type-safe production agents. Grok unique.'],
+['Haystack','Agent Frameworks',0,1,0,0,1,0,0,'End-to-end RAG and search pipelines.'],
+['Gumloop / Stack AI','Agent Frameworks',0,0,1,0,1,0,0,'No-code agent builders for rapid prototyping.'],
+['Swarm','Agent Frameworks',0,0,0,0,1,0,0,'Lightweight parallel task swarms. Perplexity unique.'],
+['CAMEL-AI','Agent Frameworks',0,0,0,0,1,0,0,'Agent societies for market simulations. Perplexity unique.'],
+['Roof.ai','Agent Frameworks',0,0,0,0,1,0,0,'Real estate-specific bots. Perplexity unique.'],
+['Arahi AI','Agent Frameworks',0,0,0,0,1,0,0,'MLS-integrated email multi-agents. Perplexity unique.'],
+['Vellum','Agent Frameworks',0,0,0,0,1,0,0,'Visual builder with evals. Perplexity unique.'],
+['Vercel AI SDK','Agent Frameworks',0,0,0,0,0,1,1,'TypeScript runtime glue for multi-model agents.'],
+['Core App Stack (TS/React/GitHub/Vercel/Supabase/Capacitor)','CLUES-Specific',0,0,0,0,0,0,1,'All apps built in TypeScript + React, deployed via GitHub → Vercel, Supabase backend, Capacitor wrap for native iOS/Android.'],
+['Agno','Agent Frameworks',0,0,1,0,0,0,0,'Lightweight orchestration. Grok unique.'],
+
+// ── Memory & Context ──
+['Mem0','Memory & Context',1,1,1,0,1,1,1,'Top hybrid memory. Vector + graph. 6 of 7.'],
+['Zep / Graphiti','Memory & Context',1,1,1,0,1,1,1,'Temporal knowledge graphs. Context engineering. 6 of 7.'],
+['Pinecone','Memory & Context',1,1,1,0,0,1,1,'Managed vector DB at scale. 5 of 7.'],
+['Weaviate','Memory & Context',1,1,1,0,0,1,1,'Hybrid vector + graph DB. 5 of 7.'],
+['Qdrant','Memory & Context',1,1,1,0,0,0,0,'High-performance vector search.'],
+['Chroma','Memory & Context',1,1,1,0,0,0,0,'Open-source embedding DB for dev.'],
+['pgvector (Supabase)','Memory & Context',1,1,1,0,1,1,1,'Your stack. App-native semantic search. 6 of 7.'],
+['Redis','Memory & Context',1,1,0,0,0,0,0,'Ultra-fast caching for session memory.'],
+['Neo4j','Memory & Context',1,1,0,0,0,0,1,'Graph DB for complex relationship mapping.'],
+['Cognee / Memary','Memory & Context',0,0,1,0,1,0,0,'Structured RAG + graph memory layers.'],
+['LangMem','Memory & Context',0,0,0,0,0,1,0,'LangGraph ecosystem memory. OpenAI unique.'],
+
+// ── RAG & Knowledge Ingestion ──
+['Firecrawl','RAG & Knowledge Ingestion',0,0,0,0,0,1,1,'Web crawling + structured extraction. OpenAI+Claude.'],
+['Tavily','RAG & Knowledge Ingestion',0,0,0,0,0,1,1,'Real-time search with agent-friendly output.'],
+['Unstructured','RAG & Knowledge Ingestion',0,0,0,0,0,1,1,'ETL for PDFs, Word, HTML. Document parsing.'],
+
+// ── Email & Outbound ──
+['Instantly.ai','Email & Outbound',1,1,1,0,0,0,1,'High-volume cold email + AI personalization.'],
+['Smartlead.ai','Email & Outbound',1,1,1,0,0,0,0,'Deliverability-focused outbound sequences.'],
+['SendGrid','Email & Outbound',1,1,1,0,1,1,1,'Transactional email backbone. 5 of 7.'],
+['Resend','Email & Outbound',1,1,0,0,1,1,1,'Developer-first email API. 5 of 7.'],
+['Postmark','Email & Outbound',0,0,0,0,0,1,0,'Reliable transactional email. OpenAI unique.'],
+['Nylas','Email & Outbound',0,0,0,0,0,1,1,'Unified email/calendar/contacts API. OpenAI+Claude.'],
+['Reply.io','Email & Outbound',0,0,1,0,0,0,0,'Multi-channel sequences. Grok unique.'],
+['Gmelius','Email & Outbound',0,0,1,0,0,0,0,'Shared inbox + AI automation. Grok unique.'],
+['Lavender','Email & Outbound',0,0,1,0,0,0,0,'Real-time email coaching. Grok unique.'],
+['Apollo.io','Email & Outbound',0,0,1,0,0,0,0,'Prospecting + sequencing. Grok unique.'],
+['ActiveCampaign','Email & Outbound',0,0,1,0,0,0,0,'Inbound automation + CRM sync. Grok unique.'],
+['Virtualworkforce.ai','Email & Outbound',0,0,0,0,1,0,0,'CRM-pulled AI replies. Perplexity unique.'],
+['Newmail.ai / Canary Mail','Email & Outbound',0,0,0,0,1,0,0,'Proactive real estate assistant. Perplexity unique.'],
+
+// ── Inbound & Telephony ──
+['Vapi','Inbound & Telephony',1,1,1,0,1,1,1,'Phone/video AI agents. Fast prototyping. 6 of 7.'],
+['Retell AI','Inbound & Telephony',1,1,1,0,0,1,1,'Real-time voice agents. Human-like calls. 5 of 7.'],
+['Bland.ai','Inbound & Telephony',1,1,1,0,0,0,0,'High-volume AI phone calling.'],
+['Vocode','Inbound & Telephony',1,1,0,0,0,0,0,'Open-source voice LLM agents.'],
+['Vonage','Inbound & Telephony',1,1,0,0,0,0,0,'Global localized routing.'],
+['PolyAI','Inbound & Telephony',0,0,1,0,0,0,0,'Enterprise conversational voice. Grok unique.'],
+['SalesRook','Inbound & Telephony',0,0,0,0,1,0,0,'AI lead qualification for UK. Perplexity unique.'],
+
+// ── CRM & Client Ops ──
+['HubSpot','CRM & Client Ops',1,1,1,1,1,1,1,'All 7. Inbound marketing + lead scoring + CRM.'],
+['Follow Up Boss','CRM & Client Ops',1,1,1,0,1,0,1,'Premier real estate CRM. 5 of 7.'],
+['Salesforce','CRM & Client Ops',1,1,1,0,0,0,0,'Enterprise client tracking.'],
+['KVCore','CRM & Client Ops',1,1,1,0,0,0,0,'Real estate lead gen + nurturing.'],
+['Zapier','CRM & Client Ops',1,1,1,0,0,0,1,'No-code webhook workflows. Your stack.'],
+['Make.com','CRM & Client Ops',1,1,1,0,0,0,1,'Advanced visual automation. Your stack.'],
+['n8n','CRM & Client Ops',1,1,1,0,1,0,1,'Self-hosted workflow automation. 5 of 7.'],
+['Stripe','CRM & Client Ops',1,1,0,0,0,0,1,'Payment processing. Your stack.'],
+['Slack / Teams API','CRM & Client Ops',1,1,1,0,0,0,0,'Internal broker notifications.'],
+['Pipedrive','CRM & Client Ops',0,0,1,0,0,0,0,'Pipeline automation. Grok unique.'],
+['Wise Agent','CRM & Client Ops',0,0,1,0,0,0,0,'Agent-focused CRM. Grok unique.'],
+
+// ── Real Estate Data ──
+['Zillow / Bridge API','Real Estate Data',1,1,1,0,0,0,1,'Property histories + Zestimates.'],
+['ATTOM Data','Real Estate Data',0,0,1,0,0,0,1,'Comprehensive US property data. Grok+Claude.'],
+['HouseCanary','Real Estate Data',0,1,1,1,0,0,1,'AVMs + investment analytics.'],
+['Reonomy','Real Estate Data',0,1,1,1,0,0,0,'Commercial real estate data.'],
+['RPR','Real Estate Data',1,1,0,0,0,0,0,'Realtors Property Resource. Parcel + zoning.'],
+['MLS Data Feeds','Real Estate Data',1,1,1,0,1,0,1,'Direct live property data. RETS/WebAPI.'],
+['AirDNA','Real Estate Data',0,0,1,0,0,0,1,'Short-term rental analytics. Grok+Claude.'],
+['Mashvisor','Real Estate Data',0,0,1,0,0,0,0,'Investment metrics. Grok unique.'],
+['Black Knight','Real Estate Data',0,0,1,0,0,0,0,'Property + mortgage data. Grok unique.'],
+['Cherre','Real Estate Data',0,0,0,1,0,0,0,'3.3B addresses knowledge graph. Mistral unique.'],
+['V7 Go','Real Estate Data',0,0,0,1,0,0,0,'Lease abstraction + CoT. Mistral unique.'],
+
+// ── Relocation & Mobility ──
+['Numbeo API','Relocation & Mobility',1,1,1,0,0,0,1,'Global cost-of-living comparisons. Vital for expats.'],
+['Teleport API','Relocation & Mobility',1,1,0,0,0,0,1,'Quality of life + safety data for global cities.'],
+['WalkScore API','Relocation & Mobility',1,1,0,0,0,0,1,'Transit + walkability metrics.'],
+['GreatSchools API','Relocation & Mobility',1,1,0,0,0,0,1,'Educational district data for relocating families.'],
+['Google Places API','Relocation & Mobility',1,1,0,0,0,0,1,'Hyper-local neighborhood amenities.'],
+['OANDA API','Relocation & Mobility',1,1,0,0,0,0,1,'Real-time currency exchange.'],
+['SpotCrime','Relocation & Mobility',0,1,0,0,0,0,1,'Granular neighborhood safety. Gemini+Claude.'],
+['Xpath.global / Localyze','Relocation & Mobility',0,0,1,0,0,0,1,'Relocation case management, visas, tax.'],
+['Benivo / Topia','Relocation & Mobility',0,0,1,0,0,0,0,'Employee relocation platforms. Grok unique.'],
+['ClimateCheck','Relocation & Mobility',0,0,1,0,0,0,1,'Climate risk scoring for properties.'],
+['Gov Immigration Portals','Relocation & Mobility',1,1,1,0,0,0,1,'UKVI, EU Blue Card, etc. Scraped/API.'],
+['PwC Tax Summaries','Relocation & Mobility',1,1,0,0,0,0,1,'Expatriate tax law knowledge base.'],
+['DeepL','Relocation & Mobility',0,0,0,1,0,0,1,'High-quality context-aware translation.'],
+['FlightAware / Aviation APIs','Relocation & Mobility',0,1,0,0,0,0,0,'Airport proximity. Gemini unique.'],
+['Matterport','Relocation & Mobility',1,1,0,0,0,0,0,'3D virtual property tours.'],
+
+// ── Scheduling & Docs ──
+['Calendly / Cal.com','Scheduling & Docs',1,1,1,0,0,1,1,'Autonomous meeting scheduling. 5 of 7.'],
+['DocuSign / Dotloop','Scheduling & Docs',1,1,1,0,0,0,1,'E-signature + contract tracking.'],
+['ShowingTime','Scheduling & Docs',0,0,1,0,0,0,0,'Property showing scheduling. Grok unique.'],
+
+// ── Security & Compliance ──
+['NeMo Guardrails','Security & Compliance',1,1,1,0,0,0,1,'Prevent hallucinations + competitor talk.'],
+['Presidio','Security & Compliance',1,1,0,0,0,1,1,'PII detection + redaction. 4 of 7.'],
+['Llama Guard','Security & Compliance',1,1,0,0,0,0,0,'Safeguard LLM I/O.'],
+['Auth0','Security & Compliance',1,1,0,0,0,0,0,'Secure client authentication.'],
+['Vanta','Security & Compliance',1,1,0,0,0,0,0,'SOC 2 / GDPR compliance.'],
+['Guardrails AI','Security & Compliance',0,0,0,0,0,1,1,'I/O risk checks + structured gen safety.'],
+['Cloudflare Turnstile','Security & Compliance',0,0,0,0,0,1,0,'Bot protection for intake. OpenAI unique.'],
+['Fair Housing Validators','Security & Compliance',1,1,1,0,0,0,1,'Anti-discrimination rule engine. Critical.'],
+
+// ── Observability & Eval ──
+['LangSmith','Observability & Eval',1,1,1,0,0,1,1,'Tracing + debugging agent execution.'],
+['Langfuse','Observability & Eval',0,0,0,0,0,1,1,'Open-source tracing + evals + dashboards.'],
+['Arize / Phoenix','Observability & Eval',1,1,0,0,0,1,1,'LLM observability. Open-source option.'],
+['Helicone','Observability & Eval',1,1,1,0,0,1,0,'API proxy: latency, costs, caching.'],
+['Ragas','Observability & Eval',1,1,1,0,0,0,1,'RAG accuracy scoring framework.'],
+['PostHog','Observability & Eval',1,1,0,0,0,0,1,'User engagement + drop-off tracking.'],
+
+// ── Durable Execution ──
+['Temporal','Durable Execution',0,0,0,0,0,1,1,'Crash-proof resumable workflows. OpenAI+Claude.'],
+['Trigger.dev','Durable Execution',0,0,0,0,0,1,1,'TS-native long-running jobs. OpenAI+Claude.'],
+
+// ── Prompting & Techniques ──
+['RAG','Prompting & Techniques',1,1,1,1,1,1,1,'All 7. Ground answers in factual data.'],
+['Few-Shot Prompting','Prompting & Techniques',1,1,0,0,0,0,1,'Examples of high-converting outputs.'],
+['Chain-of-Thought','Prompting & Techniques',1,1,1,0,0,0,1,'Structured reasoning for complex decisions.'],
+['Self-Reflection Loops','Prompting & Techniques',1,1,1,0,0,0,1,'Secondary check before output.'],
+['Semantic Routing','Prompting & Techniques',1,1,1,0,0,0,1,'Embedding-based query routing to specialists.'],
+['Function/Tool Calling','Prompting & Techniques',1,1,1,0,1,1,1,'Trigger real-world actions from LLM.'],
+['Dynamic Persona','Prompting & Techniques',1,1,1,0,0,0,1,'Alter persona based on client culture.'],
+['Shadow Mode','Prompting & Techniques',1,1,1,0,0,0,1,'Run alongside humans to compare.'],
+['Summarization Chains','Prompting & Techniques',1,1,1,0,0,0,1,'Condense calls/threads to CRM notes.'],
+['Graph-RAG','Prompting & Techniques',1,1,1,0,0,0,1,'Knowledge graph + vector for relational queries.'],
+['Hybrid Search','Prompting & Techniques',0,1,0,0,0,1,1,'Lexical + vector + metadata. 3 of 7.'],
+['Confidence Gates','Prompting & Techniques',0,0,0,0,0,1,1,'Draft if low confidence. Send only when sure.'],
+['Action Budgets','Prompting & Techniques',0,0,0,0,0,1,1,'Prevent expensive agent loops.'],
+['Idempotent Tool Calls','Prompting & Techniques',0,0,0,0,0,1,1,'Safe retries for email/CRM/billing.'],
+['Persona Canon Document','Prompting & Techniques',0,0,0,0,0,1,1,'Single source of truth for voice/tone/values.'],
+['Locale-Aware Memory','Prompting & Techniques',0,0,0,0,0,1,1,'Different norms per market.'],
+['Progressive Summarization','Prompting & Techniques',0,0,0,0,1,0,1,'Condense histories for context windows.'],
+['Citation-First RAG','Prompting & Techniques',0,0,0,0,0,1,1,'Every claim points to sources.'],
+['Tree-of-Thoughts','Prompting & Techniques',0,0,1,0,0,0,1,'Structured multi-path planning.'],
+['Barge-In Handling','Prompting & Techniques',0,0,0,0,0,1,1,'Interruption as first-class design rule.'],
+['Turn-Taking Policy','Prompting & Techniques',0,0,0,0,0,1,1,'Natural silence + end-of-utterance policies.'],
+['Weekly Model Bake-Off','Prompting & Techniques',0,0,0,0,0,1,1,'Continuous vendor comparison across top flows.'],
+['Memory TTL / Forgetting','Prompting & Techniques',0,0,0,0,0,1,1,'Avoid bloated/stale personalization.'],
+['Permission-Aware Indexing','Prompting & Techniques',0,0,0,0,0,1,1,'Client A data never leaks to Client B.'],
+
+// ── CLAUDE'S 100 UNIQUE IDEAS (selected from my own analysis, marked as Claude-only or Claude+1) ──
+// Many above already have cl=1. Below are my ADDITIONAL unique contributions:
+['Composio','Agent Frameworks',0,0,0,0,0,0,1,'200+ pre-built tool integrations. Zero custom glue code for CRM/email/calendar.'],
+['Inngest','Durable Execution',0,0,0,0,0,0,1,'Event-driven serverless durable functions. Vercel-native.'],
+['Upstash QStash','Durable Execution',0,0,0,0,0,0,1,'Serverless message queue for Vercel edge. Background jobs.'],
+['Neon Postgres','Memory & Context',0,0,0,0,0,0,1,'Serverless Postgres with branching. pgvector compatible.'],
+['Turbopuffer','Memory & Context',0,0,0,0,0,0,1,'Ultra-fast vector search. Cost-efficient alternative to Pinecone.'],
+['Instructor (Python)','Prompting & Techniques',0,0,0,0,0,0,1,'Structured output extraction with Pydantic validation.'],
+['Marvin','Prompting & Techniques',0,0,0,0,0,0,1,'AI function library. Type-safe LLM data extraction.'],
+['Braintrust','Observability & Eval',0,0,0,0,0,0,1,'Evals + prompt playground + logging. Production scoring.'],
+['Patronus AI','Observability & Eval',0,0,0,0,0,0,1,'Hallucination detection + compliance scoring for regulated industries.'],
+['Cleanlab','Observability & Eval',0,0,0,0,0,0,1,'Data quality + LLM trustworthiness scoring.'],
+['Cohere Rerank','RAG & Knowledge Ingestion',0,0,0,0,0,0,1,'Reranking API for RAG pipelines. Precision boost.'],
+['Jina AI Reader','RAG & Knowledge Ingestion',0,0,0,0,0,0,1,'URL-to-clean-text for web pages. Agent-friendly.'],
+['LlamaCloud','RAG & Knowledge Ingestion',0,0,0,0,0,0,1,'Managed parsing + indexing for enterprise docs.'],
+['Docling (IBM)','RAG & Knowledge Ingestion',0,0,0,0,0,0,1,'Advanced document conversion: PDF/DOCX/PPTX to structured.'],
+['Reducto','RAG & Knowledge Ingestion',0,0,0,0,0,0,1,'PDF parsing with table/chart extraction. API-first.'],
+['GoHighLevel','CRM & Client Ops',0,0,0,0,1,0,1,'All-in-one CRM/funnels/automation for agencies.'],
+['Lofty (Chime)','CRM & Client Ops',0,0,1,0,0,0,1,'AI-native real estate CRM.'],
+['Clay','Email & Outbound',0,0,0,0,0,0,1,'Data enrichment + outbound sequencing. Waterfall enrichment.'],
+['Lemlist','Email & Outbound',0,0,0,0,0,0,1,'Personalized outbound with images/video in emails.'],
+['Attio','CRM & Client Ops',0,0,0,0,0,0,1,'Modern CRM with real-time data enrichment.'],
+['PropertyRadar','Real Estate Data',0,0,0,0,0,0,1,'Property owner data + targeting for US markets.'],
+['Plunk','Real Estate Data',0,0,0,0,0,0,1,'AI property valuation + neighborhood analytics.'],
+['Rentcast','Real Estate Data',0,0,0,0,0,0,1,'Rental estimates + market data API.'],
+['Regrid / LandGrid','Real Estate Data',0,0,0,0,0,0,1,'US parcel data API. Boundaries + ownership.'],
+['Precisely','Relocation & Mobility',0,0,0,0,0,0,1,'Location intelligence + geocoding + demographics.'],
+['InterNations API','Relocation & Mobility',0,0,0,0,0,0,1,'Expat community data. Social/cultural integration.'],
+['Expatistan','Relocation & Mobility',0,0,0,0,0,0,1,'Cost-of-living comparison tool for international moves.'],
+['Wise (TransferWise) API','Relocation & Mobility',0,0,0,0,0,0,1,'International money transfer rates + costs.'],
+['Relocate.me','Relocation & Mobility',0,0,0,0,0,0,1,'Tech relocation job board data.'],
+['Visadb.io','Relocation & Mobility',0,0,0,0,0,0,1,'Visa requirements database API.'],
+['SMART Score™ Engine','CLUES-Specific',0,0,0,0,0,0,1,'Your proprietary 5-category weighted algorithm.'],
+['CLUES Questionnaire Engine','CLUES-Specific',0,0,0,0,0,0,1,'2,500-question library. 37–38 paragraphical Gemini plain-language extraction → 200-question main module (40 demographic, 40 do-not-wants, 40 must-haves, 40 trade-offs, 40 general knowledge) → 23 topic-specific 100-question modules. Bayesian paired-reasoning funnel (MCAT-style) + hop-on/hop-off architecture. Target: <2% margin of error.'],
+['Olivia™ Persona System','CLUES-Specific',0,0,0,0,0,0,1,'Avatar video front-of-company. All client-facing bilateral communication. Tech: Simli + D-ID/HeyGen + ElevenLabs + GPT-4 Turbo brain. Beautiful, multicultural, lives in London. "Ask Olivia" everywhere.'],
+['Cristiano™ Agent','CLUES-Specific',0,0,0,0,0,0,1,'Universal Judge. UNILATERAL ONLY — no interaction. Final word on financial packages, city match, LifeScore verdicts. Tech: Replicate + D-ID/HeyGen + ElevenLabs + Claude Opus brain. James Bond aesthetic.'],
+['Emelia™ Agent','CLUES-Specific',0,0,0,0,0,0,1,'Back-end beast. NO VIDEO — voice + text only. Customer service, tech support, full architecture knowledge (prompts, APIs, files, folders, passwords). Dashboard + module apps only (NOT Wix). Tech: GPT brain + ElevenLabs + Manuals. Filipina/British/American, Princeton MSE.'],
+['250-Agent Dashboard System','CLUES-Specific',0,0,0,0,0,0,1,'250 fine-tunable agentic agents via admin dashboard. Multi-LLM, multi-variable select specialty agents powering specific app tools and Olivia™ brain. Each agent configurable by model, prompt, variables, and domain.'],
+['9-Model LLM Cascade Architecture','CLUES-Specific',0,0,0,0,0,0,1,'ACTUAL FIRING ORDER: ①Gemini (paragraphical/biographical) → ②Sonnet 4.6 (primary city evaluator) → ③GPT-4o (secondary evaluator) → ④Gemini 3.1 Pro (evaluator + Google Search) → ⑤Grok 4 (math/equations only) → ⑥Perplexity Sonar (module questionnaires + citations) → ⑦Tavily (web research MCP) → ⑧Cristiano™/Opus 4.6 (THE JUDGE — final verdict).'],
+['CORPUS™ Document Suite','CLUES-Specific',0,0,0,0,0,0,1,'84-doc Company DNA Engine + funder match.'],
+['Stay or Sell™ Advisor','CLUES-Specific',0,0,0,0,0,0,1,'Florida coastal property decision engine.'],
+['HEARTBEAT™ Integration','CLUES-Specific',0,0,0,0,0,0,1,'Mammoth heart health app. Cardiac recovery tracking + patient/physician dual interface.'],
+['CLUES-TES™','CLUES-Specific',0,0,0,0,0,0,1,'London Transit Environmental Systems platform. Transit + environmental intelligence.'],
+['London Tech Map (clueslondon.com)','CLUES-Specific',0,0,0,0,0,0,1,'Most advanced multi-modal tech ecosystem tool for software/AI developers. Mind-to-market in London.'],
+['CLUES Intelligence LTD','CLUES-Specific',0,0,0,0,0,0,1,'UK flagship company. International Buyer Relocation Engine — predicts buyer perfect place in the world.'],
+['John E. Desautels & Associates','CLUES-Specific',0,0,0,0,0,0,1,'Tampa Bay / St. Pete Beach FL real estate brokerage. 35+ years licensed.'],
+['Predictive Analytics Engine','CLUES-Specific',0,0,0,0,0,0,1,'Real estate buyer/seller predictive assistance for Tampa Bay market.'],
+['CLUES LifeScore (clueslifescore.com)','CLUES-Specific',0,0,0,0,0,0,1,'100 freedom metrics comparison tool. 200 metros worldwide. Cristiano™ as judge/summarizer.'],
+['Client Relocation Report Generator','CLUES-Specific',0,0,0,0,0,0,1,'100-page automated city comparison reports.'],
+['Consent-Based Memory Sync','Prompting & Techniques',0,0,0,0,0,0,1,'GDPR-compliant memory persists across channels with opt-in.'],
+['Deterministic Compliance Subflows','Prompting & Techniques',0,0,0,0,0,0,1,'Hardcoded paths for Fair Housing, visa, tax.'],
+['Multi-Market Knowledge Versioning','Prompting & Techniques',0,0,0,0,0,0,1,'Spain/UK/FL/CO advice evolves independently.'],
+['Document Request Chaser Agent','CLUES-Specific',0,0,0,0,0,0,1,'Politely chases missing passport/budget/forms.'],
+['SLA-Based Triage','Prompting & Techniques',0,0,0,0,0,0,1,'Hot leads auto-escalated. Post-contract flagged.'],
+['Meeting Prep Packet Generator','CLUES-Specific',0,0,0,0,0,0,1,'Auto-generated briefs from thread history + goals.'],
+['Event-Sourced Conversation Ledger','Prompting & Techniques',0,0,0,0,0,0,1,'Every tool call + state change reconstructible.'],
+['Snapshot-Resume State','Prompting & Techniques',0,0,0,0,0,0,1,'Client journeys persist across weeks/months.'],
+['Golden-Path Workflows','Prompting & Techniques',0,0,0,0,0,0,1,'Top 20 highest-value jobs as dedicated flows.'],
+['Red-Team Eval Harness','Observability & Eval',0,0,0,0,0,0,1,'Test hallucinations, compliance, tone, promises.'],
+['Conversation QA Scorecards','Observability & Eval',0,0,0,0,0,0,1,'Latency + resolution + escalation + promise tracking.'],
+['Emotion/Gesture State Policy','Avatar & Video',0,0,0,0,0,0,1,'Executive-appropriate expressiveness. No uncanny valley.'],
+['Voice-Only Fallback Mode','Avatar & Video',0,0,0,0,0,0,1,'Graceful degradation when video fails.'],
+['Multilingual Presentation Mode','Avatar & Video',0,0,0,0,0,0,1,'Switch scripted ↔ advisory dialogue mid-session.'],
+['Avatar Identity Bible','Avatar & Video',0,0,0,0,0,0,1,'Wardrobe, speech, posture, tone, framing, brand rules.'],
+['Outbound Sequence Throttling','Email & Outbound',0,0,0,0,0,0,1,'Protect deliverability + brand trust.'],
+['Mailbox Thread Summarization','Email & Outbound',0,0,0,0,0,0,1,'Avatar remembers what was promised per thread.'],
+['Inbound Email Webhook Ingestion','Email & Outbound',0,0,0,0,0,0,1,'Replies become actionable agent events.'],
+['Lead Qualification Routing Forms','CRM & Client Ops',0,0,0,0,0,0,1,'Right prospect → right service tier automatically.'],
+['Client Dashboard Message Center','CRM & Client Ops',0,0,0,0,0,0,1,'Secure async follow-up portal.'],
+['Per-Market FAQ Generation','CLUES-Specific',0,0,0,0,0,0,1,'Auto-generate from same corpus per destination.'],
+['Booking-to-CRM Sync','CRM & Client Ops',0,0,0,0,0,0,1,'Every consult auto-updates client timeline.'],
+['Unified Communication Timeline','CRM & Client Ops',0,0,0,0,0,0,1,'Calls + email + calendar + dashboard in one view.'],
+['Structured Output Enforcement','Prompting & Techniques',0,0,0,0,0,0,1,'Typed schemas for every nontrivial tool call.'],
+['Model Fallback Routing','Core LLMs & Inference',0,0,0,0,0,0,1,'Outages/mismatches don\'t kill sessions.'],
+['Redact Before Logging','Security & Compliance',0,0,0,0,0,0,1,'Transcripts/telemetry never become privacy liability.'],
+['Call Recording Consent Flows','Security & Compliance',0,0,0,0,0,0,1,'Automated pre-call legal compliance.'],
+['Data Residency Routing','Security & Compliance',0,0,0,0,0,0,1,'EU client data through European servers (Schrems II).'],
+['A/B Test Avatar Personalities','Prompting & Techniques',0,0,0,0,0,0,1,'Compare warm vs. authoritative vs. analytical.'],
+['Token Cost Optimization','Prompting & Techniques',0,0,0,0,0,0,1,'Budget controls for high-volume usage.'],
+['Multilingual Prompt Injection','Prompting & Techniques',0,0,0,0,0,0,1,'Locale-specific knowledge injection per market.'],
+['Notion','CRM & Client Ops',0,0,0,1,0,0,1,'YOUR STACK. KB, SOPs, client tracker, module dev tracker, content calendar, prompt library, Emelia manual storage.'],
+['Confluence','CRM & Client Ops',0,0,0,1,0,0,0,'Enterprise docs. Atlassian ecosystem. Mistral unique.'],
+['Guru','CRM & Client Ops',0,0,0,1,0,0,0,'Team knowledge sharing + Slack integration. Mistral unique.'],
+
+// ── FROM ACTUAL CLUES WORKFLOW (verified against John\'s master doc) ──
+['Simli','Avatar & Video',0,0,0,0,0,0,1,'YOUR STACK. Primary Olivia™ real-time interactive video avatar. $29/mo.'],
+['Replicate','Avatar & Video',0,0,0,0,0,0,1,'YOUR STACK. Primary Cristiano™ SadTalker lip-sync for Judge presentations.'],
+['Gamma','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. THE CADILLAC. LLM text → stunning 4D branded PDF/PPTX reports (50+ pages). $10/mo.'],
+['Kling AI','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. In-app image gen, short videos for modules, city videos. $33/mo.'],
+['Wondershare Filmora','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. Video editing. Makes YouTube professional grade, weaves in AI art. $35/mo.'],
+['InVideo AI','Avatar & Video',0,0,0,0,0,0,1,'YOUR STACK. VIP client emotional videos, brand building. $30/mo.'],
+['FlutterFlow','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. Mobile app visual builder for iOS/Android. $30/mo.'],
+['Wix','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. cluesnomad.com hub. Template-based, wraps advanced standalone apps. $40/mo.'],
+['BatchData API','Real Estate Data',0,0,0,0,0,0,1,'YOUR STACK. Property records API. In development.'],
+['NOAA API','Relocation & Mobility',0,0,0,0,0,0,1,'YOUR STACK. Historic storms, tornado risk, sea levels, climate patterns. Free.'],
+['FEMA Flood Data','Relocation & Mobility',0,0,0,0,0,0,1,'YOUR STACK. Flood zones, history, storm risk, disaster data. Free. No API key required.'],
+['AirNow API','Relocation & Mobility',0,0,0,0,0,0,1,'YOUR STACK. Air quality data for health-conscious clients. Free.'],
+['HowLoud API','Relocation & Mobility',0,0,0,0,0,0,1,'YOUR STACK. Noise pollution data for neighborhood quality of life.'],
+['OpenWeatherMap API','Relocation & Mobility',0,0,0,0,0,0,1,'YOUR STACK. Real-time weather for FL client trip planning. Free.'],
+['Google Analytics','Observability & Eval',0,0,0,0,0,0,1,'YOUR STACK. Tracks cluesnomad.com, expanding to all 20 module apps.'],
+['ManyChat','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. Social media chatbot automation. $44/mo.'],
+['Buffer','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. Social media scheduling. $15/mo.'],
+['Twilio','Inbound & Telephony',1,1,1,0,0,1,1,'YOUR STACK. SMS/voice/WhatsApp. Phone-grade conversational calling.'],
+['Google Sheets','CRM & Client Ops',0,0,0,0,0,0,1,'YOUR STACK. Central data hub for questionnaire data. Free.'],
+['Microsoft Word','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. Business plans, mission statements, property ads, formal docs. $10/mo.'],
+['Bit.ly','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. URL shortening and tracking. Free.'],
+['Zoom','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. Live consultations with clients. Free tier.'],
+['GoDaddy','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. Domain registration only. $15/mo.'],
+['Storybook','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. UI component development and testing. Free.'],
+['DeepSeek R1','Core LLMs & Inference',0,0,0,0,0,0,1,'YOUR STACK. Manual code review only. Second opinion on apps. NOT in research stack. $20/mo.'],
+['Cohere','Core LLMs & Inference',0,0,0,0,0,0,1,'YOUR STACK. Enterprise AI. In development, ascertaining roles. $20/mo.'],
+['Meta AI','Core LLMs & Inference',0,0,0,0,0,0,1,'YOUR STACK. Light duty — simple questions, single tasks. Free.'],
+['Microsoft Copilot','Core LLMs & Inference',0,0,0,0,0,0,1,'YOUR STACK. Copy rewriting, grammar, questionnaire design. Free. No API.'],
+['20 LifeScore Module Apps','CLUES-Specific',0,0,0,0,0,0,1,'YOUR STACK. clueslifescore.com + 19 more (Healthcare, Cost of Living, Climate, Safety, Education, Culture, Career, Family, Transportation, Housing, Language, Visa, Taxes, Digital Infra, Food, Nature, Social Tolerance, Bureaucracy, QoL). React 19 + TS + Vite + Vercel + Supabase.'],
+['TypeForm (DEPRECATED)','CLUES-Specific',0,0,0,0,0,0,1,'BEING REPLACED. Moving questionnaire in-house programmatically. Was $35/mo.'],
+['Zapier (DEPRECATED)','CLUES-Specific',0,0,0,0,0,0,1,'BEING REPLACED. Automation moving in-house programmatically. Was $29/mo.'],
+];
+
+// ===== APP =====
+const app = document.getElementById('app');
+
+let activeTab = 'matrix';
+let searchTerm = '';
+let categoryFilter = 'All';
+let llmFilter = 'All';
+
+function countByLLM(idx) { return DATA.filter(r => r[2+idx] >= 1).length; }
+function countDuplicates() { return DATA.filter(r => { let c=0; for(let i=0;i<7;i++) if(r[2+i]>=1) c++; return c>=4; }).length; }
+function countUnique(idx) { return DATA.filter(r => { let c=0; for(let i=0;i<7;i++) if(r[2+i]>=1) c++; return c===1 && r[2+idx]>=1; }).length; }
+function totalUnique() { return DATA.length; }
+
+function render() {
+  const filtered = DATA.filter(r => {
+    if(searchTerm && !r[0].toLowerCase().includes(searchTerm.toLowerCase()) && !r[9].toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if(categoryFilter !== 'All' && r[1] !== categoryFilter) return false;
+    if(llmFilter !== 'All') {
+      const idx = LLM_KEYS.indexOf(llmFilter);
+      if(idx >= 0 && r[2+idx] < 1) return false;
+    }
+    return true;
+  });
+
+  app.innerHTML = `
+    <div class="header">
+      <h1>CLUES™ Championship Agent Stack</h1>
+      <p>Master cross-LLM reference: 7 AI brains + Claude's unique contributions — ${totalUnique()} unique tools, techniques & integrations for the Olivia™ Super Agent</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="num">${totalUnique()}</div><div class="label">Total Unique Items</div></div>
+      <div class="stat"><div class="num">${countDuplicates()}</div><div class="label">High Consensus (4+ LLMs)</div></div>
+      <div class="stat"><div class="num">${countByLLM(6)}</div><div class="label">Claude Picks</div></div>
+      <div class="stat"><div class="num">${countUnique(6)}</div><div class="label">Claude Unique</div></div>
+      <div class="stat"><div class="num">${CATEGORIES.length}</div><div class="label">Categories</div></div>
+      <div class="stat"><div class="num">7</div><div class="label">LLM Brains</div></div>
+    </div>
+
+    <div class="tabs">
+      ${['matrix','overlap','claude100','exec'].map(t => `<button class="tab ${activeTab===t?'active':''}" onclick="setTab('${t}')">${
+        t==='matrix'?'Full Matrix':t==='overlap'?'Overlap Analysis':t==='claude100'?"Claude's 100":t==='exec'?'Executive Summary & Roadmap':t
+      }</button>`).join('')}
+    </div>
+
+    ${activeTab==='matrix' ? renderMatrix(filtered) : ''}
+    ${activeTab==='overlap' ? renderOverlap() : ''}
+    ${activeTab==='claude100' ? renderClaude100() : ''}
+    ${activeTab==='exec' ? renderExec() : ''}
+  `;
+}
+
+function renderMatrix(filtered) {
+  return `
+    <div class="filters">
+      <input type="text" placeholder="Search tools, techniques, notes..." value="${searchTerm}" oninput="searchTerm=this.value;render()"/>
+      <select onchange="categoryFilter=this.value;render()">
+        <option value="All">All Categories</option>
+        ${CATEGORIES.map(c=>`<option value="${c}" ${categoryFilter===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+      <select onchange="llmFilter=this.value;render()">
+        <option value="All">All LLMs</option>
+        ${LLM_KEYS.map((k,i)=>`<option value="${k}" ${llmFilter===k?'selected':''}>${LLMs[i]}</option>`).join('')}
+      </select>
+      <span style="color:var(--text2);font-size:12px;">${filtered.length} of ${DATA.length} items</span>
+    </div>
+    <div class="table-wrap" style="max-height:70vh;overflow-y:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Tool / Technique</th><th>Category</th>
+            ${LLMs.map((l,i)=>`<th style="color:${Object.values(LLM_COLORS)[i]};text-align:center;min-width:60px;">${l}</th>`).join('')}
+            <th>Consensus</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map((r,ri) => {
+            let cnt = 0; for(let i=0;i<7;i++) if(r[2+i]>=1) cnt++;
+            const consensusColor = cnt>=6?'var(--gold)':cnt>=4?'var(--green)':cnt>=2?'var(--blue)':'var(--text2)';
+            return `<tr>
+              <td style="color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:11px;">${ri+1}</td>
+              <td class="tool-name">${r[0]}</td>
+              <td class="category">${r[1]}</td>
+              ${Array.from({length:7},(_,i)=> r[2+i]>=1 ? `<td class="check">✓</td>` : `<td class="miss">·</td>`).join('')}
+              <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-weight:700;color:${consensusColor};">${cnt}/7</td>
+              <td style="color:var(--text2);font-size:11.5px;max-width:300px;">${r[9]}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderOverlap() {
+  const tiers = [
+    {label:'Universal (7/7)',min:7,max:7,color:'var(--gold)'},
+    {label:'Strong Consensus (5-6/7)',min:5,max:6,color:'var(--green)'},
+    {label:'Moderate (3-4/7)',min:3,max:4,color:'var(--blue)'},
+    {label:'Low (2/7)',min:2,max:2,color:'var(--purple)'},
+  ];
+  let html = '<div class="section">';
+  tiers.forEach(t => {
+    const items = DATA.filter(r => { let c=0; for(let i=0;i<7;i++) if(r[2+i]>=1) c++; return c>=t.min && c<=t.max; });
+    html += `<h3 style="color:${t.color}">${t.label} — ${items.length} items</h3>`;
+    html += '<div class="overlap-grid">';
+    items.forEach(r => {
+      const llms = LLMs.filter((_,i) => r[2+i]>=1);
+      html += `<div class="overlap-card">
+        <div class="name">${r[0]}</div>
+        <div class="count">${r[1]}</div>
+        <div class="llms">${llms.map((l,li) => {
+          const ki = LLMs.indexOf(l);
+          return `<span class="pill pill-${LLM_KEYS[ki]}">${l}</span>`;
+        }).join('')}</div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  // Unique-per-LLM counts
+  html += `<h3 style="color:var(--pink)">Unique Contributions (only 1 LLM)</h3>`;
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">';
+  LLMs.forEach((l,i) => {
+    const c = countUnique(i);
+    html += `<div class="stat"><div class="num" style="color:${Object.values(LLM_COLORS)[i]}">${c}</div><div class="label">${l} unique</div></div>`;
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function renderClaude100() {
+  const claudeItems = DATA.filter(r => r[2+6]>=1);
+  const claudeOnly = DATA.filter(r => { let c=0; for(let i=0;i<7;i++) if(r[2+i]>=1) c++; return c===1 && r[8]>=1; });
+  const byCat = {};
+  claudeItems.forEach(r => { if(!byCat[r[1]]) byCat[r[1]]=[]; byCat[r[1]].push(r); });
+
+  let html = `<div class="section">
+    <div class="stats" style="margin-bottom:20px;">
+      <div class="stat"><div class="num" style="color:var(--gold)">${claudeItems.length}</div><div class="label">Total Claude Picks</div></div>
+      <div class="stat"><div class="num" style="color:var(--gold)">${claudeOnly.length}</div><div class="label">Claude-Only Unique</div></div>
+    </div>`;
+  Object.keys(byCat).sort().forEach(cat => {
+    html += `<h3 style="color:var(--cyan)">${cat} (${byCat[cat].length})</h3>`;
+    html += '<div class="table-wrap"><table><thead><tr><th>#</th><th>Tool / Technique</th><th>Others?</th><th>Notes</th></tr></thead><tbody>';
+    byCat[cat].forEach((r,i) => {
+      let cnt=0; for(let j=0;j<7;j++) if(r[2+j]>=1) cnt++;
+      const others = cnt===1 ? '<span style="color:var(--gold);font-weight:700;">UNIQUE</span>' : `${cnt-1} others`;
+      html += `<tr><td style="color:var(--text2)">${i+1}</td><td class="tool-name">${r[0]}</td><td>${others}</td><td style="color:var(--text2);font-size:12px;">${r[9]}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderExec() {
+  return `<div class="section">
+    <div class="exec">
+      <h2 style="border:none;padding:0;margin-bottom:16px;">Executive Summary: Building Olivia™ into CLUES</h2>
+      <p>Across 7 competing LLMs plus Claude's own analysis, <strong>190+ unique tools, techniques, and integrations</strong> were identified. The consensus is overwhelming: the winning architecture is <strong>modular, multi-agent, memory-first, and compliance-aware</strong>.</p>
+
+      <h3 style="color:var(--cyan);margin:20px 0 10px;">Universal Consensus (All 7 LLMs Agree)</h3>
+      <p>These are non-negotiable: <strong>HeyGen</strong> (avatar), <strong>Synthesia</strong> (scripted video), <strong>D-ID</strong> (interactive agents), <strong>LangGraph</strong> (orchestration), <strong>CrewAI</strong> (role-based agents), <strong>AutoGen/AG2</strong> (multi-agent), <strong>HubSpot</strong> (CRM), <strong>RAG</strong> (grounding), and <strong>Function/Tool Calling</strong>.</p>
+
+      <h3 style="color:var(--cyan);margin:20px 0 10px;">Claude's Strategic Differentiators</h3>
+      <p>My unique contributions fall into three buckets that no other LLM addressed:</p>
+      <p><strong>1. CLUES-Native Integration</strong> — The full product ecosystem Olivia™ must power: <strong>CLUES Intelligence LTD</strong> (UK flagship, International Buyer Relocation Engine predicting buyers\' perfect place in the world), <strong>John E. Desautels &amp; Associates</strong> (Tampa Bay brokerage), <strong>CLUES-TES™</strong> (London Transit Environmental Systems), <strong>London Tech Map / clueslondon.com</strong> (multi-modal tech ecosystem tool for devs bringing products mind-to-market), <strong>HEARTBEAT™</strong> (mammoth heart health app), <strong>Stay or Sell™</strong> (FL buyer/seller advisor), <strong>CLUES LifeScore</strong> (clueslifescore.com — 100 freedom metrics across 200 metros, Cristiano™ as judge/summarizer), plus the predictive analytics engine for Tampa Bay. Core intelligence: 2,500-question Questionnaire Engine with Bayesian paired-reasoning funnel (MCAT-style) + hop-on/hop-off architecture targeting &lt;2% margin of error, SMART Score™, 9-Model Cascade with Cristiano™ (Opus 4.6) as universal judge, CORPUS™ Document Suite, and Olivia™ (client-facing avatar executive) / Cristiano™ (universal judge) / Emelia™ (back-end support beast) persona system.</p>
+      <p><strong>2. Production Hardening</strong> — Composio (200+ tool integrations without glue code), Inngest/Upstash QStash (Vercel-native durable execution), Turbopuffer (cost-efficient vector search), Cohere Rerank, Patronus AI (hallucination detection), Cleanlab, red-team eval harness, conversation QA scorecards, and event-sourced conversation ledger.</p>
+      <p><strong>3. Relocation Intelligence</strong> — Visadb.io, InterNations API, Expatistan, Wise API, Relocate.me, Precisely geocoding, PropertyRadar, Plunk, Rentcast, Regrid/LandGrid — all filling gaps in the real estate + mobility data layer nobody else mentioned.</p>
+
+      <h3 style="color:var(--gold);margin:20px 0 10px;">The Olivia™ Build Roadmap for CLUES</h3>
+
+      <div class="phase">
+        <h4>Phase 1: Foundation (Weeks 1–4)</h4>
+        <ul>
+          <li><strong>App stack:</strong> TypeScript + React → GitHub → Vercel deploy, Supabase backend, Capacitor wrap for native iOS/Android</li>
+          <li><strong>Core brain:</strong> Vercel AI SDK + Claude Sonnet 4.6 / Opus 4.6 (primary) + GPT-4o / GPT-5.4 + Gemini 3.1 Pro + Grok 4 + Perplexity Sonar Reasoning Pro + Mistral + Tavily (full 9-model cascade)</li>
+          <li><strong>Memory:</strong> Supabase pgvector (you have this) + Mem0 for cross-session personalization</li>
+          <li><strong>Orchestration:</strong> LangGraph for stateful workflows + Composio for 200+ tool integrations</li>
+          <li><strong>Email:</strong> Nylas (unified inbox/calendar) + Resend (transactional) + Instantly.ai (outbound)</li>
+          <li><strong>CRM:</strong> HubSpot (free tier already in your stack)</li>
+          <li><strong>Observability:</strong> Langfuse for tracing + Ragas for RAG accuracy</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <h4>Phase 2: Voice & Avatar (Weeks 5–8)</h4>
+        <ul>
+          <li><strong>Avatar — Olivia™:</strong> Simli (primary real-time interactive) + D-ID/HeyGen (fallback/company videos) + branded identity bible</li>
+          <li><strong>Avatar — Cristiano™:</strong> Replicate SadTalker (primary Judge presentations) + D-ID/HeyGen (fallback)</li>
+          <li><strong>Voice:</strong> ElevenLabs (all 3 persona voices — Olivia, Cristiano, Emelia) + OpenAI TTS (fallback)</li>
+          <li><strong>Transport:</strong> LiveKit for browser-based live calls</li>
+          <li><strong>Telephony:</strong> Vapi for inbound phone + Retell for outbound calls</li>
+          <li><strong>Pipeline:</strong> STT → Claude/GPT → TTS → Avatar with sub-800ms TTFB target</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <h4>Phase 3: Domain Intelligence (Weeks 9–12)</h4>
+        <ul>
+          <li><strong>CLUES integration:</strong> SMART Score™ engine + 2,500-question Questionnaire Engine (Bayesian funnel, hop-on/hop-off, &lt;2% MoE target) as agent tools</li>
+          <li><strong>Real estate data:</strong> MLS feeds + ATTOM + Zillow API + HouseCanary + BatchData</li>
+          <li><strong>Relocation data:</strong> Numbeo + Teleport + WalkScore + GreatSchools + Visadb.io</li>
+          <li><strong>Environmental APIs:</strong> NOAA (climate/storms) + FEMA (flood zones) + AirNow (air quality) + HowLoud (noise) + OpenWeatherMap</li>
+          <li><strong>Report generation:</strong> Gamma ("The Cadillac" — LLM text → branded 4D PDF/PPTX 50+ page reports)</li>
+          <li><strong>RAG pipeline:</strong> Firecrawl + Unstructured + Cohere Rerank + Citation-First RAG</li>
+          <li><strong>Actual API Firing Order:</strong> ①Gemini (biographical) → ②Sonnet 4.6 (primary evaluator) → ③GPT-4o (secondary) → ④Gemini 3.1 Pro (+ Google Search) → ⑤Grok 4 (math only) → ⑥Perplexity Sonar (modules + citations) → ⑦Tavily (web MCP) → ⑧Cristiano™/Opus 4.6 (THE JUDGE)</li>
+          <li><strong>Compliance:</strong> Fair Housing validators + NeMo Guardrails + Presidio PII</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <h4>Phase 4: Multi-Agent Beast Mode (Weeks 13–16)</h4>
+        <ul>
+          <li><strong>Specialist agents:</strong> 250 fine-tunable agents via admin dashboard — multi-LLM, multi-variable select specialty agents powering each app tool and Olivia™ brain. Includes Property Search, Immigration, Negotiation, Email Drafter, Document Chaser, and domain-specific agents configurable by model/prompt/variables.</li>
+          <li><strong>Named personas:</strong> Olivia™ (avatar front-of-company, all client-facing bilateral comms, genius exec assistant — main focus), Cristiano™ (universal judge — final word on city match, financial packages, LifeScore verdicts), Emelia™ (back-end beast — customer service, tech support, architecture knowledge, help modal agent)</li>
+          <li><strong>Durable execution:</strong> Trigger.dev for long-running jobs (report gen, 50-property research)</li>
+          <li><strong>Advanced memory:</strong> Zep/Graphiti knowledge graph + episodic + semantic + procedural layers</li>
+          <li><strong>HITL:</strong> Confidence gates + human approval queues for high-liability actions</li>
+          <li><strong>Eval:</strong> Weekly model bake-off + red-team harness + QA scorecards</li>
+        </ul>
+      </div>
+
+      <h3 style="color:var(--red);margin:20px 0 10px;">The One Rule That Governs Everything</h3>
+      <p style="font-size:1.1em;"><strong>The avatar is the face, not the brain.</strong> Olivia™'s intelligence lives in the orchestration layer (LangGraph + Composio + your 9-model cascade with Cristiano™/Opus 4.6 as universal judge). HeyGen is presentation only. This protects you from vendor deprecation cycles and keeps the brain modular, testable, and improvable. Olivia™ becomes the unified brain across every CLUES product — CLUES Intelligence LTD, clueslondon.com, CLUES-TES™, HEARTBEAT™, Stay or Sell™, the Tampa Bay brokerage, and predictive analytics — a single intelligence layer powering an entire ecosystem of applications beyond anything else on the planet.</p>
+
+      <h3 style="color:var(--green);margin:20px 0 10px;">Estimated Monthly Costs (MVP)</h3>
+      <p><strong>Current monthly investment: ~$565+/mo across 101+ applications (14 categories).</strong> With Olivia™ agent additions (Mem0, Langfuse, Nylas, Instantly.ai, LiveKit, additional API usage), estimated total scales to <strong>~$900–1,400/mo</strong> at MVP agent capacity. TypeForm ($35) and Zapier ($29) costs dropping as questionnaire and automation move in-house programmatically.</p>
+    </div>
+  </div>`;
+}
+
+window.setTab = function(t) { activeTab = t; render(); };
+
+render();
+</script>
+</div>
+</body>
+</html>
