@@ -59,6 +59,11 @@ const serverEnvSchema = z.object({
   CRIMEOMETER_API_KEY: optionalSecret,
   SCHOOLDIGGER_API_KEY: optionalSecret,
   SCHOOLDIGGER_APP_ID: optionalSecret,
+
+  // Environmental Data Layer APIs (Sprint 3.5)
+  AIRNOW_API_KEY: optionalSecret,
+  HOWLOUD_API_KEY: optionalSecret,
+  OPENWEATHERMAP_API_KEY: optionalSecret,
   COMPOSIO_API_KEY: optionalSecret,
   NYLAS_API_KEY: optionalSecret,
   RESEND_API_KEY: optionalSecret,
