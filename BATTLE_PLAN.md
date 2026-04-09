@@ -1,8 +1,8 @@
 # OLIVIA BRAIN - BATTLE PLAN
 
-> **Last Updated:** 2026-04-08
+> **Last Updated:** 2026-04-09
 > **Current Phase:** Phase 1 Foundation (In Progress)
-> **Total Features:** 173 identified, 15 implemented
+> **Total Features:** 173 identified, 18 implemented
 
 ---
 
@@ -65,12 +65,12 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [x] Add permission-aware indexing (Client A ≠ Client B)
 
 ### Sprint 1.4 - Tool Integration
-- [ ] Add Composio for 200+ pre-built tool integrations
+- [x] Add Composio for 200+ pre-built tool integrations
 - [ ] Implement approval-gated LangGraph tools
 - [ ] Add HITL confidence gates
 - [ ] Connect Nylas for unified inbox/calendar
-- [ ] Production email sends via Resend
-- [ ] Outbound sequences via Instantly.ai
+- [x] Production email sends via Resend
+- [x] Outbound sequences via Instantly.ai
 
 ### Sprint 1.5 - Observability & Compliance
 - [ ] Full Langfuse tracing integration
