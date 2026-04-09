@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-04-09
 > **Current Phase:** Phase 1 Foundation (In Progress)
-> **Total Features:** 173 identified, 18 implemented
+> **Total Features:** 173 identified, 21 implemented
 
 ---
 
@@ -64,11 +64,11 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [x] Implement Memory TTL / forgetting rules
 - [x] Add permission-aware indexing (Client A ≠ Client B)
 
-### Sprint 1.4 - Tool Integration
+### Sprint 1.4 - Tool Integration (COMPLETE)
 - [x] Add Composio for 200+ pre-built tool integrations
-- [ ] Implement approval-gated LangGraph tools
-- [ ] Add HITL confidence gates
-- [ ] Connect Nylas for unified inbox/calendar
+- [x] Implement approval-gated LangGraph tools
+- [x] Add HITL confidence gates
+- [x] Connect Nylas for unified inbox/calendar
 - [x] Production email sends via Resend
 - [x] Outbound sequences via Instantly.ai
 
