@@ -253,6 +253,13 @@ export const INTEGRATION_CATALOG: IntegrationCatalogEntry[] = [
     purpose: "Persona voice synthesis for Olivia, Cristiano, and Emelia.",
   },
   {
+    id: "deepgram",
+    label: "Deepgram",
+    group: "avatar",
+    requiredKeys: ["DEEPGRAM_API_KEY"],
+    purpose: "Primary STT with sub-200ms latency for real-time voice conversations.",
+  },
+  {
     id: "trigger",
     label: "Trigger.dev",
     group: "execution",

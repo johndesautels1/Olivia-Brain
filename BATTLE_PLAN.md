@@ -1,8 +1,8 @@
 # OLIVIA BRAIN - BATTLE PLAN
 
 > **Last Updated:** 2026-04-09
-> **Current Phase:** Phase 1 Foundation (In Progress)
-> **Total Features:** 173 identified, 27 implemented
+> **Current Phase:** Phase 2 Voice & Avatar (Sprint 2.1 Complete)
+> **Total Features:** 173 identified, 31 implemented
 
 ---
 
@@ -31,7 +31,7 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 
 ## PHASE 1: FOUNDATION
 
-### Sprint 1.1 - Core Infrastructure (CURRENT)
+### Sprint 1.1 - Core Infrastructure (COMPLETE)
 - [x] React + TypeScript app shell with Next.js App Router
 - [x] Vercel deployment configuration
 - [x] LangGraph 5-node orchestration workflow
@@ -84,14 +84,14 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 
 ## PHASE 2: VOICE & AVATAR
 
-### Sprint 2.1 - Voice Synthesis
-- [ ] ElevenLabs integration for persona voices
-  - [ ] Olivia™ voice profile
-  - [ ] Cristiano™ voice profile
-  - [ ] Emelia™ voice profile
-- [ ] OpenAI TTS fallback
-- [ ] Deepgram STT integration (sub-200ms latency)
-- [ ] Whisper multilingual transcription
+### Sprint 2.1 - Voice Synthesis (COMPLETE)
+- [x] ElevenLabs integration for persona voices
+  - [x] Olivia™ voice profile
+  - [x] Cristiano™ voice profile
+  - [x] Emelia™ voice profile
+- [x] OpenAI TTS fallback
+- [x] Deepgram STT integration (sub-200ms latency)
+- [x] Whisper multilingual transcription
 
 ### Sprint 2.2 - Avatar Layer
 - [ ] Simli integration (primary Olivia™ avatar)
@@ -286,12 +286,12 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 
 | Phase | Sprints | Items | Status |
 |-------|---------|-------|--------|
-| Phase 1: Foundation | 5 | 42 | In Progress |
-| Phase 2: Voice & Avatar | 4 | 28 | Pending |
+| Phase 1: Foundation | 5 | 42 | Complete |
+| Phase 2: Voice & Avatar | 4 | 28 | Sprint 2.1 Complete |
 | Phase 3: Domain Intelligence | 7 | 54 | Pending |
 | Phase 4: Multi-Agent Beast Mode | 6 | 38 | Pending |
 | Phase 5: Multi-Tenant | 3 | 11 | Pending |
-| **TOTAL** | **25** | **173** | **~15% Complete** |
+| **TOTAL** | **25** | **173** | **~18% Complete** |
 
 ---
 
@@ -320,6 +320,9 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - `src/lib/config/env.ts` - Environment configuration
 - `src/lib/foundation/catalog.ts` - Provider & integration catalog
 - `src/lib/adapters/london-calendar.ts` - Calendar adapter client
+- `src/lib/voice/index.ts` - Unified voice TTS/STT interface
+- `src/lib/voice/elevenlabs.ts` - ElevenLabs persona voices
+- `src/lib/voice/deepgram.ts` - Deepgram STT (sub-200ms)
 - `docs/final-stack.md` - Target architecture
 - `docs/olivia-core-architecture.md` - Multi-app patterns
 
@@ -334,6 +337,11 @@ GET  /api/traces                    - Trace history
 GET  /api/admin/integrations        - Admin dashboard
 POST /api/admin/integrations/test   - Live integration test
 POST /api/twilio/voice/inbound      - Twilio voice webhook
+POST /api/search                    - Tavily web search
+POST /api/judge                     - Cristiano™ verdicts
+GET  /api/voice                     - Voice service status
+POST /api/voice/synthesize          - Text-to-Speech (ElevenLabs/OpenAI)
+POST /api/voice/transcribe          - Speech-to-Text (Deepgram/Whisper)
 ```
 
 ---

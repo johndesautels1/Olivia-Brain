@@ -78,6 +78,15 @@ const serverEnvSchema = z.object({
   DID_API_KEY: optionalSecret,
   REPLICATE_API_TOKEN: optionalSecret,
   ELEVENLABS_API_KEY: optionalSecret,
+  ELEVENLABS_VOICE_OLIVIA: z.string().default("21m00Tcm4TlvDq8ikWAM"),
+  ELEVENLABS_VOICE_CRISTIANO: z.string().default("yoZ06aMxZJJ28mfd3POQ"),
+  ELEVENLABS_VOICE_EMELIA: z.string().default("EXAVITQu4vr4xnSDxMaL"),
+
+  DEEPGRAM_API_KEY: optionalSecret,
+
+  OPENAI_TTS_MODEL: z.string().default("tts-1-hd"),
+  OPENAI_TTS_VOICE: z.string().default("nova"),
+  OPENAI_WHISPER_MODEL: z.string().default("whisper-1"),
 
   TRIGGER_SECRET_KEY: optionalSecret,
   TRIGGER_API_URL: optionalUrl,
