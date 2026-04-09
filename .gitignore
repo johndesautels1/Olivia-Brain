@@ -13,3 +13,5 @@ coverage
 dist
 nul
 tmpclaude-*
+
+/generated/prisma

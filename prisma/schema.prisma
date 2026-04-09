@@ -1,0 +1,114 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model admin_audit_logs {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_type String
+  actor      String
+  summary    String
+  metadata   Json     @default("{}")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at(sort: Desc)])
+  @@index([event_type, created_at(sort: Desc)], map: "admin_audit_logs_event_type_idx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model conversation_turns {
+  id              String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String                 @db.Uuid
+  role            String
+  content         String
+  metadata        Json                   @default("{}")
+  created_at      DateTime               @default(now()) @db.Timestamptz(6)
+  embedding       Unsupported("vector")?
+  expires_at      DateTime?              @db.Timestamptz(6)
+  conversations   conversations          @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([conversation_id, created_at(sort: Desc)], map: "conversation_turns_conversation_id_idx")
+  @@index([embedding])
+  @@index([expires_at], where: raw("(expires_at IS NOT NULL)"))
+}
+
+model conversations {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title              String?
+  metadata           Json                 @default("{}")
+  last_message_at    DateTime             @default(now()) @db.Timestamptz(6)
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  client_id          String?
+  conversation_turns conversation_turns[]
+
+  @@index([client_id, created_at(sort: Desc)], map: "conversations_client_id_idx")
+}
+
+model foundation_traces {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id   String   @db.Uuid
+  intent            String
+  runtime_mode      String
+  selected_provider String
+  payload           Json     @default("{}")
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([conversation_id, created_at(sort: Desc)], map: "foundation_traces_conversation_id_idx")
+}
+
+model integration_test_runs {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  integration_id String
+  action         String
+  ok             Boolean
+  actor          String
+  summary        String
+  details        Json     @default("[]")
+  tested_at      DateTime @default(now()) @db.Timestamptz(6)
+  duration_ms    Int      @default(0)
+
+  @@index([integration_id, tested_at(sort: Desc)], map: "integration_test_runs_integration_id_idx")
+  @@index([tested_at(sort: Desc)])
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model knowledge_chunks {
+  id          String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source      String
+  chunk_index Int                    @default(0)
+  chunk_text  String
+  metadata    Json                   @default("{}")
+  embedding   Unsupported("vector")?
+  created_at  DateTime               @default(now()) @db.Timestamptz(6)
+  client_id   String?
+  expires_at  DateTime?              @db.Timestamptz(6)
+
+  @@index([embedding])
+  @@index([client_id, created_at(sort: Desc)], map: "knowledge_chunks_client_id_idx")
+  @@index([expires_at], where: raw("(expires_at IS NOT NULL)"))
+}
+
+model mem0_memories {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id        String
+  mem0_id          String    @unique
+  memory_type      String    @default("general")
+  content          String
+  metadata         Json      @default("{}")
+  importance_score Float     @default(0.5) @db.Real
+  last_accessed_at DateTime  @default(now()) @db.Timestamptz(6)
+  expires_at       DateTime? @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([client_id, importance_score(sort: Desc)], map: "mem0_memories_client_id_idx")
+  @@index([expires_at], where: raw("(expires_at IS NOT NULL)"))
+  @@index([last_accessed_at], map: "mem0_memories_last_accessed_idx")
+  @@index([mem0_id])
+}
