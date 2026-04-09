@@ -229,6 +229,11 @@ interface RequestOptions {
   timeoutMs?: number;
 }
 
+// Helper to convert typed params to Record
+function toParams<T extends object>(obj: T): Record<string, string | number | boolean | undefined> {
+  return obj as Record<string, string | number | boolean | undefined>;
+}
+
 async function requestSchoolDigger<T>(
   endpoint: string,
   options: RequestOptions = {}
@@ -273,7 +278,7 @@ async function requestSchoolDigger<T>(
 export async function searchSchools(
   params: SchoolSearchParams
 ): Promise<SchoolSearchResponse> {
-  return requestSchoolDigger<SchoolSearchResponse>("/schools", { params });
+  return requestSchoolDigger<SchoolSearchResponse>("/schools", { params: toParams(params) });
 }
 
 /**
@@ -289,7 +294,7 @@ export async function getSchool(schoolId: string): Promise<SchoolSummary> {
 export async function searchDistricts(
   params: DistrictSearchParams
 ): Promise<DistrictSearchResponse> {
-  return requestSchoolDigger<DistrictSearchResponse>("/districts", { params });
+  return requestSchoolDigger<DistrictSearchResponse>("/districts", { params: toParams(params) });
 }
 
 /**
