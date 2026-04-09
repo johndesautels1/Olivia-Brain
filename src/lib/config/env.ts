@@ -50,6 +50,15 @@ const serverEnvSchema = z.object({
 
   TAVILY_API_KEY: optionalSecret,
   MEM0_API_KEY: optionalSecret,
+
+  // Relocation Data Layer APIs (Sprint 3.4)
+  GOOGLE_PLACES_API_KEY: optionalSecret,
+  WALKSCORE_API_KEY: optionalSecret,
+  OPEN_EXCHANGE_RATES_APP_ID: optionalSecret,
+  TRAVEL_BUDDY_API_KEY: optionalSecret,
+  CRIMEOMETER_API_KEY: optionalSecret,
+  SCHOOLDIGGER_API_KEY: optionalSecret,
+  SCHOOLDIGGER_APP_ID: optionalSecret,
   COMPOSIO_API_KEY: optionalSecret,
   NYLAS_API_KEY: optionalSecret,
   RESEND_API_KEY: optionalSecret,
