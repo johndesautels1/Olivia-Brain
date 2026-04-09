@@ -1,8 +1,8 @@
 # OLIVIA BRAIN - BATTLE PLAN
 
 > **Last Updated:** 2026-04-09
-> **Current Phase:** Phase 3 Domain Intelligence (Sprint 3.1 IN PROGRESS)
-> **Total Features:** 173 identified, 79 implemented (~46% complete)
+> **Current Phase:** Phase 3 Domain Intelligence (Sprint 3.5 COMPLETE, Sprint 3.6 NEXT)
+> **Total Features:** 173 identified, 91 implemented (~53% complete)
 
 ---
 
@@ -156,23 +156,21 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [ ] Rentcast rental estimates
 - [ ] Regrid / LandGrid parcel data
 
-### Sprint 3.4 - Relocation Data Layer
-- [ ] Numbeo API (cost-of-living)
-- [ ] Teleport API (quality of life)
-- [ ] WalkScore API (transit + walkability)
-- [ ] GreatSchools API (education)
-- [ ] Google Places API (local amenities)
-- [ ] Visadb.io (visa requirements)
-- [ ] OANDA API (currency exchange)
-- [ ] SpotCrime (neighborhood safety)
-- [ ] ClimateCheck (climate risk)
+### Sprint 3.4 - Relocation Data Layer (COMPLETE - pay-as-you-go alternatives)
+- [x] Google Places API (local amenities) - 10k free/mo + pay-per-call
+- [x] WalkScore API (transit + walkability) - 5k free/day
+- [x] Open Exchange Rates (currency) - 1k free/mo, replaces OANDA
+- [x] Travel Buddy AI (visa requirements) - 120-200 free/mo, replaces Visadb.io
+- [x] FBI Crime Data (neighborhood safety) - FREE gov API, replaces SpotCrime
+- [x] WhereNext Cost of Living (cost-of-living) - FREE CC BY 4.0, replaces Numbeo
+- [x] SchoolDigger (education) - free trial + tiers, replaces GreatSchools
 
-### Sprint 3.5 - Environmental Data Layer
-- [ ] NOAA API (storms, tornado risk, sea levels)
-- [ ] FEMA Flood Data (flood zones, disaster data)
-- [ ] AirNow API (air quality)
-- [ ] HowLoud API (noise pollution)
-- [ ] OpenWeatherMap (real-time weather)
+### Sprint 3.5 - Environmental Data Layer (COMPLETE)
+- [x] NOAA API (storms, tornado risk, sea levels) - FREE gov API, US only
+- [x] FEMA Flood Data (flood zones, disaster data) - FREE gov API, US only
+- [x] AirNow API (air quality) - FREE EPA API, US only
+- [x] HowLoud API (noise pollution) - pay-as-you-go, US only
+- [x] OpenWeatherMap (weather + air quality) - GLOBAL coverage (US + Europe + all regions)
 
 ### Sprint 3.6 - RAG Pipeline
 - [ ] Firecrawl web crawling + structured extraction
