@@ -112,3 +112,50 @@ model mem0_memories {
   @@index([last_accessed_at], map: "mem0_memories_last_accessed_idx")
   @@index([mem0_id])
 }
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model pending_approvals {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tool_name           String
+  action_name         String
+  params              Json                  @default("{}")
+  risk_level          String
+  confidence_score    Float                 @db.Real
+  reasoning           String
+  requested_by        String
+  client_id           String?
+  conversation_id     String?
+  status              String                @default("pending")
+  expires_at          DateTime              @db.Timestamptz(6)
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  resolved_at         DateTime?             @db.Timestamptz(6)
+  resolved_by         String?
+  resolution_note     String?
+  tool_execution_logs tool_execution_logs[]
+
+  @@index([client_id, created_at(sort: Desc)], map: "pending_approvals_client_idx", where: raw("(client_id IS NOT NULL)"))
+  @@index([conversation_id, created_at(sort: Desc)], map: "pending_approvals_conversation_idx", where: raw("(conversation_id IS NOT NULL)"))
+  @@index([status, expires_at(sort: Desc)], map: "pending_approvals_status_idx", where: raw("(status = 'pending'::text)"))
+}
+
+model tool_execution_logs {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tool_name         String
+  action_name       String
+  params            Json               @default("{}")
+  result            Json?
+  success           Boolean
+  error_message     String?
+  confidence_score  Float?             @db.Real
+  approval_id       String?            @db.Uuid
+  executed_by       String
+  client_id         String?
+  conversation_id   String?
+  duration_ms       Int?
+  created_at        DateTime           @default(now()) @db.Timestamptz(6)
+  pending_approvals pending_approvals? @relation(fields: [approval_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([client_id, created_at(sort: Desc)], map: "tool_execution_logs_client_idx", where: raw("(client_id IS NOT NULL)"))
+  @@index([success, created_at(sort: Desc)], map: "tool_execution_logs_success_idx")
+  @@index([tool_name, action_name, created_at(sort: Desc)], map: "tool_execution_logs_tool_idx")
+}
