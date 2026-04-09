@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-04-09
 > **Current Phase:** Phase 1 Foundation (In Progress)
-> **Total Features:** 173 identified, 21 implemented
+> **Total Features:** 173 identified, 27 implemented
 
 ---
 
@@ -72,13 +72,13 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [x] Production email sends via Resend
 - [x] Outbound sequences via Instantly.ai
 
-### Sprint 1.5 - Observability & Compliance
-- [ ] Full Langfuse tracing integration
-- [ ] Ragas RAG accuracy scoring
-- [ ] Add Presidio PII detection/redaction
-- [ ] Implement Fair Housing validators
-- [ ] Add NeMo Guardrails for hallucination prevention
-- [ ] Redact Before Logging implementation
+### Sprint 1.5 - Observability & Compliance (COMPLETE)
+- [x] Full Langfuse tracing integration
+- [x] Ragas RAG accuracy scoring
+- [x] Add Presidio PII detection/redaction
+- [x] Implement Fair Housing validators
+- [x] Add NeMo Guardrails for hallucination prevention
+- [x] Redact Before Logging implementation
 
 ---
 
