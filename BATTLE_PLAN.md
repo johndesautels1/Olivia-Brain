@@ -1,8 +1,8 @@
 # OLIVIA BRAIN - BATTLE PLAN
 
 > **Last Updated:** 2026-04-09
-> **Current Phase:** Phase 2 Voice & Avatar (Sprint 2.3 Complete)
-> **Total Features:** 173 identified, 43 implemented
+> **Current Phase:** Phase 2 Voice & Avatar (COMPLETE)
+> **Total Features:** 173 identified, 49 implemented
 
 ---
 
@@ -109,13 +109,13 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [x] Voice-Only Fallback Mode
 - [x] Pipeline: STT → LLM → TTS → Avatar (sub-800ms TTFB target)
 
-### Sprint 2.4 - Telephony Completion
-- [ ] Full Twilio SMS integration
-- [ ] Twilio SIP trunk
-- [ ] Call recording with consent flows
-- [ ] Status callbacks implementation
-- [ ] Barge-In Handling (interruption as first-class design)
-- [ ] Turn-Taking Policy (natural silence handling)
+### Sprint 2.4 - Telephony Completion (COMPLETE)
+- [x] Full Twilio SMS integration
+- [x] Twilio SIP trunk
+- [x] Call recording with consent flows
+- [x] Status callbacks implementation
+- [x] Barge-In Handling (interruption as first-class design)
+- [x] Turn-Taking Policy (natural silence handling)
 
 ---
 
@@ -287,11 +287,11 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 | Phase | Sprints | Items | Status |
 |-------|---------|-------|--------|
 | Phase 1: Foundation | 5 | 42 | Complete |
-| Phase 2: Voice & Avatar | 4 | 28 | Sprints 2.1-2.3 Complete |
+| Phase 2: Voice & Avatar | 4 | 28 | Complete |
 | Phase 3: Domain Intelligence | 7 | 54 | Pending |
 | Phase 4: Multi-Agent Beast Mode | 6 | 38 | Pending |
 | Phase 5: Multi-Tenant | 3 | 11 | Pending |
-| **TOTAL** | **25** | **173** | **~25% Complete** |
+| **TOTAL** | **25** | **173** | **~28% Complete** |
 
 ---
 
