@@ -1,8 +1,8 @@
 # OLIVIA BRAIN - BATTLE PLAN
 
-> **Last Updated:** 2026-04-09
-> **Current Phase:** Phase 3 Domain Intelligence (Sprint 3.5 COMPLETE, Sprint 3.6 NEXT)
-> **Total Features:** 173 identified, 91 implemented (~53% complete)
+> **Last Updated:** 2026-04-10
+> **Current Phase:** Phase 3 Domain Intelligence (Sprint 3.6 COMPLETE, Sprint 3.7 NEXT)
+> **Total Features:** 173 identified, 97 implemented (~56% complete)
 
 ---
 
@@ -172,13 +172,13 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [x] HowLoud API (noise pollution) - pay-as-you-go, US only
 - [x] OpenWeatherMap (weather + air quality) - GLOBAL coverage (US + Europe + all regions)
 
-### Sprint 3.6 - RAG Pipeline
-- [ ] Firecrawl web crawling + structured extraction
-- [ ] Unstructured ETL for PDFs, Word, HTML
-- [ ] Cohere Rerank for precision boost
-- [ ] Jina AI Reader (URL-to-clean-text)
-- [ ] Citation-First RAG implementation
-- [ ] Graph-RAG with knowledge graph
+### Sprint 3.6 - RAG Pipeline (COMPLETE)
+- [x] Firecrawl web crawling + structured extraction - 500 free/mo + pay-per-page
+- [x] Unstructured ETL for PDFs, Word, HTML - 1k free/mo + pay-per-page
+- [x] Cohere Rerank for precision boost - 1k free/mo + pay-per-search
+- [x] Jina AI Reader (URL-to-clean-text) - free tier + paid
+- [x] Citation-First RAG implementation - source attribution + provenance
+- [x] Graph-RAG with knowledge graph - multi-hop reasoning
 
 ### Sprint 3.7 - Report Generation
 - [ ] Gamma integration ("The Cadillac")
