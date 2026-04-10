@@ -64,6 +64,11 @@ const serverEnvSchema = z.object({
   AIRNOW_API_KEY: optionalSecret,
   HOWLOUD_API_KEY: optionalSecret,
   OPENWEATHERMAP_API_KEY: optionalSecret,
+
+  // RAG Pipeline APIs (Sprint 3.6)
+  FIRECRAWL_API_KEY: optionalSecret,
+  COHERE_API_KEY: optionalSecret,
+  JINA_API_KEY: optionalSecret,
   COMPOSIO_API_KEY: optionalSecret,
   NYLAS_API_KEY: optionalSecret,
   RESEND_API_KEY: optionalSecret,
