@@ -67,6 +67,7 @@ const serverEnvSchema = z.object({
 
   // RAG Pipeline APIs (Sprint 3.6)
   FIRECRAWL_API_KEY: optionalSecret,
+  UNSTRUCTURED_API_KEY: optionalSecret,
   COHERE_API_KEY: optionalSecret,
   JINA_API_KEY: optionalSecret,
   COMPOSIO_API_KEY: optionalSecret,
