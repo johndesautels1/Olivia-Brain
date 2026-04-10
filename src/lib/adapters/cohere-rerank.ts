@@ -303,8 +303,9 @@ export async function semanticSearch<T extends Record<string, unknown>>(
 
   // Filter by min score if specified
   let results = response.results;
-  if (options?.minScore !== undefined) {
-    results = results.filter((r) => r.relevance_score >= options.minScore);
+  const minScore = options?.minScore;
+  if (minScore !== undefined) {
+    results = results.filter((r) => r.relevance_score >= minScore);
   }
 
   return {
