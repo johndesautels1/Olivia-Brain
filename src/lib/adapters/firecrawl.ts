@@ -406,7 +406,7 @@ export async function crawlForRAG(
 
     if (status.status === "completed") {
       const pages = (status.data ?? [])
-        .filter((d) => d.markdown)
+        .filter((d): d is NonNullable<typeof d> => !!d && !!d.markdown)
         .map((d) => ({
           url: d.metadata.sourceURL,
           title: d.metadata.title ?? "",
