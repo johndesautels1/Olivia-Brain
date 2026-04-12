@@ -30,6 +30,7 @@
     "@opentelemetry/sdk-node": "^0.214.0",
     "@supabase/supabase-js": "^2.102.1",
     "@tavily/core": "^0.7.2",
+    "@upstash/qstash": "^2.10.1",
     "ai": "^6.0.151",
     "inngest": "^4.2.1",
     "mem0ai": "^2.4.6",

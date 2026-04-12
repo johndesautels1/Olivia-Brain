@@ -30,3 +30,12 @@ export {
   handleProcedureCompleted,
   handleBudgetExhausted,
 } from "./inngest-functions";
+
+export { getQueueService } from "./queue";
+export type {
+  QueueMessage,
+  ScheduledMessage,
+  QueueResult,
+  ScheduleResult,
+  QueueService,
+} from "./queue";
