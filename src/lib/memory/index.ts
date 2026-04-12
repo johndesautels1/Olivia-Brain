@@ -71,3 +71,14 @@ export type {
   GetByCategoryOptions,
   ProceduralMemoryService,
 } from "./procedural";
+
+export { getConversationLedgerService } from "./conversation-ledger";
+export type {
+  ConversationEventType,
+  EventActor,
+  ConversationEvent,
+  AppendEventOptions,
+  ReplayEventsOptions,
+  EventCountEntry,
+  ConversationLedgerService,
+} from "./conversation-ledger";
