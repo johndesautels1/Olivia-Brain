@@ -41,3 +41,12 @@ export type {
   TraversalResult,
   GraphStats,
 } from "./graph-persistence";
+
+export { getEpisodicMemoryService } from "./episodic";
+export type {
+  Episode,
+  CreateEpisodeOptions,
+  FindEpisodesOptions,
+  EpisodeTimelineOptions,
+  EpisodicMemoryService,
+} from "./episodic";

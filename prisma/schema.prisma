@@ -155,6 +155,34 @@ model graph_relationships {
   @@index([client_id, created_at(sort: Desc)], map: "graph_relationships_client_id_idx")
 }
 
+/// Episodic memory — coherent conversation episodes with LLM-generated summaries.
+/// Always private (client_id required). Created at conversation end.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model episodes {
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id         String
+  conversation_id   String                 @db.Uuid
+  title             String
+  summary           String
+  topics            String[]               @default([])
+  participants      String[]               @default([])
+  outcome           String?
+  turn_ids          String[]               @default([]) @db.Uuid
+  start_at          DateTime               @db.Timestamptz(6)
+  end_at            DateTime               @db.Timestamptz(6)
+  embedding         Unsupported("vector")?
+  linked_entity_ids String[]               @default([]) @db.Uuid
+  parent_episode_id String?                @db.Uuid
+  created_at        DateTime               @default(now()) @db.Timestamptz(6)
+  parent_episode    episodes?              @relation("episode_chain", fields: [parent_episode_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  child_episodes    episodes[]             @relation("episode_chain")
+
+  @@index([client_id, end_at(sort: Desc)], map: "episodes_client_id_idx")
+  @@index([conversation_id], map: "episodes_conversation_id_idx")
+  @@index([embedding], map: "episodes_embedding_idx")
+  @@index([parent_episode_id], map: "episodes_parent_episode_id_idx", where: raw("(parent_episode_id IS NOT NULL)"))
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model pending_approvals {
   id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
