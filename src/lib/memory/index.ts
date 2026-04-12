@@ -28,3 +28,16 @@ export type {
 
 export { getTTLService, DEFAULT_TTL_CONFIG, MEMORY_TYPE_TTL } from "./ttl";
 export type { TTLCleanupResult, TTLConfig, TTLService } from "./ttl";
+
+export { getGraphPersistenceService } from "./graph-persistence";
+export type {
+  GraphPersistenceService,
+  SaveEntityOptions,
+  SaveRelationshipOptions,
+  FindEntitiesOptions,
+  GetNeighborsOptions,
+  NeighborResult,
+  TraversalOptions,
+  TraversalResult,
+  GraphStats,
+} from "./graph-persistence";
