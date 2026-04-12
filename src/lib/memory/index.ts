@@ -82,3 +82,12 @@ export type {
   EventCountEntry,
   ConversationLedgerService,
 } from "./conversation-ledger";
+
+export { getJourneySnapshotService } from "./journey-snapshot";
+export type {
+  SnapshotType,
+  JourneySnapshot,
+  CaptureSnapshotOptions,
+  GetClientSnapshotsOptions,
+  JourneySnapshotService,
+} from "./journey-snapshot";

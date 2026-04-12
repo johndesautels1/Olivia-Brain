@@ -47,6 +47,7 @@ model conversations {
   client_id            String?
   conversation_turns   conversation_turns[]
   conversation_events  conversation_events[]
+  journey_snapshots    journey_snapshots[]
 
   @@index([client_id, created_at(sort: Desc)], map: "conversations_client_id_idx")
 }
@@ -246,15 +247,41 @@ model procedural_memories {
   category      String                 @default("workflow")
   success_count Int                    @default(0)
   failure_count Int                    @default(0)
-  embedding     Unsupported("vector")?
-  is_active     Boolean                @default(true)
-  created_at    DateTime               @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime               @default(now()) @db.Timestamptz(6)
+  embedding          Unsupported("vector")?
+  is_active          Boolean                @default(true)
+  created_at         DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime               @default(now()) @db.Timestamptz(6)
+  journey_snapshots  journey_snapshots[]
 
   @@index([client_id, is_active], map: "procedural_memories_client_active_idx")
   @@index([category], map: "procedural_memories_category_idx")
   @@index([embedding], map: "procedural_memories_embedding_idx")
   @@index([name], map: "procedural_memories_name_idx")
+}
+
+/// Journey snapshot — point-in-time serialization of conversation state for instant resume.
+/// Always private (client_id required). Links to active procedure and conversation events.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model journey_snapshots {
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id      String                @db.Uuid
+  client_id            String
+  snapshot_type        String                @default("auto")
+  active_procedure_id  String?               @db.Uuid
+  procedure_step_index Int                   @default(0)
+  collected_data       Json                  @default("{}")
+  pending_questions    Json                  @default("[]")
+  context_summary      String
+  sentiment            String?
+  last_event_sequence  Int                   @default(0)
+  metadata             Json                  @default("{}")
+  created_at           DateTime              @default(now()) @db.Timestamptz(6)
+  conversation         conversations         @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  active_procedure     procedural_memories?  @relation(fields: [active_procedure_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([conversation_id, created_at(sort: Desc)], map: "journey_snapshots_conversation_idx")
+  @@index([client_id, created_at(sort: Desc)], map: "journey_snapshots_client_idx")
+  @@index([active_procedure_id], map: "journey_snapshots_procedure_idx", where: raw("(active_procedure_id IS NOT NULL)"))
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
