@@ -221,13 +221,13 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
   - [ ] Document Chaser agents
   - [ ] Domain-specific agents (20+ per domain)
 
-### Sprint 4.3 - Advanced Memory
-- [ ] Zep / Graphiti knowledge graph
-- [ ] Episodic memory layer
-- [ ] Semantic memory layer
-- [ ] Procedural memory layer
-- [ ] Event-Sourced Conversation Ledger
-- [ ] Snapshot-Resume State (journeys persist weeks/months)
+### Sprint 4.3 - Advanced Memory (COMPLETE)
+- [x] Knowledge Graph Persistence (graph_entities + graph_relationships + semantic search + BFS traversal)
+- [x] Episodic Memory Layer (LLM-summarized conversation episodes with chaining)
+- [x] Semantic Memory Layer (distilled facts with contradiction detection + confidence decay)
+- [x] Procedural Memory Layer (learned workflows with success/failure tracking)
+- [x] Event-Sourced Conversation Ledger (11 typed events, replay, projections, correction chains)
+- [x] Snapshot-Resume State (journey snapshots for instant resume with LLM context summary)
 
 ### Sprint 4.4 - Durable Execution
 - [ ] Trigger.dev for long-running jobs
