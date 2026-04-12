@@ -114,6 +114,48 @@ model mem0_memories {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// Knowledge graph entity storage — hybrid public/private isolation
+model graph_entities {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String
+  type                  String                 @default("concept")
+  properties            Json                   @default("{}")
+  embedding             Unsupported("vector")?
+  chunk_ids             String[]               @default([])
+  source                String?
+  client_id             String?
+  created_at            DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime               @default(now()) @db.Timestamptz(6)
+  outgoing_relationships graph_relationships[] @relation("source_entity")
+  incoming_relationships graph_relationships[] @relation("target_entity")
+
+  @@index([type], map: "graph_entities_type_idx")
+  @@index([embedding], map: "graph_entities_embedding_idx")
+  @@index([client_id, created_at(sort: Desc)], map: "graph_entities_client_id_idx")
+}
+
+/// Knowledge graph relationship storage — connects entities with typed, weighted edges
+model graph_relationships {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source_entity_id String          @db.Uuid
+  target_entity_id String          @db.Uuid
+  type             String          @default("related_to")
+  label            String?
+  weight           Float           @default(0.5) @db.Real
+  properties       Json            @default("{}")
+  evidence         String?
+  client_id        String?
+  created_at       DateTime        @default(now()) @db.Timestamptz(6)
+  source_entity    graph_entities  @relation("source_entity", fields: [source_entity_id], references: [id], onDelete: Cascade)
+  target_entity    graph_entities  @relation("target_entity", fields: [target_entity_id], references: [id], onDelete: Cascade)
+
+  @@index([source_entity_id], map: "graph_relationships_source_idx")
+  @@index([target_entity_id], map: "graph_relationships_target_idx")
+  @@index([type], map: "graph_relationships_type_idx")
+  @@index([client_id, created_at(sort: Desc)], map: "graph_relationships_client_id_idx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model pending_approvals {
   id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tool_name           String
