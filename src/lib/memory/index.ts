@@ -50,3 +50,13 @@ export type {
   EpisodeTimelineOptions,
   EpisodicMemoryService,
 } from "./episodic";
+
+export { getSemanticMemoryService } from "./semantic";
+export type {
+  SemanticCategory,
+  SemanticFact,
+  LearnFactOptions,
+  RecallFactsOptions,
+  DecayOptions,
+  SemanticMemoryService,
+} from "./semantic";

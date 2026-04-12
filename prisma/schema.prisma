@@ -183,6 +183,31 @@ model episodes {
   @@index([parent_episode_id], map: "episodes_parent_episode_id_idx", where: raw("(parent_episode_id IS NOT NULL)"))
 }
 
+/// Semantic memory — distilled facts, preferences, insights, and constraints.
+/// Public facts (client_id NULL) shared. Private facts (client_id set) isolated.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model semantic_memories {
+  id                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id           String?
+  content             String
+  category            String                 @default("fact")
+  confidence          Float                  @default(0.7) @db.Real
+  source_episode_ids  String[]               @default([]) @db.Uuid
+  entity_ids          String[]               @default([]) @db.Uuid
+  embedding           Unsupported("vector")?
+  superseded_by       String?                @db.Uuid
+  last_reinforced_at  DateTime               @default(now()) @db.Timestamptz(6)
+  created_at          DateTime               @default(now()) @db.Timestamptz(6)
+  superseding_memory  semantic_memories?     @relation("supersede_chain", fields: [superseded_by], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  superseded_memories semantic_memories[]    @relation("supersede_chain")
+
+  @@index([client_id, confidence(sort: Desc)], map: "semantic_memories_client_confidence_idx")
+  @@index([category], map: "semantic_memories_category_idx")
+  @@index([embedding], map: "semantic_memories_embedding_idx")
+  @@index([superseded_by], map: "semantic_memories_superseded_by_idx", where: raw("(superseded_by IS NOT NULL)"))
+  @@index([last_reinforced_at], map: "semantic_memories_reinforced_idx")
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model pending_approvals {
   id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
