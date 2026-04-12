@@ -60,3 +60,14 @@ export type {
   DecayOptions,
   SemanticMemoryService,
 } from "./semantic";
+
+export { getProceduralMemoryService } from "./procedural";
+export type {
+  ProceduralCategory,
+  ProcedureStep,
+  Procedure,
+  LearnProcedureOptions,
+  FindProceduresOptions,
+  GetByCategoryOptions,
+  ProceduralMemoryService,
+} from "./procedural";
