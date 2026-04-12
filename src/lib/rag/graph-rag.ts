@@ -431,7 +431,7 @@ export class KnowledgeGraph {
 
     while (currentId !== null) {
       entities.unshift(this.entities.get(currentId)!);
-      const prev = visited.get(currentId)!;
+      const prev: { prevId: string | null; relId: string | null } = visited.get(currentId)!;
 
       if (prev.relId) {
         const rel = this.relationships.get(prev.relId)!;
