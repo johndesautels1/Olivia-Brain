@@ -1,9 +1,9 @@
 # Sprint 4.4 Durable Execution — Agent Handoff
 
 > **Session Date**: 2026-04-13
-> **Last Commit**: `8174b91` — Add Trigger.dev long-running jobs
-> **Status**: Items 1-4 COMPLETE, Item 5 (Temporal) PENDING
-> **Next Action**: Build Temporal crash-proof workflows (Item 5), then mark Sprint 4.4 complete
+> **Last Commit**: `b334a0c` — Add Temporal crash-proof workflows
+> **Status**: ALL 5 ITEMS COMPLETE — Sprint 4.4 DONE
+> **Next Action**: Sprint 4.5 (Evaluation & Observability)
 
 ---
 
@@ -82,28 +82,31 @@
 
 ---
 
-## REMAINING: Item 5
+## COMPLETED: Item 5
 
-### Item 5: Temporal — Crash-Proof Workflows
-- **Not yet built.** Design was discussed, decision pending.
-- **Key question**: Does Temporal add enough value over Inngest step functions to justify the operational weight?
-- **What Temporal adds over Inngest:**
-  - True checkpointing — workflow survives server crashes, replays from last checkpoint
-  - Long-lived workflows (days/weeks) — e.g., client onboarding that pauses for human input
-  - Signals & queries — external systems can send signals to running workflows
-  - Child workflows — nested orchestration
-- **Proposed use cases:**
-  - City evaluation pipeline (multi-day: data collection → scoring → review → verdict → report)
-  - Client onboarding sequence (weeks: paragraphicals → module completion → scoring → matching)
-  - Multi-market comparison (fan-out across cities, aggregate, judge)
-- **Proposed files:**
-  - `src/lib/execution/temporal-client.ts` — Connection config + NoOp fallback
-  - `src/lib/execution/temporal-workflows.ts` — Workflow definitions
-- **Requires**: `@temporalio/client` + `@temporalio/workflow` packages
-- **Env vars to add**: `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`
-- **Requires**: Temporal server or Temporal Cloud account to actually run
+### Item 5: Temporal — Crash-Proof Workflows ✅ — `b334a0c`
+- **Client**: `src/lib/execution/temporal-client.ts` — Connection + NoOp fallback + singleton factory
+  - `TemporalService` interface with 7 operations: start, signal, query, status, cancel, terminate, list
+  - `TemporalServiceImpl` — real Temporal client with lazy connection
+  - `NoOpTemporalService` — safe fallback when not configured
+  - `getTemporalService()` — singleton factory (env-driven)
+  - `isTemporalAvailable()` — check if TEMPORAL_ADDRESS + TEMPORAL_NAMESPACE set
+  - Full type system: WorkflowName, WorkflowHandle, WorkflowSignal, WorkflowQuery, WorkflowStatus
+  - 5 signal types: human-input-received, external-data-ready, pause-requested, resume-requested, priority-changed
+  - 3 query types: current-step, progress, full-state
+  - Payload types for all 5 workflows
+- **Workflows**: `src/lib/execution/temporal-workflows.ts` — 5 crash-proof state machines
+  - `cityEvaluationPipeline` — 6-step: data collect → 5-LLM eval → aggregate → human review → judge → report
+  - `clientOnboardingJourney` — 7-step: profile → paragraphs → main module → module selection → specialties → evaluate → deliver
+  - `multiMarketComparison` — 4-step: fan-out child workflows → aggregate → judge → comparison report
+  - `heartbeatMonitoring` — continuous loop: initialize → periodic check cycles → alert → summarize
+  - `portfolioDataSync` — 4-step: detect changes → find consumers → fan-out signals → verify
+  - All workflows support pause/resume signals, progress queries, journey snapshots
+  - Activities interface defines 15 retryable operations (LLM calls, DB writes, notifications)
+- **SDK**: `@temporalio/client@1.x`, `@temporalio/workflow@1.x`, `@temporalio/activity@1.x`
+- **Env vars**: `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE` (added to `src/lib/config/env.ts`)
 
-**After Item 5**: Mark Sprint 4.4 complete in BATTLE_PLAN.md, then Sprint 4.5 (Evaluation & Observability) is next.
+**Sprint 4.4 COMPLETE. Next: Sprint 4.5 (Evaluation & Observability).**
 
 ---
 
@@ -119,6 +122,8 @@
 | `src/lib/execution/queue.ts` | QStash fire-and-forget queue |
 | `src/lib/execution/trigger-client.ts` | Trigger.dev SDK configuration |
 | `src/lib/execution/trigger-tasks.ts` | 5 long-running task definitions + dispatch/status APIs |
+| `src/lib/execution/temporal-client.ts` | Temporal client service + NoOp fallback + singleton factory |
+| `src/lib/execution/temporal-workflows.ts` | 5 crash-proof workflow definitions |
 | `src/app/api/inngest/route.ts` | Inngest serve endpoint |
 
 ### Memory Services (Sprint 4.3)
@@ -137,6 +142,8 @@
 ## GIT HISTORY THIS SESSION
 
 ```
+b334a0c — Add Temporal crash-proof workflows (Sprint 4.4 Item 5)
+00eadef — Update battle plan and handoff — Sprint 4.4 Items 1-4 complete
 8174b91 — Add Trigger.dev long-running jobs (Sprint 4.4 Item 4)
 aae4c6e — Add Upstash QStash serverless queue
 a5e207a — Add Inngest event-driven functions
@@ -155,4 +162,4 @@ d7b83f9 — Add GraphPersistenceService — persistent knowledge graph
 ## SUMMARY FOR NEXT AGENT
 
 Tell the next agent:
-"Read D:\Olivia Brain\docs\SPRINT_44_HANDOFF.md first. Repo is at D:\Olivia Brain\ (GitHub: github.com/johndesautels1/Olivia-Brain, branch main). Sprint 4.3 (6 items) and Sprint 4.4 Items 1-4 are done. Item 5 (Temporal crash-proof workflows) is the only remaining item. Design was discussed — decide whether to build it or skip it, then mark Sprint 4.4 complete in BATTLE_PLAN.md. After that, Sprint 4.5 (Evaluation & Observability) is next."
+"Read D:\Olivia Brain\docs\SPRINT_44_HANDOFF.md first. Repo is at D:\Olivia Brain\ (GitHub: github.com/johndesautels1/Olivia-Brain, branch main). Sprint 4.3 (6 items) and Sprint 4.4 (5 items) are ALL COMPLETE. Sprint 4.5 (Evaluation & Observability) is next — 7 items: Red-Team Eval Harness, Conversation QA Scorecards, Weekly Model Bake-Off, Braintrust evals, Patronus AI, Cleanlab, A/B Avatar Personalities."
