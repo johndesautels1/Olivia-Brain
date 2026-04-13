@@ -79,3 +79,18 @@ export type {
   FindIssuesResult,
   CleanlabService,
 } from "./cleanlab";
+
+export {
+  getAvatarABTestService,
+  getBuiltInPersonalityVariants,
+} from "./ab-avatar";
+export type {
+  PersonalityDimension,
+  PersonalityVariant as AvatarPersonalityVariant,
+  ABTestConfig,
+  ConversationOutcome,
+  ABExperiment,
+  VariantStats,
+  ABTestResults,
+  AvatarABTestService,
+} from "./ab-avatar";
