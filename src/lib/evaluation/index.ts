@@ -10,3 +10,14 @@ export type {
   RedTeamHarnessOptions,
   RedTeamService,
 } from "./red-team";
+
+export { getScorecardService, ALL_DIMENSIONS } from "./qa-scorecards";
+export type {
+  QADimension,
+  ConversationTurn,
+  DimensionScore,
+  QAScorecard,
+  AggregateScores,
+  QAScorecardOptions,
+  ConversationScorecardService,
+} from "./qa-scorecards";
