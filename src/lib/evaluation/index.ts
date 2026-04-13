@@ -21,3 +21,19 @@ export type {
   QAScorecardOptions,
   ConversationScorecardService,
 } from "./qa-scorecards";
+
+export {
+  getBakeOffService,
+  getBenchmarkPrompts,
+  ALL_PROVIDERS,
+} from "./model-bakeoff";
+export type {
+  ModelProvider,
+  BenchmarkCategory,
+  BakeOffPrompt,
+  BakeOffModelResult,
+  ModelRanking,
+  BakeOffReport,
+  BakeOffOptions,
+  ModelBakeOffService,
+} from "./model-bakeoff";
