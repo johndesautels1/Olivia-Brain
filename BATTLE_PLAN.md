@@ -237,7 +237,7 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [x] Temporal for crash-proof workflows
 
 ### Sprint 4.5 - Evaluation & Observability
-- [ ] Red-Team Eval Harness
+- [x] Red-Team Eval Harness
 - [ ] Conversation QA Scorecards
 - [ ] Weekly Model Bake-Off system
 - [ ] Braintrust evals + prompt playground
