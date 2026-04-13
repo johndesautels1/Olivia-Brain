@@ -120,6 +120,10 @@ const serverEnvSchema = z.object({
   PATRONUS_API_KEY: optionalSecret,
   CLEANLAB_API_KEY: optionalSecret,
 
+  // CLUES Product Integration (Sprint 4.6)
+  CLUES_INTELLIGENCE_API_KEY: optionalSecret,
+  CLUES_INTELLIGENCE_BASE_URL: optionalUrl,
+
   LANGFUSE_PUBLIC_KEY: optionalSecret,
   LANGFUSE_SECRET_KEY: optionalSecret,
   LANGFUSE_BASE_URL: z.string().url().default("https://cloud.langfuse.com"),
