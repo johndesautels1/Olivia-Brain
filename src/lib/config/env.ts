@@ -118,6 +118,7 @@ const serverEnvSchema = z.object({
   // Evaluation & Observability (Sprint 4.5)
   BRAINTRUST_API_KEY: optionalSecret,
   PATRONUS_API_KEY: optionalSecret,
+  CLEANLAB_API_KEY: optionalSecret,
 
   LANGFUSE_PUBLIC_KEY: optionalSecret,
   LANGFUSE_SECRET_KEY: optionalSecret,

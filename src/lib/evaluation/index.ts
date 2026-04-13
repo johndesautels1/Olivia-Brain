@@ -66,3 +66,16 @@ export type {
   FactualConsistencyBatchResult,
   PatronusService,
 } from "./patronus";
+
+export { getCleanlabService } from "./cleanlab";
+export type {
+  DataType,
+  IssueSeverity,
+  IssueType,
+  DataEntry,
+  DataQualityIssue,
+  DataQualityInput,
+  DataQualityReport,
+  FindIssuesResult,
+  CleanlabService,
+} from "./cleanlab";
