@@ -125,6 +125,8 @@ const serverEnvSchema = z.object({
   CLUES_INTELLIGENCE_BASE_URL: optionalUrl,
   CLUES_LIFESCORE_INTERNAL_API_KEY: optionalSecret,
   CLUES_LIFESCORE_BASE_URL: optionalUrl,
+  STAY_OR_SELL_API_KEY: optionalSecret,
+  STAY_OR_SELL_BASE_URL: optionalUrl,
 
   LANGFUSE_PUBLIC_KEY: optionalSecret,
   LANGFUSE_SECRET_KEY: optionalSecret,
