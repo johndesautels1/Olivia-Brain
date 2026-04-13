@@ -123,6 +123,8 @@ const serverEnvSchema = z.object({
   // CLUES Product Integration (Sprint 4.6)
   CLUES_INTELLIGENCE_API_KEY: optionalSecret,
   CLUES_INTELLIGENCE_BASE_URL: optionalUrl,
+  CLUES_LIFESCORE_INTERNAL_API_KEY: optionalSecret,
+  CLUES_LIFESCORE_BASE_URL: optionalUrl,
 
   LANGFUSE_PUBLIC_KEY: optionalSecret,
   LANGFUSE_SECRET_KEY: optionalSecret,
