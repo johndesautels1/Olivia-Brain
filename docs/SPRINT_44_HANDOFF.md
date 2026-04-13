@@ -1,32 +1,42 @@
 # Sprint 4.4 Durable Execution — Agent Handoff
 
 > **Session Date**: 2026-04-13
-> **Last Commit**: (see below — QStash commit pending)
-> **Status**: Items 1-3 COMPLETE, Items 4-5 PENDING
-> **Next Action**: Build Trigger.dev long-running jobs (Item 4) — needs design discussion
+> **Last Commit**: `8174b91` — Add Trigger.dev long-running jobs
+> **Status**: Items 1-4 COMPLETE, Item 5 (Temporal) PENDING
+> **Next Action**: Build Temporal crash-proof workflows (Item 5), then mark Sprint 4.4 complete
 
 ---
 
 ## CRITICAL: READ THESE FILES FIRST
 
-1. **`BATTLE_PLAN.md`** — Master build plan, Sprint 4.3 marked COMPLETE, Sprint 4.4 in progress
+1. **`BATTLE_PLAN.md`** — Master build plan, Sprint 4.3 COMPLETE, Sprint 4.4 in progress (4/5 done)
 2. **`OLIVIA_BUILD_STATE.md`** — Which items are app-independent vs blocked
 3. **`docs/SPRINT_43_HANDOFF.md`** — Previous sprint handoff (all 6 items done)
 4. **This file** — Continuation point
 
 ---
 
-## ARCHITECTURE RULES (NON-NEGOTIABLE)
+## REPO LOCATION
 
-- Same rules as Sprint 4.3 handoff — read that file
-- New: `src/lib/execution/` = Sprint 4.4 durable execution module
-- Inngest functions use dynamic imports inside steps (required for tree-shaking)
-- QStash needs `QSTASH_TOKEN` in Vercel env vars
-- Inngest needs `INNGEST_SIGNING_KEY` + `INNGEST_EVENT_KEY` in Vercel env vars
+- **Local**: `D:\Olivia Brain\`
+- **GitHub**: `https://github.com/johndesautels1/Olivia-Brain`
+- **Branch**: `main`
 
 ---
 
-## COMPLETED THIS SESSION (Sprint 4.3 → 4.4)
+## ARCHITECTURE RULES (NON-NEGOTIABLE)
+
+- Same rules as Sprint 4.3 handoff — read that file
+- `src/lib/execution/` = Sprint 4.4 durable execution module
+- Inngest functions use dynamic imports inside steps (required for tree-shaking)
+- QStash needs `QSTASH_TOKEN` in Vercel env vars
+- Inngest needs `INNGEST_SIGNING_KEY` + `INNGEST_EVENT_KEY` in Vercel env vars
+- Trigger.dev auto-reads `TRIGGER_SECRET_KEY` from env; `TRIGGER_API_URL` optional
+- All services use NoOp/fallback pattern when env vars missing
+
+---
+
+## COMPLETED (Sprint 4.3 + Sprint 4.4 Items 1-4)
 
 ### Sprint 4.3 — ALL 6 ITEMS COMPLETE
 1. Knowledge Graph Persistence — `d7b83f9`
@@ -36,56 +46,64 @@
 5. Event-Sourced Conversation Ledger — `f5626ee`
 6. Snapshot-Resume State — `8d9a6be`
 
-### Sprint 4.4 — Items 1-3 COMPLETE
+### Sprint 4.4 — Items 1-4 COMPLETE
 
 #### Item 1: Action Budgets ✅ — `c0ad16d`
 - **Migration**: `supabase/migrations/20260412_action_budgets.sql`
   - `action_budgets` table (5 budget types, 3 periods, unique per conversation+type)
   - `consume_action_budget()` RPC — atomic increment with race-condition safety, auto time-reset
-- **Prisma**: `action_budgets` model with FK to conversations
 - **Service**: `src/lib/execution/action-budgets.ts`
-  - `initializeBudgets()` — create from configurable defaults
-  - `consumeAction()` — atomic consume via RPC, also decrements total_actions
-  - `checkBudget()` — read-only pre-flight check
-  - `getBudgetStatus()` — all budgets for a conversation
-  - `resetBudgets()` — reset consumed to 0
-- **Defaults**: 50 LLM calls, 30 tool invocations, 100 API requests, 40 embeddings, 200 total per conversation
 
 #### Item 2: Inngest Event-Driven Functions ✅ — `a5e207a`
-- **Client**: `src/lib/execution/inngest-client.ts`
-  - 6 typed events: `conversation.ended`, `episode.created`, `memory.maintenance`, `procedure.completed`, `data.crawl.requested`, `budget.exhausted`
-- **Functions**: `src/lib/execution/inngest-functions.ts`
-  - `processConversationEnd` — 3-step pipeline: episode → facts → snapshot (retries: 3, concurrency: 5)
-  - `runMemoryMaintenance` — decay stale facts + log results (concurrency: 1)
-  - `handleProcedureCompleted` — record outcome → log event → auto-deactivate failing procedures
-  - `handleBudgetExhausted` — log exhaustion to conversation ledger
-- **API Route**: `src/app/api/inngest/route.ts` — serves all functions (GET/POST/PUT)
+- **Client**: `src/lib/execution/inngest-client.ts` — 6 typed events
+- **Functions**: `src/lib/execution/inngest-functions.ts` — 4 durable step functions
+- **API Route**: `src/app/api/inngest/route.ts`
 
-#### Item 3: Upstash QStash Serverless Queue ✅ — (commit pending)
-- **Service**: `src/lib/execution/queue.ts`
-  - `enqueue()` — one-time fire-and-forget message with delay/retries/dedup
-  - `createSchedule()` — recurring cron schedule
-  - `removeSchedule()` — delete a schedule
-  - `listSchedules()` — list all active schedules
-- **Singleton factory** with NoOp fallback if QSTASH_TOKEN not set
+#### Item 3: Upstash QStash Serverless Queue ✅ — `aae4c6e`
+- **Service**: `src/lib/execution/queue.ts` — enqueue, createSchedule, removeSchedule, listSchedules
+- Singleton factory with NoOp fallback
+
+#### Item 4: Trigger.dev Long-Running Jobs ✅ — `8174b91`
+- **Config**: `src/lib/execution/trigger-client.ts`
+  - `ensureTriggerConfigured()` — explicit SDK config for edge/serverless contexts
+  - `isTriggerAvailable()` — check if TRIGGER_SECRET_KEY is set
+  - Uses `configure()` from `@trigger.dev/sdk/v3`
+- **Tasks**: `src/lib/execution/trigger-tasks.ts`
+  - 5 task definitions: `generateRelocationReport`, `bulkDataCrawl`, `deepResearch`, `rebuildKnowledgeGraph`, `clientOnboarding`
+  - `dispatchTask()` — type-safe dispatch by task name, returns run ID
+  - `getTaskStatus()` — non-blocking status poll via `runs.retrieve()`
+  - `pollTaskUntilDone()` — blocking poll via `runs.poll()`
+  - `cancelTask()` — cancel via `runs.cancel()`
+  - `listAvailableTasks()` — enumerate all tasks with descriptions
+  - NoOp handle returned when Trigger.dev not configured
+  - Status mapping from Trigger.dev's 12 statuses → 6 simplified statuses
+- **SDK**: `@trigger.dev/sdk@4.4.3` (v4 API: `task()`, `tasks.trigger()`, `runs.*`)
+- **Env vars**: `TRIGGER_SECRET_KEY`, `TRIGGER_API_URL` (already in `src/lib/config/env.ts`)
 
 ---
 
-## REMAINING: Items 4-5
-
-### Item 4: Trigger.dev — Long-Running Jobs
-- Not yet designed. Needs discussion with user.
-- Concept: dispatch jobs that run outside Vercel's timeout limits
-- Use cases: report generation, bulk data extraction, multi-step research
-- Needs `TRIGGER_DEV_API_KEY` + `TRIGGER_DEV_API_URL` env vars
-- Consider: job definitions, status polling, callback webhooks
+## REMAINING: Item 5
 
 ### Item 5: Temporal — Crash-Proof Workflows
-- Not yet designed. Needs discussion with user.
-- Concept: multi-step workflows with checkpointing and replay
-- Heaviest lift — requires Temporal server or Temporal Cloud account
-- Use cases: city evaluation pipelines, client onboarding sequences
-- Consider: whether this overlaps enough with Inngest step functions to skip
+- **Not yet built.** Design was discussed, decision pending.
+- **Key question**: Does Temporal add enough value over Inngest step functions to justify the operational weight?
+- **What Temporal adds over Inngest:**
+  - True checkpointing — workflow survives server crashes, replays from last checkpoint
+  - Long-lived workflows (days/weeks) — e.g., client onboarding that pauses for human input
+  - Signals & queries — external systems can send signals to running workflows
+  - Child workflows — nested orchestration
+- **Proposed use cases:**
+  - City evaluation pipeline (multi-day: data collection → scoring → review → verdict → report)
+  - Client onboarding sequence (weeks: paragraphicals → module completion → scoring → matching)
+  - Multi-market comparison (fan-out across cities, aggregate, judge)
+- **Proposed files:**
+  - `src/lib/execution/temporal-client.ts` — Connection config + NoOp fallback
+  - `src/lib/execution/temporal-workflows.ts` — Workflow definitions
+- **Requires**: `@temporalio/client` + `@temporalio/workflow` packages
+- **Env vars to add**: `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`
+- **Requires**: Temporal server or Temporal Cloud account to actually run
+
+**After Item 5**: Mark Sprint 4.4 complete in BATTLE_PLAN.md, then Sprint 4.5 (Evaluation & Observability) is next.
 
 ---
 
@@ -99,6 +117,8 @@
 | `src/lib/execution/inngest-client.ts` | Inngest client + typed event catalog |
 | `src/lib/execution/inngest-functions.ts` | 4 durable step functions |
 | `src/lib/execution/queue.ts` | QStash fire-and-forget queue |
+| `src/lib/execution/trigger-client.ts` | Trigger.dev SDK configuration |
+| `src/lib/execution/trigger-tasks.ts` | 5 long-running task definitions + dispatch/status APIs |
 | `src/app/api/inngest/route.ts` | Inngest serve endpoint |
 
 ### Memory Services (Sprint 4.3)
@@ -112,39 +132,22 @@
 | `src/lib/memory/conversation-ledger.ts` | Event-sourced conversation ledger |
 | `src/lib/memory/journey-snapshot.ts` | Journey snapshot-resume |
 
-### Schema & Migrations (all new this session)
-| File | Purpose |
-|------|---------|
-| `prisma/schema.prisma` | All models (7 new models added this session) |
-| `supabase/migrations/20260412_graph_persistence.sql` | Graph tables |
-| `supabase/migrations/20260412_episodic_memory.sql` | Episodes table |
-| `supabase/migrations/20260412_semantic_memory.sql` | Semantic memories |
-| `supabase/migrations/20260412_procedural_memory.sql` | Procedural memories |
-| `supabase/migrations/20260412_conversation_events.sql` | Conversation events |
-| `supabase/migrations/20260412_journey_snapshots.sql` | Journey snapshots |
-| `supabase/migrations/20260412_action_budgets.sql` | Action budgets |
-
 ---
 
 ## GIT HISTORY THIS SESSION
 
 ```
-8be5b32 — Fix TypeScript error: guard against undefined in crawl data filter
-09dc78a — Fix TypeScript error: add explicit type annotation to 'prev' variable
-4a5dada — Add OLIVIA_BUILD_STATE.md
-f3b7a82 — Add graph persistence migration and Prisma models
-d7b83f9 — Add GraphPersistenceService — persistent knowledge graph
-67fd914 — Add knowledge graph persistence design document
-e29b323 — Add Episodic Memory Layer
-c72a898 — Add Semantic Memory Layer
-a47cca0 — Add Sprint 4.3 handoff document
-8eb5787 — Add Procedural Memory Layer
-f5626ee — Add Event-Sourced Conversation Ledger
-8d9a6be — Add Snapshot-Resume State
-be3c2e8 — Mark Sprint 4.3 complete in battle plan
-c0ad16d — Add Action Budgets
+8174b91 — Add Trigger.dev long-running jobs (Sprint 4.4 Item 4)
+aae4c6e — Add Upstash QStash serverless queue
 a5e207a — Add Inngest event-driven functions
-(pending) — Add Upstash QStash serverless queue
+c0ad16d — Add Action Budgets
+be3c2e8 — Mark Sprint 4.3 complete in battle plan
+8d9a6be — Add Snapshot-Resume State
+f5626ee — Add Event-Sourced Conversation Ledger
+8eb5787 — Add Procedural Memory Layer
+c72a898 — Add Semantic Memory Layer
+e29b323 — Add Episodic Memory Layer
+d7b83f9 — Add GraphPersistenceService — persistent knowledge graph
 ```
 
 ---
@@ -152,4 +155,4 @@ a5e207a — Add Inngest event-driven functions
 ## SUMMARY FOR NEXT AGENT
 
 Tell the next agent:
-"Read D:\Olivia Brain\docs\SPRINT_44_HANDOFF.md first. Sprint 4.3 (6 items) and Sprint 4.4 Items 1-3 are done. Item 4 (Trigger.dev) needs design discussion, then Item 5 (Temporal) needs discussion. After that, update the battle plan to mark Sprint 4.4 complete."
+"Read D:\Olivia Brain\docs\SPRINT_44_HANDOFF.md first. Repo is at D:\Olivia Brain\ (GitHub: github.com/johndesautels1/Olivia-Brain, branch main). Sprint 4.3 (6 items) and Sprint 4.4 Items 1-4 are done. Item 5 (Temporal crash-proof workflows) is the only remaining item. Design was discussed — decide whether to build it or skip it, then mark Sprint 4.4 complete in BATTLE_PLAN.md. After that, Sprint 4.5 (Evaluation & Observability) is next."

@@ -230,11 +230,11 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [x] Snapshot-Resume State (journey snapshots for instant resume with LLM context summary)
 
 ### Sprint 4.4 - Durable Execution
-- [ ] Trigger.dev for long-running jobs
+- [x] Action Budgets (prevent expensive loops)
+- [x] Inngest event-driven functions (Vercel-native)
+- [x] Upstash QStash serverless queue
+- [x] Trigger.dev for long-running jobs
 - [ ] Temporal for crash-proof workflows
-- [ ] Inngest event-driven functions (Vercel-native)
-- [ ] Upstash QStash serverless queue
-- [ ] Action Budgets (prevent expensive loops)
 
 ### Sprint 4.5 - Evaluation & Observability
 - [ ] Red-Team Eval Harness
