@@ -55,3 +55,14 @@ export type {
   PromptVersionInfo,
   BraintrustService,
 } from "./braintrust";
+
+export { getPatronusService } from "./patronus";
+export type {
+  PatronusEvaluator,
+  HallucinationCheckInput,
+  EvaluatorResult,
+  HallucinationResult,
+  FactualConsistencyBatchInput,
+  FactualConsistencyBatchResult,
+  PatronusService,
+} from "./patronus";
