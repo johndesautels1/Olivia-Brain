@@ -39,3 +39,26 @@ export type {
   ScheduleResult,
   QueueService,
 } from "./queue";
+
+export { ensureTriggerConfigured, isTriggerAvailable } from "./trigger-client";
+
+export { dispatchTask, getTaskStatus, pollTaskUntilDone, cancelTask, listAvailableTasks } from "./trigger-tasks";
+export {
+  generateRelocationReport,
+  bulkDataCrawl,
+  deepResearch,
+  rebuildKnowledgeGraph,
+  clientOnboarding,
+} from "./trigger-tasks";
+export type {
+  TaskName,
+  TaskPayloadMap,
+  TaskHandle,
+  TaskStatus,
+  TaskStatusResult,
+  ReportGenerationPayload,
+  BulkCrawlPayload,
+  DeepResearchPayload,
+  GraphRebuildPayload,
+  ClientOnboardingPayload,
+} from "./trigger-tasks";
