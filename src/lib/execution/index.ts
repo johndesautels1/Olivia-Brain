@@ -62,3 +62,38 @@ export type {
   GraphRebuildPayload,
   ClientOnboardingPayload,
 } from "./trigger-tasks";
+
+export { getTemporalService, isTemporalAvailable } from "./temporal-client";
+export type {
+  WorkflowName,
+  WorkflowHandle,
+  WorkflowSignal,
+  WorkflowQuery,
+  WorkflowStatus,
+  WorkflowStatusResult,
+  WorkflowQueryResult,
+  WorkflowListItem,
+  WorkflowPayloadMap,
+  CityEvaluationPayload,
+  OnboardingJourneyPayload,
+  MarketComparisonPayload,
+  HeartbeatMonitoringPayload,
+  PortfolioSyncPayload,
+  TemporalService,
+} from "./temporal-client";
+
+export {
+  cityEvaluationPipeline,
+  clientOnboardingJourney,
+  multiMarketComparison,
+  heartbeatMonitoring,
+  portfolioDataSync,
+  humanInputSignal,
+  externalDataSignal,
+  pauseSignal,
+  resumeSignal,
+  prioritySignal,
+  currentStepQuery,
+  progressQuery,
+  fullStateQuery,
+} from "./temporal-workflows";

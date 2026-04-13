@@ -111,6 +111,10 @@ const serverEnvSchema = z.object({
   TRIGGER_SECRET_KEY: optionalSecret,
   TRIGGER_API_URL: optionalUrl,
 
+  // Temporal (Sprint 4.4 — Crash-Proof Workflows)
+  TEMPORAL_ADDRESS: optionalSecret,
+  TEMPORAL_NAMESPACE: optionalSecret,
+
   LANGFUSE_PUBLIC_KEY: optionalSecret,
   LANGFUSE_SECRET_KEY: optionalSecret,
   LANGFUSE_BASE_URL: z.string().url().default("https://cloud.langfuse.com"),
