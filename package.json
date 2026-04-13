@@ -36,6 +36,7 @@
     "@trigger.dev/sdk": "^4.4.3",
     "@upstash/qstash": "^2.10.1",
     "ai": "^6.0.151",
+    "braintrust": "^3.8.0",
     "inngest": "^4.2.1",
     "mem0ai": "^2.4.6",
     "next": "^16.2.2",

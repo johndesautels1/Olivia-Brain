@@ -115,6 +115,9 @@ const serverEnvSchema = z.object({
   TEMPORAL_ADDRESS: optionalSecret,
   TEMPORAL_NAMESPACE: optionalSecret,
 
+  // Evaluation & Observability (Sprint 4.5)
+  BRAINTRUST_API_KEY: optionalSecret,
+
   LANGFUSE_PUBLIC_KEY: optionalSecret,
   LANGFUSE_SECRET_KEY: optionalSecret,
   LANGFUSE_BASE_URL: z.string().url().default("https://cloud.langfuse.com"),

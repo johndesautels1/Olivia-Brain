@@ -37,3 +37,21 @@ export type {
   BakeOffOptions,
   ModelBakeOffService,
 } from "./model-bakeoff";
+
+export {
+  getBraintrustService,
+  getOliviaPromptVariants,
+} from "./braintrust";
+export type {
+  EvalType,
+  EvalLogEntry,
+  EvalLogResult,
+  PromptVariant,
+  ExperimentTestCase,
+  PromptExperimentOptions,
+  VariantTestResult,
+  VariantSummary,
+  PromptExperimentReport,
+  PromptVersionInfo,
+  BraintrustService,
+} from "./braintrust";
