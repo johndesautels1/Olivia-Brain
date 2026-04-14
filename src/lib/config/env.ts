@@ -127,6 +127,8 @@ const serverEnvSchema = z.object({
   CLUES_LIFESCORE_BASE_URL: optionalUrl,
   STAY_OR_SELL_API_KEY: optionalSecret,
   STAY_OR_SELL_BASE_URL: optionalUrl,
+  BROKERAGE_BASE_URL: optionalUrl,
+  BROKERAGE_INTERNAL_API_KEY: optionalSecret,
 
   LANGFUSE_PUBLIC_KEY: optionalSecret,
   LANGFUSE_SECRET_KEY: optionalSecret,
