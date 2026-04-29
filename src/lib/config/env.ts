@@ -65,6 +65,19 @@ const serverEnvSchema = z.object({
   HOWLOUD_API_KEY: optionalSecret,
   OPENWEATHERMAP_API_KEY: optionalSecret,
 
+  // Real Estate Data Layer APIs (Sprint 3.3)
+  MLS_RESO_BASE_URL: optionalUrl,
+  MLS_RESO_BEARER_TOKEN: optionalSecret,
+  MLS_RESO_API_KEY: optionalSecret,
+  BRIDGE_API_KEY: optionalSecret,
+  HOUSECANARY_API_KEY: optionalSecret,
+  HOUSECANARY_API_SECRET: optionalSecret,
+  BATCHDATA_API_KEY: optionalSecret,
+  PROPERTYRADAR_API_TOKEN: optionalSecret,
+  PLUNK_API_KEY: optionalSecret,
+  RENTCAST_API_KEY: optionalSecret,
+  REGRID_API_KEY: optionalSecret,
+
   // RAG Pipeline APIs (Sprint 3.6)
   FIRECRAWL_API_KEY: optionalSecret,
   UNSTRUCTURED_API_KEY: optionalSecret,
