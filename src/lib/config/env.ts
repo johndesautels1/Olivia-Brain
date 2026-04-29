@@ -65,6 +65,9 @@ const serverEnvSchema = z.object({
   HOWLOUD_API_KEY: optionalSecret,
   OPENWEATHERMAP_API_KEY: optionalSecret,
 
+  // Report Generation (Sprint 3.7)
+  GAMMA_API_KEY: optionalSecret,
+
   // Real Estate Data Layer APIs (Sprint 3.3)
   MLS_RESO_BASE_URL: optionalUrl,
   MLS_RESO_BEARER_TOKEN: optionalSecret,
