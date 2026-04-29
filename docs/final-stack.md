@@ -1,6 +1,6 @@
 # Olivia Brain Final Stack
 
-This document captures the target end-state stack for Olivia Brain after all phases are implemented. It is aligned to the roadmap artifact in `clues-agent-stack-championship (1).html`, with two explicit decisions applied:
+This document captures the target end-state stack for Olivia Brain after all phases are implemented. It is aligned to the roadmap artifact in `docs/clues-agent-stack-championship.html`, with two explicit decisions applied:
 
 - Twilio is the telephony backbone.
 - ATTOM is removed from the target real-estate data layer.
@@ -53,7 +53,7 @@ Olivia's intelligence must live in the orchestration layer and model cascade, no
 | Avatar layer | **Simli** primary (Olivia™), **Replicate SadTalker** (Cristiano™), HeyGen and D-ID fallback | Olivia/Cristiano/Emelia presentation layer only. |
 | RAG and ingestion | Firecrawl, Unstructured, Cohere Rerank, Jina AI Reader, citation-first retrieval | Evidence-grounded retrieval and document processing. |
 | Real-estate data | MLS feeds, Zillow, HouseCanary, BatchData, PropertyRadar, Plunk, Rentcast, Regrid | ATTOM removed. Prefer cleaner or more controllable feeds. |
-| Relocation data | Numbeo, Teleport, WalkScore, GreatSchools, Visadb.io, InterNations, Expatistan, Wise API | Relocation and quality-of-life data layer. |
+| Relocation data | Google Places, WalkScore, Open Exchange Rates, Travel Buddy AI, FBI Crime Data, WhereNext, SchoolDigger | Relocation and quality-of-life data layer (pay-as-you-go alternatives implemented in Sprint 3.4). |
 | Environmental data | NOAA, FEMA, AirNow, HowLoud, OpenWeatherMap, ClimateCheck | Climate, flood, air, noise, weather signals. |
 | Reports and deliverables | **Gamma** ("The Cadillac") | Branded long-form 50+ page reports and presentation output. |
 | Observability and eval | Langfuse, Ragas, Braintrust, Patronus AI, Cleanlab, red-team harness, QA scorecards, model bake-offs | Tracing, RAG quality, hallucination detection, regression checking. |
@@ -138,4 +138,4 @@ If Vapi or Retell are introduced, they should sit on top of Twilio or alongside 
 
 ## Current-phase note
 
-The current repository only implements the Phase 1 foundation. This file describes the final intended stack, not the current runtime state.
+As of 2026-04-29, the repository is ~65% complete (120/186 items). Phases 1 and 2 are fully implemented. Phases 3 and 4 are in progress with multiple sprints complete. This file describes the final intended stack — not all layers are live yet. See `BATTLE_PLAN.md` for exact per-sprint status.

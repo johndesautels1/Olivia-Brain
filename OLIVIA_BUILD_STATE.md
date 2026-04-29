@@ -4,8 +4,8 @@
 > versus which are BLOCKED until other apps in the portfolio are live.
 > Every AI assistant working on Olivia MUST read this file to avoid wasting time on blocked items.
 >
-> **Last Updated**: 2026-04-12
-> **Master Build Plan**: `BATTLE_PLAN.md` (173 total features, ~56% complete)
+> **Last Updated**: 2026-04-29
+> **Master Build Plan**: `BATTLE_PLAN.md` (186 total items, ~65% complete — 120/186 done)
 
 ---
 
@@ -163,10 +163,10 @@ External third-party APIs, zero dependency on portfolio apps:
 
 | Category | Item Count |
 |----------|-----------|
-| Completed | ~97 items |
-| Blocked (needs other apps) | ~18 items |
-| App-Independent (build now) | ~60 items |
-| **Total** | **~173 items** |
+| Completed | 120 items |
+| Blocked (needs other apps) | ~12 items |
+| App-Independent (build now) | ~54 items |
+| **Total** | **186 items** |
 
 ---
 
@@ -175,8 +175,8 @@ External third-party APIs, zero dependency on portfolio apps:
 | File | Purpose |
 |------|---------|
 | `BATTLE_PLAN.md` | Master build plan with all 173 features and sprint tracking |
-| `CLUES_INTELLIGENCE_ARCHITECTURE.md` | Full CLUES domain pipeline (paragraphical → extraction → modules → evaluation → verdict) |
-| `UNIVERSAL_ARCHITECTURE_ANALYSIS.md` | 3-layer architecture (Immortal Core → Bridge Protocol → Domain Plugins) |
+| `docs/CLUES_INTELLIGENCE_ARCHITECTURE.md` | Full CLUES domain pipeline (paragraphical → extraction → modules → evaluation → verdict) |
+| `docs/UNIVERSAL_ARCHITECTURE_ANALYSIS.md` | 3-layer architecture (Immortal Core → Bridge Protocol → Domain Plugins) |
 | `HANDOFF.md` | Quick-start handoff with key files and cascade reference |
 | `docs/olivia-core-architecture.md` | Portfolio integration model and adapter rules |
 | `docs/final-stack.md` | 9-model cascade, persona specs, target architecture |
