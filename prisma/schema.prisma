@@ -353,3 +353,194 @@ model tool_execution_logs {
   @@index([success, created_at(sort: Desc)], map: "tool_execution_logs_success_idx")
   @@index([tool_name, action_name, created_at(sort: Desc)], map: "tool_execution_logs_tool_idx")
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENT SYSTEM — 250-Agent Autonomous Dashboard
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Agent groups organize agents by category (persona, domain, infrastructure, integration)
+model agent_groups {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String   @unique // "1A", "2B", etc.
+  name        String
+  description String?
+  category    String   @default("domain") // persona, domain, infrastructure, integration
+  sort_order  Int      @default(0)
+  is_archived Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  agents      agents[]
+
+  @@index([sort_order])
+  @@index([category])
+}
+
+/// Individual agents in the 250-agent system
+model agents {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id           String            @unique // "O1-001", "O2-015", etc.
+  name               String
+  description        String?
+  group_id           String            @db.Uuid
+  status             String            @default("initializing") // active, paused, disabled, error, initializing
+  persona            String?           // olivia, cristiano, emelia, system
+  llm_model          String            @default("gpt-4o")
+  temperature        Float             @default(0.7) @db.Real
+  max_tokens         Int               @default(4096)
+  system_prompt      String?
+  schedule_type      String            @default("on_demand") // on_demand, realtime, hourly, daily, weekly, event_driven, cron
+  schedule_cron      String?
+  rate_limit_per_min Int               @default(10)
+  rate_limit_per_day Int               @default(100)
+  total_runs         Int               @default(0)
+  successful_runs    Int               @default(0)
+  failed_runs        Int               @default(0)
+  total_cost_usd     Float             @default(0) @db.Real
+  avg_latency_ms     Float             @default(0) @db.Real
+  performance_score  Float             @default(0) @db.Real
+  last_run_at        DateTime?         @db.Timestamptz(6)
+  last_error_at      DateTime?         @db.Timestamptz(6)
+  last_error         String?
+  is_archived        Boolean           @default(false)
+  created_at         DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime          @default(now()) @db.Timestamptz(6)
+  agent_group        agent_groups      @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  agent_runs         agent_runs[]
+  agent_configs      agent_configs[]
+  agent_briefings    agent_briefings[]
+  agent_learnings    agent_learnings[]
+  agent_metrics      agent_metrics[]
+
+  @@index([group_id])
+  @@index([status])
+  @@index([persona], where: raw("(persona IS NOT NULL)"))
+  @@index([performance_score(sort: Desc)])
+  @@index([last_run_at(sort: Desc)])
+}
+
+/// Individual agent execution runs
+model agent_runs {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id         String            @db.Uuid
+  status           String            @default("running") // running, completed, failed, timeout, cancelled
+  trigger_type     String            @default("manual") // manual, scheduled, event, api, cascade, user_request
+  trigger_user_id  String?
+  input_json       Json              @default("{}")
+  output_json      Json              @default("{}")
+  error_message    String?
+  duration_ms      Int?
+  tokens_used      Int?
+  cost_usd         Float?            @db.Real
+  llm_model        String?
+  cascade_step     Int?
+  started_at       DateTime          @default(now()) @db.Timestamptz(6)
+  completed_at     DateTime?         @db.Timestamptz(6)
+  agent            agents            @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+  agent_learnings  agent_learnings[]
+
+  @@index([agent_id, started_at(sort: Desc)])
+  @@index([status, started_at(sort: Desc)])
+  @@index([trigger_type, started_at(sort: Desc)])
+}
+
+/// Agent configuration key-value pairs
+model agent_configs {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id   String   @db.Uuid
+  key        String
+  value      String
+  is_secret  Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  agent      agents   @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+
+  @@unique([agent_id, key])
+  @@index([agent_id])
+}
+
+/// Agent briefings (daily summaries, alerts, milestones)
+model agent_briefings {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id           String   @db.Uuid
+  briefing_type      String   @default("daily") // daily, weekly, alert, milestone
+  title              String
+  summary            String
+  findings_json      Json     @default("{}")
+  recommendations_json Json   @default("{}")
+  severity           String   @default("info") // info, warning, critical
+  is_read            Boolean  @default(false)
+  period_start       DateTime @db.Timestamptz(6)
+  period_end         DateTime @db.Timestamptz(6)
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+  agent              agents   @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+
+  @@index([agent_id, created_at(sort: Desc)])
+  @@index([is_read, created_at(sort: Desc)])
+  @@index([severity, created_at(sort: Desc)])
+}
+
+/// Agent learnings (patterns, preferences, corrections)
+model agent_learnings {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id      String      @db.Uuid
+  run_id        String?     @db.Uuid
+  learning_type String      @default("insight") // pattern, preference, correction, insight, feedback, optimization
+  title         String
+  description   String
+  data_json     Json        @default("{}")
+  confidence    Float       @default(0.7) @db.Real
+  applied_count Int         @default(0)
+  is_active     Boolean     @default(true)
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  agent         agents      @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+  run           agent_runs? @relation(fields: [run_id], references: [id], onDelete: SetNull)
+
+  @@index([agent_id, is_active])
+  @@index([learning_type])
+  @@index([confidence(sort: Desc)])
+}
+
+/// Daily agent metrics for analytics/charting
+model agent_metrics {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id          String   @db.Uuid
+  date              DateTime @db.Date
+  runs_total        Int      @default(0)
+  runs_successful   Int      @default(0)
+  runs_failed       Int      @default(0)
+  avg_latency_ms    Float    @default(0) @db.Real
+  total_cost_usd    Float    @default(0) @db.Real
+  tokens_used       Int      @default(0)
+  user_interactions Int      @default(0)
+  performance_score Float    @default(0) @db.Real
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  agent             agents   @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+
+  @@unique([agent_id, date])
+  @@index([agent_id, date(sort: Desc)])
+}
+
+/// System alerts (cross-agent, system-level)
+model system_alerts {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source     String   // "cascade", "agent_O1-001", "system"
+  severity   String   @default("info") // info, warning, critical
+  title      String
+  message    String
+  metadata   Json     @default("{}")
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([is_read, created_at(sort: Desc)])
+  @@index([severity, created_at(sort: Desc)])
+}
+
+/// Feature toggles for system-wide kill switches
+model feature_toggles {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique
+  enabled     Boolean  @default(true)
+  description String?
+  updated_by  String?
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+}
