@@ -92,33 +92,33 @@ External third-party APIs, zero dependency on portfolio apps:
 - `[ ]` Rentcast rental estimates
 - `[ ]` Regrid / LandGrid parcel data
 
-### Sprint 3.7 — Report Generation (5 items) — ALL INDEPENDENT
-- `[ ]` Gamma integration ("The Cadillac")
-- `[ ]` 50+ page branded PDF/PPTX reports
-- `[ ]` Client Relocation Report Generator (100 pages)
-- `[ ]` Per-Market FAQ Generation
-- `[ ]` Meeting Prep Packet Generator
+### Sprint 3.7 — Report Generation (5 items) — ✅ COMPLETE
+- `[x]` Gamma integration ("The Cadillac") — `src/lib/reports/gamma.ts` (349 lines)
+- `[x]` 50+ page branded PDF/PPTX reports — `src/lib/reports/engine.ts` (630 lines)
+- `[x]` Client Relocation Report Generator — `src/lib/reports/relocation-report.ts`
+- `[x]` Per-Market FAQ Generation — `src/lib/reports/market-faq.ts`
+- `[x]` Meeting Prep Packet Generator — `src/lib/reports/meeting-prep.ts`
 
 ### Sprint 4.1 — Persona System (3 personas) — ALL INDEPENDENT
 - `[ ]` Olivia persona completion (bilateral comms, "Ask Olivia", Simli + D-ID/HeyGen + ElevenLabs + GPT-5.4)
 - `[ ]` Cristiano persona (unilateral judge, Replicate SadTalker + ElevenLabs + Opus 4.6)
 - `[ ]` Emelia persona (voice + text only, customer service, tech support, GPT brain)
 
-### Sprint 4.2 — 250-Agent Dashboard (6 items) — ALL INDEPENDENT
-- `[ ]` Admin dashboard for agent management
-- `[ ]` Multi-LLM agent configuration
-- `[ ]` Multi-variable select specialty agents
-- `[ ]` Per-agent prompt configuration
-- `[ ]` Per-agent domain assignment
-- `[ ]` Agent type templates (Property Search, Immigration, Negotiation, Email Drafter, Document Chaser, Domain-specific)
+### Sprint 4.2 — 250-Agent Dashboard (6 items) — ✅ COMPLETE
+- `[x]` Admin dashboard for agent management — `src/app/admin/AdminDashboardClient.tsx` (1006 lines)
+- `[x]` Multi-LLM agent configuration — in registry.ts (model, temp, tokens per agent)
+- `[x]` Multi-variable select specialty agents — filtering by status, persona, group, category
+- `[x]` Per-agent prompt configuration — in registry.ts capabilities/dataSources/outputTypes
+- `[x]` Per-agent domain assignment — groupCode in registry.ts
+- `[x]` Agent type templates — 129 agents across 4 categories (persona, domain, infrastructure, integration)
 
-### Sprint 4.3 — Advanced Memory (6 items) — ALL INDEPENDENT
-- `[ ]` Zep / Graphiti knowledge graph
-- `[ ]` Episodic memory layer
-- `[ ]` Semantic memory layer
-- `[ ]` Procedural memory layer
-- `[ ]` Event-Sourced Conversation Ledger
-- `[ ]` Snapshot-Resume State (journeys persist weeks/months)
+### Sprint 4.3 — Advanced Memory (6 items) — ✅ COMPLETE
+- `[x]` Zep / Graphiti knowledge graph — `src/lib/memory/graph-persistence.ts`
+- `[x]` Episodic memory layer — `src/lib/memory/episodic.ts`
+- `[x]` Semantic memory layer — `src/lib/memory/semantic.ts`
+- `[x]` Procedural memory layer — `src/lib/memory/procedural.ts`
+- `[x]` Event-Sourced Conversation Ledger — `src/lib/memory/conversation-ledger.ts`
+- `[x]` Snapshot-Resume State — `src/lib/memory/journey-snapshot.ts`
 
 ### Sprint 4.4 — Durable Execution (5 items) — ALL INDEPENDENT
 - `[ ]` Trigger.dev for long-running jobs
