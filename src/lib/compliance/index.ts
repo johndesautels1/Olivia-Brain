@@ -115,7 +115,6 @@ export {
   type ComplianceCheckResult,
   type ComplianceRequirement,
   type RelocationPurpose,
-  type RuleType,
   type ComplianceSubflowService,
 } from "./subflows";
 
@@ -138,6 +137,7 @@ export {
   type MarketScope,
   type KnowledgeVersion,
   type KnowledgeRule,
+  type RuleType,
   type MarketCodeComponents,
   type KnowledgeVersioningService,
 } from "./knowledge-versioning";
