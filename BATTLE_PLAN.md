@@ -269,12 +269,12 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 - [ ] Entitlements system
 - [ ] White-label Olivia deployment
 
-### Sprint 5.3 - Compliance & Security
-- [ ] Data Residency Routing (EU servers for EU clients)
-- [ ] Call Recording Consent Flows
-- [ ] Consent-Based Memory Sync (GDPR)
-- [ ] Deterministic Compliance Subflows (Fair Housing, visa, tax)
-- [ ] Multi-Market Knowledge Versioning
+### Sprint 5.3 - Compliance & Security (COMPLETE)
+- [x] Data Residency Routing — EU/UK/AP routing, cross-border transfer checks, GDPR compliance
+- [x] Call Recording Consent Flows — All-party/one-party jurisdiction rules, disclosure scripts
+- [x] Consent-Based Memory Sync (GDPR) — Memory consent, Right to be Forgotten implementation
+- [x] Deterministic Compliance Subflows — Visa/tax/immigration rules (US, UK), treaty checks
+- [x] Multi-Market Knowledge Versioning — Market-specific rules, version lifecycle, rule conditions
 
 ---
 
@@ -286,8 +286,8 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 | Phase 2: Voice & Avatar | 4 | 25 | 25 | Complete |
 | Phase 3: Domain Intelligence | 7 | 52 | 44 | In Progress (6/7 sprints complete) |
 | Phase 4: Multi-Agent Beast Mode | 6 | 54 | 41 | In Progress (5/6 sprints complete) |
-| Phase 5: Multi-Tenant & White-Label | 3 | 15 | 5 | In Progress (1/3 sprints complete) |
-| **TOTAL** | **25** | **186** | **154** | **~83% Complete** |
+| Phase 5: Multi-Tenant & White-Label | 3 | 15 | 10 | In Progress (2/3 sprints complete) |
+| **TOTAL** | **25** | **186** | **159** | **~85% Complete** |
 
 ---
 
