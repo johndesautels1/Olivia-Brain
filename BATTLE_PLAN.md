@@ -255,12 +255,12 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 
 ## PHASE 5: MULTI-TENANT & WHITE-LABEL
 
-### Sprint 5.1 - Tenant Architecture
-- [ ] Multi-tenant database schema
-- [ ] Tenant isolation
-- [ ] Per-tenant adapter selection
-- [ ] Per-tenant model routing overrides
-- [ ] Per-tenant policy/approval rules
+### Sprint 5.1 - Tenant Architecture (COMPLETE)
+- [x] Multi-tenant database schema — 7 Prisma models (tenants, members, configs, adapters, models, policies, api_keys)
+- [x] Tenant isolation — AsyncLocalStorage context, `withTenantContext()`, permission checks
+- [x] Per-tenant adapter selection — `resolveAdapter()`, priority-based, 8 adapter types
+- [x] Per-tenant model routing overrides — `resolveModel()`, 8 intents, 7 providers
+- [x] Per-tenant policy/approval rules — approval rules, rate limits, feature access, data residency
 
 ### Sprint 5.2 - White-Label System
 - [ ] Branding pack system
@@ -286,8 +286,8 @@ Olivia's intelligence lives in the orchestration layer and model cascade, not in
 | Phase 2: Voice & Avatar | 4 | 25 | 25 | Complete |
 | Phase 3: Domain Intelligence | 7 | 52 | 44 | In Progress (6/7 sprints complete) |
 | Phase 4: Multi-Agent Beast Mode | 6 | 54 | 41 | In Progress (5/6 sprints complete) |
-| Phase 5: Multi-Tenant & White-Label | 3 | 15 | 0 | Pending |
-| **TOTAL** | **25** | **186** | **149** | **~80% Complete** |
+| Phase 5: Multi-Tenant & White-Label | 3 | 15 | 5 | In Progress (1/3 sprints complete) |
+| **TOTAL** | **25** | **186** | **154** | **~83% Complete** |
 
 ---
 
