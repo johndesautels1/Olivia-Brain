@@ -544,3 +544,169 @@ model feature_toggles {
   updated_by  String?
   updated_at  DateTime @default(now()) @db.Timestamptz(6)
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MULTI-TENANT ARCHITECTURE — Sprint 5.1
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Core tenant identity — isolated organizational units
+model tenants {
+  id                     String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug                   String                    @unique // URL-safe identifier: "acme-corp"
+  name                   String                    // Display name: "Acme Corporation"
+  status                 String                    @default("active") // active, suspended, trial, churned
+  tier                   String                    @default("starter") // starter, professional, enterprise, white_label
+  domain                 String?                   @unique // Custom domain: "ai.acmecorp.com"
+  logo_url               String?
+  primary_color          String?                   // Brand color hex
+  timezone               String                    @default("UTC")
+  locale                 String                    @default("en-US")
+  // Limits
+  max_seats              Int                       @default(5)
+  max_conversations_day  Int                       @default(100)
+  max_tokens_month       Int                       @default(1000000)
+  tokens_used_month      Int                       @default(0)
+  // Billing
+  stripe_customer_id     String?
+  billing_email          String?
+  trial_ends_at          DateTime?                 @db.Timestamptz(6)
+  // Metadata
+  metadata               Json                      @default("{}")
+  created_at             DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                  @default(now()) @db.Timestamptz(6)
+  // Relations
+  members                tenant_members[]
+  configs                tenant_configs[]
+  adapter_overrides      tenant_adapter_overrides[]
+  model_overrides        tenant_model_overrides[]
+  policies               tenant_policies[]
+  api_keys               tenant_api_keys[]
+
+  @@index([status])
+  @@index([tier])
+  @@index([domain], where: raw("(domain IS NOT NULL)"))
+}
+
+/// Tenant membership — users belong to tenants with roles
+model tenant_members {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String   @db.Uuid
+  user_id     String   // External user ID (Clerk, Auth0, etc.)
+  email       String
+  role        String   @default("member") // owner, admin, member, viewer, api_only
+  status      String   @default("active") // active, invited, suspended
+  invited_by  String?  @db.Uuid
+  joined_at   DateTime? @db.Timestamptz(6)
+  last_active DateTime? @db.Timestamptz(6)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  tenant      tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, user_id])
+  @@unique([tenant_id, email])
+  @@index([user_id])
+  @@index([email])
+}
+
+/// Tenant configuration — key-value settings per tenant
+model tenant_configs {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String   @db.Uuid
+  key         String   // "default_persona", "welcome_message", "max_context_turns"
+  value       String
+  value_type  String   @default("string") // string, number, boolean, json
+  is_secret   Boolean  @default(false)
+  description String?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  tenant      tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, key])
+  @@index([tenant_id])
+}
+
+/// Tenant adapter overrides — which external services each tenant uses
+model tenant_adapter_overrides {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String   @db.Uuid
+  adapter_type  String   // "calendar", "crm", "email", "voice", "avatar", "realtime"
+  adapter_name  String   // "london_calendar", "hubspot", "salesforce", "nylas"
+  is_enabled    Boolean  @default(true)
+  priority      Int      @default(0) // Higher = preferred when multiple available
+  config        Json     @default("{}") // Adapter-specific config (non-secret)
+  credentials   Json     @default("{}") // Encrypted credentials reference
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+  tenant        tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, adapter_type, adapter_name])
+  @@index([tenant_id, adapter_type])
+}
+
+/// Tenant model overrides — per-tenant LLM preferences and routing
+model tenant_model_overrides {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id       String   @db.Uuid
+  intent          String   // "general", "planning", "research", "operations", "math", "judge"
+  provider        String   // "anthropic", "openai", "google", "xai", "mistral", "perplexity"
+  model           String   // "claude-sonnet-4-20250514", "gpt-4o", etc.
+  temperature     Float    @default(0.7) @db.Real
+  max_tokens      Int      @default(4096)
+  is_enabled      Boolean  @default(true)
+  priority        Int      @default(0) // Cascade order within intent
+  fallback_model  String?  // If primary fails
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  tenant          tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, intent, provider, model])
+  @@index([tenant_id, intent])
+}
+
+/// Tenant policies — approval rules, feature access, rate limits
+model tenant_policies {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id       String   @db.Uuid
+  policy_type     String   // "approval_rule", "rate_limit", "feature_access", "data_residency"
+  policy_name     String   // "require_approval_for_emails", "max_api_calls_per_minute"
+  is_enabled      Boolean  @default(true)
+  config          Json     @default("{}") // Policy-specific configuration
+  // For approval rules
+  approval_threshold Float? @db.Real // Confidence below this requires approval
+  approvers       String[] @default([]) // User IDs who can approve
+  // For rate limits
+  limit_value     Int?
+  limit_period    String?  // "minute", "hour", "day", "month"
+  // For feature access
+  features        String[] @default([]) // Feature keys this policy controls
+  // For data residency
+  allowed_regions String[] @default([]) // "us", "eu", "uk", "ap"
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  tenant          tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, policy_type, policy_name])
+  @@index([tenant_id, policy_type])
+  @@index([is_enabled])
+}
+
+/// Tenant API keys — programmatic access tokens
+model tenant_api_keys {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id       String    @db.Uuid
+  name            String    // "Production API Key", "Staging Key"
+  key_prefix      String    // First 8 chars for identification: "sk_live_"
+  key_hash        String    // Hashed full key
+  scopes          String[]  @default(["read", "write"]) // "read", "write", "admin", "billing"
+  rate_limit      Int       @default(100) // Requests per minute
+  last_used_at    DateTime? @db.Timestamptz(6)
+  expires_at      DateTime? @db.Timestamptz(6)
+  is_active       Boolean   @default(true)
+  created_by      String    @db.Uuid // User ID who created it
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  tenant          tenants   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([key_hash])
+  @@index([tenant_id, is_active])
+  @@index([key_prefix])
+}
