@@ -87,6 +87,24 @@ export {
   type DeckScores,
 } from "./scoring";
 
+// Optimization (LLM-powered)
+export {
+  optimizeSlide,
+  optimizeAllSlides,
+  draftPlanSection,
+  analyzeContent,
+  askOlivia,
+  generateDeckFromArchetype,
+  extractApiText,
+  safeParseJson,
+  buildPrompt,
+  type OptimizeSlideResult,
+  type DraftSectionResult,
+  type AnalysisResult,
+  type OptimizeConfig,
+  type SlideOptimizeInput,
+} from "./optimize";
+
 // ─────────────────────────────────────────────
 // Quick Stats
 // ─────────────────────────────────────────────
