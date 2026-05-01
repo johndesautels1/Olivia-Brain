@@ -544,6 +544,22 @@ model feature_toggles {
   updated_at  DateTime @default(now()) @db.Timestamptz(6)
 }
 
+/// Authorized admin emails for system access
+model admin_emails {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String   @unique
+  role       String   @default("admin") // superadmin, admin, viewer
+  name       String?
+  is_active  Boolean  @default(true)
+  added_by   String?
+  last_login DateTime? @db.Timestamptz(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([is_active])
+  @@index([role])
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MULTI-TENANT ARCHITECTURE — Sprint 5.1
 // ═══════════════════════════════════════════════════════════════════════════
