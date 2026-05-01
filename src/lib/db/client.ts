@@ -5,7 +5,7 @@
  * In development, reuses the same instance across hot reloads.
  */
 
-import { PrismaClient } from "../../../generated/prisma";
+import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
