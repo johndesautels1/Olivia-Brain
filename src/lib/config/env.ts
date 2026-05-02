@@ -113,7 +113,16 @@ const serverEnvSchema = z.object({
   HEYGEN_API_KEY: optionalSecret,
   DID_API_KEY: optionalSecret,
   REPLICATE_API_TOKEN: optionalSecret,
+
+  // LiveAvatar streaming (separate vendor from HeyGen async render).
+  // See docs/HEYGEN_LTM_CONFIG.md for must-preserve contracts.
+  LIVEAVATAR_API_KEY: optionalSecret,
+  LIVEAVATAR_OLIVIA_AVATAR_ID: optionalSecret,
+
   ELEVENLABS_API_KEY: optionalSecret,
+  // LTM-pinned voice ID for the LiveAvatar path. Distinct from ELEVENLABS_VOICE_OLIVIA
+  // (which the multi-provider voice abstraction uses).
+  ELEVENLABS_OLIVIA_VOICE_ID: z.string().default("rVk0ZvRulp6xrYJkGztP"),
   ELEVENLABS_VOICE_OLIVIA: z.string().default("21m00Tcm4TlvDq8ikWAM"),
   ELEVENLABS_VOICE_CRISTIANO: z.string().default("yoZ06aMxZJJ28mfd3POQ"),
   ELEVENLABS_VOICE_EMELIA: z.string().default("EXAVITQu4vr4xnSDxMaL"),

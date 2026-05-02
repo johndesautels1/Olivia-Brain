@@ -26,6 +26,7 @@
     "@ai-sdk/xai": "^3.0.79",
     "@composio/core": "^0.6.8",
     "@prisma/adapter-pg": "^7.7.0",
+    "livekit-client": "^2.18.0",
     "@langchain/langgraph": "^1.2.8",
     "@langfuse/otel": "^5.0.2",
     "@opentelemetry/api": "^1.9.1",
