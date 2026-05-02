@@ -16,8 +16,7 @@
  * NOT a production page. Will be removed or relocated once Clerk auth is wired.
  */
 
-import { Suspense, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { OliviaProvider } from "@/components/olivia/OliviaProvider";
 import {
   OliviaVideoAvatar,
@@ -25,12 +24,7 @@ import {
   type AvatarState,
 } from "@/components/olivia/OliviaVideoAvatar";
 
-// Tell Next 16 not to attempt static prerender — the page uses useSearchParams
-// and has no static fallback. Belt-and-suspenders with the Suspense wrapper below.
-export const dynamic = "force-dynamic";
-
 function SmokeTest() {
-  const searchParams = useSearchParams();
   const [adminKey, setAdminKey] = useState<string>("");
   const [keyInput, setKeyInput] = useState<string>("");
   const [draft, setDraft] = useState<string>(
@@ -41,14 +35,17 @@ function SmokeTest() {
   const [history, setHistory] = useState<string[]>([]);
   const avatarRef = useRef<OliviaVideoAvatarRef>(null);
 
-  // Load admin key from query param on mount
+  // Load admin key from ?key= on mount. Plain DOM read — no useSearchParams
+  // (which forces a Suspense boundary at the page level) and no Next route
+  // segment config. Simpler, fewer wrappers, prerender-safe.
   useEffect(() => {
-    const fromQuery = searchParams.get("key");
+    if (typeof window === "undefined") return;
+    const fromQuery = new URLSearchParams(window.location.search).get("key");
     if (fromQuery) {
       setAdminKey(fromQuery);
       setKeyInput(fromQuery);
     }
-  }, [searchParams]);
+  }, []);
 
   function handleSpeak() {
     const text = draft.trim();
@@ -350,29 +347,10 @@ function SmokeTest() {
   );
 }
 
-function SmokeTestFallback() {
-  return (
-    <main
-      style={{
-        maxWidth: 880,
-        margin: "0 auto",
-        padding: "32px 20px",
-        color: "var(--muted)",
-        fontFamily: "var(--font-mono), monospace",
-        fontSize: "0.85rem",
-      }}
-    >
-      Loading smoke test…
-    </main>
-  );
-}
-
 export default function TestAvatarPage() {
   return (
     <OliviaProvider>
-      <Suspense fallback={<SmokeTestFallback />}>
-        <SmokeTest />
-      </Suspense>
+      <SmokeTest />
     </OliviaProvider>
   );
 }
