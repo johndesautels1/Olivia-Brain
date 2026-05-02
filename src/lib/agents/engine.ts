@@ -9,6 +9,7 @@
  */
 
 import prisma from "@/lib/db/client";
+import type { Prisma } from "@prisma/client";
 import type { AgentRunContext, AgentRunResult } from "./handlers";
 import { getHandler } from "./handlers";
 import type { TriggerType } from "./types";
@@ -221,7 +222,7 @@ async function createBriefing(
       briefing_type: briefing.type ?? "alert",
       title: briefing.title,
       summary: briefing.summary,
-      findings_json: briefing.details ?? {},
+      findings_json: (briefing.details ?? {}) as Prisma.InputJsonValue,
       severity: briefing.severity ?? "info",
       period_start: now,
       period_end: now,
@@ -252,7 +253,7 @@ async function createLearning(
       title: learning.title,
       description: learning.description,
       confidence: learning.confidence ?? 0.7,
-      data_json: learning.sourceData ?? {},
+      data_json: (learning.sourceData ?? {}) as Prisma.InputJsonValue,
     },
   });
 }
@@ -363,7 +364,7 @@ export async function executeAgent(options: ExecuteAgentOptions): Promise<Execut
         status: "running",
         trigger_type: triggeredBy,
         trigger_user_id: clientId,
-        input_json: input,
+        input_json: input as Prisma.InputJsonValue,
         llm_model: agent.llm_model,
       },
     });
@@ -439,7 +440,7 @@ export async function executeAgent(options: ExecuteAgentOptions): Promise<Execut
     where: { id: run.id },
     data: {
       status: runStatus,
-      output_json: result.outputData ?? {},
+      output_json: (result.outputData ?? {}) as Prisma.InputJsonValue,
       error_message: errorMessage,
       duration_ms: durationMs,
       tokens_used: result.tokensUsed ?? 0,

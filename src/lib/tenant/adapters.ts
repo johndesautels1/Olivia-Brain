@@ -12,6 +12,7 @@
  */
 
 import { getPrisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 import type {
   TenantAdapterOverride,
@@ -46,14 +47,14 @@ export async function setAdapterOverride(
       adapter_name: input.adapterName,
       is_enabled: input.isEnabled ?? true,
       priority: input.priority ?? 0,
-      config: input.config ?? {},
-      credentials: input.credentials ?? {},
+      config: (input.config ?? {}) as Prisma.InputJsonValue,
+      credentials: (input.credentials ?? {}) as Prisma.InputJsonValue,
     },
     update: {
       is_enabled: input.isEnabled ?? true,
       priority: input.priority ?? 0,
-      config: input.config ?? {},
-      credentials: input.credentials ?? {},
+      config: (input.config ?? {}) as Prisma.InputJsonValue,
+      credentials: (input.credentials ?? {}) as Prisma.InputJsonValue,
       updated_at: new Date(),
     },
   });

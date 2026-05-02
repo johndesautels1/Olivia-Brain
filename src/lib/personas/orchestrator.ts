@@ -380,14 +380,3 @@ export async function checkAllPersonaHealth(): Promise<PersonaHealthStatus[]> {
   const ids: PersonaId[] = ["olivia", "cristiano", "emelia"];
   return Promise.all(ids.map(checkPersonaHealth));
 }
-
-// ─── Exports ──────────────────────────────────────────────────────────────────
-
-export {
-  getActivePersona,
-  routeToPersona,
-  generateSystemPrompt,
-  invokePersona,
-  checkPersonaHealth,
-  checkAllPersonaHealth,
-};

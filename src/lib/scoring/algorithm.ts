@@ -20,8 +20,8 @@ import type {
   AccessMetrics,
   RecreationMetrics,
   TalentMetrics,
-  DEFAULT_WEIGHTS,
 } from "./types";
+import { DEFAULT_WEIGHTS } from "./types";
 
 // ─── Score Calculation ────────────────────────────────────────────────────────
 
@@ -191,7 +191,7 @@ function calculateSafetyScore(metrics: SafetyMetrics, profile: ClientProfile): C
     weight: 0,
     weightedScore: 0,
     factors,
-    confidence: calculateDataConfidence(metrics),
+    confidence: calculateDataConfidence(metrics as unknown as Record<string, number>),
     dataAge: "fresh",
   };
 }
@@ -276,7 +276,7 @@ function calculateMoneyScore(metrics: AffordabilityMetrics, profile: ClientProfi
     weight: 0,
     weightedScore: 0,
     factors,
-    confidence: calculateDataConfidence(metrics),
+    confidence: calculateDataConfidence(metrics as unknown as Record<string, number>),
     dataAge: "fresh",
   };
 }
@@ -370,7 +370,7 @@ function calculateAccessScore(metrics: AccessMetrics, profile: ClientProfile): C
     weight: 0,
     weightedScore: 0,
     factors,
-    confidence: calculateDataConfidence(metrics),
+    confidence: calculateDataConfidence(metrics as unknown as Record<string, number>),
     dataAge: "fresh",
   };
 }
@@ -478,7 +478,7 @@ function calculateRecreationScore(metrics: RecreationMetrics, profile: ClientPro
     weight: 0,
     weightedScore: 0,
     factors,
-    confidence: calculateDataConfidence(metrics),
+    confidence: calculateDataConfidence(metrics as unknown as Record<string, number>),
     dataAge: "fresh",
   };
 }
@@ -579,12 +579,48 @@ function calculateTalentScore(metrics: TalentMetrics, profile: ClientProfile): C
     weight: 0,
     weightedScore: 0,
     factors,
-    confidence: calculateDataConfidence(metrics),
+    confidence: calculateDataConfidence(metrics as unknown as Record<string, number>),
     dataAge: "fresh",
   };
 }
 
 // ─── Classification ───────────────────────────────────────────────────────────
+
+export function calculateCategoryScore(
+  category: SMARTCategory,
+  city: CityData,
+  profile: ClientProfile,
+  weight: number
+): CategoryScore {
+  switch (category) {
+    case "safety":
+      return applyWeight(calculateSafetyScore(city.safety, profile), weight);
+    case "money":
+      return applyWeight(calculateMoneyScore(city.affordability, profile), weight);
+    case "access":
+      return applyWeight(calculateAccessScore(city.access, profile), weight);
+    case "recreation":
+      return applyWeight(calculateRecreationScore(city.recreation, profile), weight);
+    case "talent":
+      return applyWeight(calculateTalentScore(city.talent, profile), weight);
+  }
+}
+
+export function calculateOverallScore(categories: Record<SMARTCategory, CategoryScore>): number {
+  return Object.values(categories).reduce((sum, cat) => sum + cat.weightedScore, 0);
+}
+
+export function classifyScoreTier(score: number): ScoreTier {
+  return determineTier(score);
+}
+
+export function classifyMatchQuality(
+  overall: number,
+  categories: Record<SMARTCategory, CategoryScore>,
+  profile: ClientProfile
+): MatchQuality {
+  return determineMatchQuality(overall, categories, profile);
+}
 
 function determineTier(score: number): ScoreTier {
   if (score >= 85) return "exceptional";
@@ -635,7 +671,3 @@ function calculateDataConfidence(metrics: Record<string, number>): number {
   const validCount = values.filter((v) => v > 0 && v <= 100).length;
   return validCount / values.length;
 }
-
-// ─── Exports ──────────────────────────────────────────────────────────────────
-
-export { calculateSMARTScore, determineTier, determineMatchQuality };

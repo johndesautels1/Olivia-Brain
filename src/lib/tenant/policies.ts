@@ -12,6 +12,7 @@
  */
 
 import { getPrisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 import type {
   TenantPolicy,
@@ -46,7 +47,7 @@ export async function setPolicy(
       policy_type: input.policyType,
       policy_name: input.policyName,
       is_enabled: input.isEnabled ?? true,
-      config: input.config ?? {},
+      config: (input.config ?? {}) as Prisma.InputJsonValue,
       approval_threshold: input.approvalThreshold ?? null,
       approvers: input.approvers ?? [],
       limit_value: input.limitValue ?? null,
@@ -56,7 +57,7 @@ export async function setPolicy(
     },
     update: {
       is_enabled: input.isEnabled ?? true,
-      config: input.config ?? {},
+      config: (input.config ?? {}) as Prisma.InputJsonValue,
       approval_threshold: input.approvalThreshold ?? null,
       approvers: input.approvers ?? [],
       limit_value: input.limitValue ?? null,

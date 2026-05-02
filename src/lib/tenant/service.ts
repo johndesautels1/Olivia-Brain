@@ -7,6 +7,7 @@
  */
 
 import { getPrisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 import type {
   Tenant,
@@ -51,7 +52,7 @@ export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
       max_conversations_day: limits.maxConversationsDay,
       max_tokens_month: limits.maxTokensMonth,
       billing_email: input.billingEmail ?? null,
-      metadata: input.metadata ?? {},
+      metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
     },
   });
 
@@ -106,7 +107,7 @@ export async function updateTenant(id: string, input: UpdateTenantInput): Promis
       ...(input.maxConversationsDay !== undefined && { max_conversations_day: input.maxConversationsDay }),
       ...(input.maxTokensMonth !== undefined && { max_tokens_month: input.maxTokensMonth }),
       ...(input.billingEmail !== undefined && { billing_email: input.billingEmail }),
-      ...(input.metadata !== undefined && { metadata: input.metadata }),
+      ...(input.metadata !== undefined && { metadata: input.metadata as Prisma.InputJsonValue }),
       updated_at: new Date(),
     },
   });

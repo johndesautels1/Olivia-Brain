@@ -7,6 +7,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/client";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const toggles = await prisma.feature_toggles.findMany();

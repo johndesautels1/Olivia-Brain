@@ -319,5 +319,3 @@ export function rankByCategory(
 
   return scored;
 }
-
-export { compareCities, headToHead, rankByCategory };

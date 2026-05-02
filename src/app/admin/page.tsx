@@ -9,6 +9,8 @@ import prisma from "@/lib/db/client";
 import { AGENT_GROUPS, AGENT_DEFINITIONS, hasHandler } from "@/lib/agents";
 import { AdminDashboardClient } from "./AdminDashboardClient";
 
+export const dynamic = "force-dynamic";
+
 // Sync registry to database on load
 async function syncRegistryToDB() {
   // 1. Upsert all groups

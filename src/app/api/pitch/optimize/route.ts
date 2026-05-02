@@ -16,7 +16,7 @@ const slideSchema = z.object({
   id: z.string(),
   type: z.string(),
   text: z.string().optional().default(""),
-  fields: z.record(z.string()).optional().default({}),
+  fields: z.record(z.string(), z.string()).optional().default({}),
 });
 
 const requestSchema = z.object({

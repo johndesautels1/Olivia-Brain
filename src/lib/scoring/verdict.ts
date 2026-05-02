@@ -429,9 +429,3 @@ function calculateVerdictConfidence(comparison: CityComparison, config: VerdictC
 
   return Math.min(1, baseConfidence + marginBonus);
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Exports
-// ─────────────────────────────────────────────────────────────────────────────
-
-export { generateSingleCityVerdict, generateComparisonVerdict };
