@@ -16,7 +16,7 @@
  * NOT a production page. Will be removed or relocated once Clerk auth is wired.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { OliviaProvider } from "@/components/olivia/OliviaProvider";
 import {
@@ -24,6 +24,10 @@ import {
   type OliviaVideoAvatarRef,
   type AvatarState,
 } from "@/components/olivia/OliviaVideoAvatar";
+
+// Tell Next 16 not to attempt static prerender — the page uses useSearchParams
+// and has no static fallback. Belt-and-suspenders with the Suspense wrapper below.
+export const dynamic = "force-dynamic";
 
 function SmokeTest() {
   const searchParams = useSearchParams();
@@ -346,10 +350,29 @@ function SmokeTest() {
   );
 }
 
+function SmokeTestFallback() {
+  return (
+    <main
+      style={{
+        maxWidth: 880,
+        margin: "0 auto",
+        padding: "32px 20px",
+        color: "var(--muted)",
+        fontFamily: "var(--font-mono), monospace",
+        fontSize: "0.85rem",
+      }}
+    >
+      Loading smoke test…
+    </main>
+  );
+}
+
 export default function TestAvatarPage() {
   return (
     <OliviaProvider>
-      <SmokeTest />
+      <Suspense fallback={<SmokeTestFallback />}>
+        <SmokeTest />
+      </Suspense>
     </OliviaProvider>
   );
 }
