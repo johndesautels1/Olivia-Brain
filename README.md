@@ -174,9 +174,27 @@ src/
 
 - `D:\Clues Main` — Source of truth for CLUES domain intelligence
 - `D:\clues-questionnaire-engine` — Source of truth for 2,486 questions
-- `D:\london-tech-map` — Protected external codebase (do not edit from here)
+- `D:\London-Tech-Map` — **READ-ONLY external codebase**
 
-Olivia integrates through adapters, not by copying domain logic.
+### Working with London-Tech-Map (LTM) — ABSOLUTE RULES
+
+LTM is a separate, live, production app. Olivia Brain has its own roadmap that involves
+**copying** Olivia and Studio components out of LTM into this repo so Olivia can ship as a
+standalone service. While this work is in progress:
+
+1. **NO file in `D:\London-Tech-Map` may be deleted, renamed, edited, moved, or altered
+   in any way.** Read-only. Always.
+2. **Components are COPIED, never moved.** When this repo ports `OliviaVideoAvatar.tsx`
+   from LTM, the LTM original stays exactly where it is, untouched. LTM's live
+   integration with LiveAvatar must keep working at all times.
+3. **Olivia integrates with CLUES domain data via adapters**, not by copying domain logic.
+   The Olivia/Studio UI port is the only category of LTM code that comes into this repo.
+4. **No PRs, branches, or commits target the LTM repo from Olivia Brain sessions.**
+   If LTM ever needs a change, that's a separate session in the LTM repo — and only with
+   explicit user approval.
+
+See `docs/HEYGEN_LTM_CONFIG.md` for the LiveAvatar contracts that must be preserved
+byte-for-byte during the port, and `docs/MERGE_PLAN.md` for the full migration plan.
 
 ---
 
