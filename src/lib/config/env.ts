@@ -92,7 +92,13 @@ const serverEnvSchema = z.object({
   INSTANTLY_API_KEY: optionalSecret,
   HUBSPOT_ACCESS_TOKEN: optionalSecret,
   CLUES_LONDON_BASE_URL: optionalUrl,
+  // Internal Olivia↔LTM routes (/api/internal/olivia/*). Custom signature
+  // header (`x-olivia-signature`). Used by the calendar adapter today.
   CLUES_LONDON_INTERNAL_API_KEY: optionalSecret,
+  // Public LTM v1 namespace (/api/v1/*). Standard Authorization: Bearer
+  // header. LTM-side env var name is `LTCI_API_KEYS` (plural, comma-
+  // separated). Used by the bridge LtmKnowledgeProvider.
+  CLUES_LONDON_V1_API_KEY: optionalSecret,
 
   TWILIO_ACCOUNT_SID: optionalSecret,
   TWILIO_AUTH_TOKEN: optionalSecret,
