@@ -220,3 +220,50 @@ Suggested **next session start**:
 2. Read `docs/STUDIO_OLIVIA_DESIGN.md`
 3. Read `docs/HEYGEN_LTM_CONFIG.md` for must-preserve LiveAvatar contracts
 4. Decide with the user whether to **(A) stand up the GrandMaster UI shell as `/`** (so the designer can finally see the design), or **(B) start Phase 1 Bridge contract** (so the merge backbone is in place first). My recommendation remains (A) — visible UI first, then backbone behind it.
+
+---
+
+## Part 10 — Sessions 1–3 progress (appended 2026-05-02)
+
+After this session-1 architectural baseline was captured, three implementation sessions ran on the same day. Status as of HEAD `e5d17d6`.
+
+### Session 1 — LiveAvatar server-side
+- `src/lib/liveavatar/{types,client,websocket,index}.ts` — LiveAvatar SDK client, types pinned to LTM's contracts.
+- `src/lib/olivia/liveavatar.ts` — `createSessionToken()` + `startSession()` + `createAndStartSession()` against `api.liveavatar.com/v1`.
+- `src/lib/rate-limit.ts` — in-memory bucket + `requireAdminKey` Bearer-token gate.
+- `src/app/api/olivia/liveavatar/route.ts` + `src/app/api/olivia/liveavatar/speak/route.ts` — session create endpoint and ElevenLabs PCM streaming endpoint.
+- Build green. Commit `d564151`.
+
+### Session 2 — LiveAvatar browser port + smoke test
+- `src/components/olivia/OliviaVideoAvatar.tsx` (684 LOC) + `OliviaProvider.tsx` (506 LOC) ported byte-for-byte from LTM. New `adminKey` prop forwards as Bearer auth on the two fetches (Clerk replaces this in Session 18). Inline-style fallbacks added for the Tailwind classnames so visuals work without Tailwind.
+- `src/app/test-avatar/page.tsx` — proof-of-life: click Start → her face appears → type a message → she speaks. Initially shipped with a Suspense wrapper + `force-dynamic` band-aid to satisfy Next 16's prerender pass on `useSearchParams`. **User correctly rejected the wrapper** as exactly the kind of band-aid the standard forbids; replaced with a plain `URLSearchParams` read. Lesson recorded in memory.
+- README — Protected Repo Boundaries section expanded into explicit copy-only LTM rules.
+- Commits `647caa8` → `0034be5` → `90bef0b`.
+
+### Session 3 — Bridge providers + test infrastructure
+- `src/lib/bridge/types.ts` + `registry.ts` already existed at session start (the "KEY ASSET" referenced in Part 5). MERGE_PLAN's "finalise types.ts" step was moot.
+- **`OliviaSelfProvider`** (`src/lib/bridge/providers/olivia-self.ts`, 446 LOC + 36 tests). Reads conversations, semantic memories, episodes from Supabase. World-class hardened: `AbortSignal.timeout` on every Supabase call, `withTraceSpan` wrapping `data.query`, JSDoc on every public symbol, graceful unconfigured-mode (vocabulary still served), constructor injection for tests. Internal `runWithTimeout` + `runCountWithTimeout` helpers, one `classifyFailure` helper to avoid duplication. Earlier `as unknown as` cast was removed as a band-aid.
+- **`LtmKnowledgeProvider`** (`src/lib/bridge/providers/ltm.ts`, ~580 LOC + 40 tests). Wraps LTM's public `GET /api/v1/organizations` and `GET /api/v1/districts` over `Authorization: Bearer ${CLUES_LONDON_V1_API_KEY}`. Same world-class bar. Tests use a mock `fetch` to prove HTTP wiring end-to-end without LTM contact (URL, Bearer header, x-olivia-app-id, x-olivia-trace-id, JSON parsing).
+- New env var `CLUES_LONDON_V1_API_KEY` — distinct from the existing `CLUES_LONDON_INTERNAL_API_KEY` used by the calendar adapter.
+- **Vitest 2.1.x** + `vite-tsconfig-paths` wired. `vitest.config.mts` (renamed from `.ts` because `vite-tsconfig-paths` is ESM-only). Dependency drift bug from a missed `npm install` after a `package.json` edit fixed in `dd7a440`; new standing rule: lockfile in same commit as `package.json`. Always.
+- 76 tests passing. `npm run typecheck` clean.
+- Commits `9e00548` → `f8eae11` → `dd7a440` → `07c16a2` → `018c19a` → `e5d17d6`.
+
+### Lessons captured into permanent memory
+
+- **World-class 2026 standard is now applied to every repo** (not just Olivia Brain). Memory file: `feedback_world_class_standard.md`. The Suspense band-aid in Session 2 prompted the rule; the user later widened it to LTM and any future repo.
+- **`package.json` and `package-lock.json` ship together** — learned the hard way when Vercel rejected `f8eae11` with "Missing: vitest from lock file". Standing rule.
+- **Verify before claiming done** — I wrote 30+ Vitest assertions in Session 3 but didn't run them initially. The user's "ok" approval was followed by my actually running `npm test` and finding (a) a JSDoc terminator collision in `vitest.config.ts` and (b) an ESM-only `vite-tsconfig-paths` loader issue. Both real bugs caught only because I ran the tests.
+
+### Documentation written this day
+
+- `docs/BOOTSTRAP.md` — fast-context startup doc (this is the file new agents read first).
+- `docs/BUILD_SEQUENCE.md` — canonical session-by-session plan for sessions 4 → launch.
+- `docs/STUDIO_PORT_MANIFEST.md` — file-level port inventory across all three Studio sources, recharacterising the Studio scope from "build" to "port engine + rebuild UI".
+- `docs/MERGE_PLAN.md` Phase 3 updated to reflect the recharacterised Studio scope.
+
+### Where session 4 picks up
+
+Per `BUILD_SEQUENCE.md` Track A: chat brain end-to-end. `/api/olivia/chat` route on Olivia Brain, single-provider first (Anthropic Sonnet 4.6), persisted to `conversations` + `conversation_turns`, AbortSignal+timeout, Langfuse trace. After that lands, Sessions 5–6 widen to the cascade and wire `OliviaProvider.sendMessage` so the smoke page demonstrates a real conversation in voice + face.
+
+**Build status at session-3 close: green. Test status: 76/76 passing. Typecheck: clean. Vercel: deploying from main.**

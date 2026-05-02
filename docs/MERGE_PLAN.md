@@ -235,26 +235,19 @@ Key architectural decisions:
 **Dependencies:** Phase 1.
 **Exit criteria:** Brain alone can serve every existing LTM-Olivia API. Embedded smoke test still passes.
 
-### Phase 3 — Studio shell rebuild (Week 6-8)
-**Deliverables:**
-- Move `src/lib/studio/{types,entityModes,questionMapper}.ts` → Brain unchanged.
-- Move 27 studio components → Brain `src/components/studio/`. Refactor to Tailwind-or-inline-style decision (recommended: keep Tailwind in components, use prototype `C` token map only for the Library/DeckDetailModal/AvatarOrb primitives).
-- Move 17 document block components + workspace → Brain `src/components/documents/`.
-- Build new primitives in `src/components/primitives/`:
-  - `AvatarOrb` (from prototype).
-  - `ConsensusDots` (from prototype).
-  - Reuse existing `Badge` and `CompletionRing` (Brain already has them).
-- Build the 3-region homepage at `app/(public)/page.tsx` matching prototype layout:
-  - Header with AvatarOrb + score chips HUD + Match/Export.
-  - Left aside (264px): project name (inline-editable), Investor Persona (5 pills), Deck Config (2x2 selects), Avatar pad, Section nav (4 buttons), Documents tree, Frameworks panel, Plan section nav.
-  - Center main: mode toggle + section content (Pitch/Plan/Documents/General).
-  - Right aside (320px): Olivia | Library | Preview | Themes | Audit tabs.
-- Wire all 4 stubbed Anthropic calls to real Brain endpoints: `/api/pitch/optimize`, `/api/pitch/draft`, `/api/pitch/chat`, `/api/pitch/analyze`.
-- Implement J/K nav, focus-trap modal, arrow-key tab rover.
-- Implement Audit tab pulling `admin_audit_logs` filtered to user/session.
+### Phase 3 — Studio engine port + UI rebuild (Sessions 7–16)
 
-**Dependencies:** Phase 2.
-**Exit criteria:** Studio loads in standalone mode at `/`; user can apply an archetype, edit slides, run analysis, see live score chips, draft a plan section, switch themes, replay audit log.
+**Recharacterised (2026-05-02).** Earlier framing of "build Studio" was wrong. LTM has a fully-built Studio (~22,700 LOC across `components/studio/` + `components/documents/` + `lib/studio/`) — the issue is the UI chrome is hideous. The merge work is:
+
+1. **Engine port (Sessions 7–8).** Copy the working engine + 18 document block types + question engine from LTM into Olivia Brain at the equivalent paths. LTM stays read-only. See `STUDIO_PORT_MANIFEST.md` § A, C, D.
+2. **UI rebuild (Sessions 9–14).** Throw out Studio v1's hideous layout chrome AND Studio v2's wrapper attempt. Render the GrandMaster prototype shell (`STUDIO_OLIVIA_DESIGN.md`) on top of the ported engine. Five reusable primitives (AvatarOrb, ConsensusDots, Badge, CompletionRing, DeckDetailModal). Three-region layout. Library + DeckDetailModal. Document tree. Frameworks. Right-pane tabs. J/K nav. Theme switching.
+3. **Studio ↔ brain wiring (Sessions 15–16).** Re-point the engine's "Ask Olivia to Draft", "Analyze", "Optimize", and "Cristiano re-evaluate" calls from LTM's Anthropic shim to Olivia Brain's cascade routes (`/api/pitch/{draft,analyze,optimize,chat}` + `/api/judge`).
+
+**Dependencies:** Phase 2 (chat brain end-to-end). Without Phase 2, the Studio's "Ask Olivia" buttons are placeholders.
+
+**Exit criteria:** Studio loads at `/studio/[id]` and at the public homepage `/`. User can apply a deck archetype, edit slides via the engine, run live analysis, see the score chips HUD update, draft a plan section, switch themes, replay the audit log. End-to-end Vitest integration.
+
+**Total estimate:** 5–9 sessions for engine port + UI rebuild + wiring (down from the earlier "build Studio" estimate of 8–12 weeks). See `BUILD_SEQUENCE.md` Tracks B, C, D for the per-session breakdown.
 
 ### Phase 4 — Agents consolidation (Week 9-10)
 **Deliverables:**
