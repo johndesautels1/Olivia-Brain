@@ -15,7 +15,7 @@ A standalone Next.js 16 / React 19 / Prisma 7 service that hosts **Olivia** — 
 
 Olivia is positioned as **the world's most advanced agentic vertical agent for relocation, real estate, and the London Tech Map vertical.** Multi-million-dollar deliverable. **2026 world-class production code on every line.** No band-aids. No symptom suppression.
 
-**Deadline:** 2026-06-02. **Today:** 2026-05-02 (sessions 1–3 complete; ~26 sessions remaining).
+**Deadline:** 2026-06-02. **Today:** 2026-05-02 (sessions 1–4 complete; ~25 sessions remaining).
 
 ---
 
@@ -33,16 +33,17 @@ LTM contains **two** Studio implementations side-by-side: the original engine (S
 
 ---
 
-## Current state — sessions 1–3
+## Current state — sessions 1–4
 
-HEAD: `e5d17d6` (after `feat(bridge): add LtmKnowledgeProvider`).
+HEAD: post-`55b0045`, after Session 4's chat-brain landing.
 
 Shipped:
 - **LiveAvatar pipeline end-to-end.** Server: session token + start endpoints, ElevenLabs PCM streaming. Browser: `OliviaVideoAvatar.tsx` + `OliviaProvider.tsx` ported from LTM. Smoke test: `/test-avatar`. Click Start → her face appears → type a message → she speaks. **Highest-risk item in the 30-day plan is behind us.**
 - **Bridge contract operational.** `UniversalKnowledgeProvider` interface (LTM was already substantially built — `lib/bridge/types.ts`, `registry.ts`). Two concrete providers ship: `OliviaSelfProvider` (Supabase-backed self-data) and `LtmKnowledgeProvider` (LTM `/api/v1/organizations` + `/api/v1/districts` over Bearer auth). Both world-class hardened: `AbortSignal.timeout` on every call, `withTraceSpan` wrapping queries, JSDoc on every public symbol, graceful unconfigured-mode fallback.
-- **Test infra wired.** Vitest 2.1.x + `vite-tsconfig-paths`. **76 tests passing.** `npm run typecheck` clean. `npm test` runs locally; CI integration is a follow-up (see `BUILD_SEQUENCE.md`).
+- **Chat brain v1 (single provider).** `POST /api/olivia/chat` calls Anthropic Sonnet 4.6 directly via `@ai-sdk/anthropic`, persists user + assistant turns to `conversations` + `conversation_turns` (Supabase with in-memory fallback via `getConversationStore`), wraps the whole handler in `withTraceSpan("olivia.chat.request", ...)`, applies a 30 s `AbortSignal.timeout` on the LLM call, returns a structured fallback reply when `ANTHROPIC_API_KEY` is unset or the call aborts, and is rate-limited per IP. Cascade extension lands in Session 5.
+- **Test infra wired.** Vitest 2.1.x + `vite-tsconfig-paths`. **92 tests passing.** `npm run typecheck` clean. `npm test` runs locally; CI integration is a follow-up (see `BUILD_SEQUENCE.md`).
 
-Not yet started: chat brain, Studio engine port, Studio UI rebuild, voice input, Clerk auth, cascade orchestrator port, agents consolidation, multi-tenant hardening, vertical adapters. The full plan is in `BUILD_SEQUENCE.md`.
+Not yet started: cascade extension of chat, Studio engine port, Studio UI rebuild, voice input, Clerk auth, cascade orchestrator port, agents consolidation, multi-tenant hardening, vertical adapters. The full plan is in `BUILD_SEQUENCE.md`.
 
 ---
 
@@ -94,7 +95,7 @@ Not yet started: chat brain, Studio engine port, Studio UI rebuild, voice input,
 - **Bridge.** Every cross-app data call goes through `knowledgeRegistry.routeQuery(domain, query)`. Two providers registered today: `olivia` (self) and `ltm` (London Tech Map v1 API).
 - **Avatar.** LiveAvatar LITE mode + ElevenLabs PCM. Contracts pinned in `HEYGEN_LTM_CONFIG.md`. **Don't change them naively.**
 - **Cascade.** 9-model fallback chain (Anthropic Sonnet 4.6 primary, Opus as Cristiano judge, GPT-5.4 secondary, Gemini 3.1, Grok 4 math, Perplexity Sonar, Tavily, Mistral, Companies House). Wired into `lib/services/model-cascade.ts`. Not yet routing real chat traffic — that's Session 4.
-- **Tests.** Vitest. Run via `npm test`. **76 tests passing today.**
+- **Tests.** Vitest. Run via `npm test`. **92 tests passing today.**
 - **Memory layers.** Six: episodic, semantic, procedural, graph, journey, Mem0. All Prisma-backed.
 - **Observability.** Langfuse + OTel via `lib/observability/{langfuse,tracer}.ts`. Every meaningful op gets a span.
 

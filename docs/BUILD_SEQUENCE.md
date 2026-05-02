@@ -12,13 +12,14 @@
 
 ---
 
-## Done — Sessions 1–3 (status as of HEAD `e5d17d6`)
+## Done — Sessions 1–4 (status post-`55b0045` + Session 4 commit)
 
 | # | Track | Outcome |
 |---|---|---|
 | 1 | LiveAvatar server-side | Session token + start endpoints, ElevenLabs PCM bridge, rate-limit + admin-key gate. |
 | 2 | LiveAvatar browser port | `OliviaVideoAvatar.tsx` + `OliviaProvider.tsx` ported byte-for-byte from LTM. `/test-avatar` smoke page. |
 | 3 | Bridge contract + first two providers | Vitest infra. `OliviaSelfProvider` (Supabase). `LtmKnowledgeProvider` (LTM `/api/v1/organizations` + `/api/v1/districts`). 76 passing tests, `tsc --noEmit` clean. |
+| 4 | Chat brain v1 — `/api/olivia/chat` | Single-provider Anthropic Sonnet 4.6 via `@ai-sdk/anthropic` + `generateText`. Zod validation on `{ message, conversationId?, pageContext?, pipelineContext?, documentContext? }`. Persists user + assistant turns via `getConversationStore()` (Supabase + in-memory safe-fallback). `withTraceSpan("olivia.chat.request")` with PII-free attributes. 30 s `AbortSignal.timeout`. Structured fallback reply on missing `ANTHROPIC_API_KEY` or vendor failure (status stays 200, mode flagged in turn metadata). Per-IP rate limit. **16 new tests, 92/92 total passing**, `tsc --noEmit` clean. |
 
 **Architectural decisions locked** (see `SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Part 3):
 - Olivia ships as a separate Next.js service.
@@ -38,7 +39,7 @@ Without this, every Studio "Ask Olivia" button is a placeholder. Highest-value u
 
 | Session | Deliverable | Exit criterion |
 |---------|-------------|----------------|
-| **4** | `/api/olivia/chat` route on Olivia Brain. Single-provider first (Anthropic Sonnet 4.6 via `@ai-sdk/anthropic`). Persistence to `conversations` + `conversation_turns`. AbortSignal+timeout + Langfuse trace. | `POST /api/olivia/chat { message }` returns a typed reply, persists turns, emits a Langfuse trace. Test against the unconfigured path (no API key) returns a clean fallback. |
+| **4** ✅ | `/api/olivia/chat` route on Olivia Brain. Single-provider first (Anthropic Sonnet 4.6 via `@ai-sdk/anthropic`). Persistence to `conversations` + `conversation_turns`. AbortSignal+timeout + Langfuse trace. | **DONE.** `POST /api/olivia/chat { message }` returns `{ conversationId, messageId, reply }`, persists turns via `getConversationStore()`, opens an OTel span. Unconfigured path (no `ANTHROPIC_API_KEY`) returns a clean structured fallback and still persists. 16 new tests, 92/92 passing, typecheck clean. |
 | **5** | Cascade: extend `/api/olivia/chat` to use the existing 9-model cascade in `src/lib/services/`. Intent router → LangGraph node → fallback chain. Companies House + Kimi providers added per `MERGE_PLAN.md` Phase 2. | One chat call walks the cascade; second call from an unrelated session does not; failover from `claude-sonnet-4-6` → `gpt-5.4-pro` works in a forced-fault test. |
 | **6** | Wire `OliviaProvider.sendMessage` to the new route. The `/test-avatar` smoke page now demonstrates a full conversation: type → cascade → reply → ElevenLabs → LiveAvatar lip-syncs. | Live demo: ask Olivia anything in the smoke page, she answers in voice + face. |
 

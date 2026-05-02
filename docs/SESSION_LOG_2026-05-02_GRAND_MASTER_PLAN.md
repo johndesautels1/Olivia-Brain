@@ -267,3 +267,40 @@ After this session-1 architectural baseline was captured, three implementation s
 Per `BUILD_SEQUENCE.md` Track A: chat brain end-to-end. `/api/olivia/chat` route on Olivia Brain, single-provider first (Anthropic Sonnet 4.6), persisted to `conversations` + `conversation_turns`, AbortSignal+timeout, Langfuse trace. After that lands, Sessions 5–6 widen to the cascade and wire `OliviaProvider.sendMessage` so the smoke page demonstrates a real conversation in voice + face.
 
 **Build status at session-3 close: green. Test status: 76/76 passing. Typecheck: clean. Vercel: deploying from main.**
+
+---
+
+## Part 11 — Session 4 (chat brain v1)
+
+Track A · Session 4 of `BUILD_SEQUENCE.md`. Goal: light up `POST /api/olivia/chat` against a single provider, with persistence + tracing + validation, so `OliviaProvider.sendMessage` (already pointed at this URL since Session 2) has a real backend.
+
+### What shipped
+
+- **`src/app/api/olivia/chat/route.ts`** — single-handler route, Node runtime, `force-dynamic`. Calls `anthropic(env.ANTHROPIC_MODEL_PRIMARY)` via `generateText` from `ai`. 30 s `AbortSignal.timeout` on the LLM call. Whole handler wrapped in `withTraceSpan("olivia.chat.request", …)` with metadata-only attributes (conversation id, is-new flag, message length, presence of contexts) — never the message text. Per-IP `rateLimit({ limit: 30, windowMs: 60_000 })` shim.
+- **Request contract** validated by Zod: `{ message: 1–8000 chars, conversationId?: uuid, pageContext?, pipelineContext?, documentContext? }`. Optional contexts are concatenated into the system prompt as a "User is on page / Pipeline / Document" block — kept simple so Session 5's cascade port can swap the model invocation without prompt drift.
+- **Persistence** via the existing `getConversationStore()`, which already wraps Supabase (`conversations` + `conversation_turns`) with an in-memory `SafeConversationStore` fallback. User turn carries `pageContext` and presence flags; assistant turn carries `provider: "anthropic"`, `model: <id>`, `mode: "live" | "fallback"`.
+- **Response** matches what `OliviaProvider.sendMessage` already consumes: `{ conversationId, messageId, reply }`. New conversation id is minted when none is supplied; supplied ids are reused.
+- **Resilience** — three failure modes return 200 with a structured fallback reply (still persisted): missing `ANTHROPIC_API_KEY`, AbortSignal timeout, vendor exception. Persistence failures inside the handler are caught and surface as `{ error }` with status 500 only when even the in-memory store can't accept the turn — which the safe-store wrapper makes practically unreachable.
+- **`src/app/api/olivia/chat/__tests__/route.test.ts`** — 16 tests across five groups: validation (5), unconfigured mode (2), configured mode (5), resilience (3), rate limiting (1). Mocks `@/lib/config/env`, `ai`, and `@ai-sdk/anthropic`; uses the real conversation store in its in-memory mode so persistence is exercised end-to-end without standing up Postgres.
+
+### Auth posture
+
+No `requireAdminKey` gate at the route layer. Reasoning: `OliviaProvider.sendMessage` (the only consumer today) doesn't currently forward an Authorization header, so gating now would break the Session 6 smoke flow. Existing `/api/chat` already follows the same pattern. The per-IP rate limiter caps accidental loops in the meantime. Real per-user auth lands in Session 18 with Clerk (Track F).
+
+### Decisions worth carrying forward
+
+- **Did not reuse `invokePhase1Graph`** even though it already does cascade + persistence + intent routing through the same store. Session 4's exit criterion is single-provider, and Session 5's plan is to *replace* the Anthropic call here with `runModelCascade` — wrapping LangGraph now would be premature. The Phase 1 graph stays as the LangGraph experiment surface (`/api/chat`), and `/api/olivia/chat` becomes the production chat endpoint. Session 5 will reconcile the two.
+- **Added optional contexts as a system-prompt block, not a message-history rewrite.** Keeps the contract narrow — the cascade port can swap the prompt shape without changing the handler.
+- **Fallback replies return 200**, not 5xx. The avatar UI's worst failure mode is a blank speech bubble; a polite "I'm taking longer than expected" preserves the experience and the trace still records the failure for operators.
+
+### Verification
+
+- `npm test` — **92 passing (76 prior + 16 new)**, 3 test files.
+- `npm run typecheck` — clean.
+- No `package.json` change, no lockfile churn.
+
+### Where Session 5 picks up
+
+Track A · Session 5: extend `/api/olivia/chat` to call `runModelCascade` (`src/lib/services/model-cascade.ts`) instead of `generateText` directly. Intent router lands as a function above the cascade call; LangGraph wrapping is deferred to Track G. Forced-fault test must show failover from `claude-sonnet-4-6` → `gpt-5.4-pro`. Persistence, tracing, validation, rate limiting all stay as-is.
+
+**Build status at session-4 close: green. Test status: 92/92 passing. Typecheck: clean.**
