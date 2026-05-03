@@ -638,3 +638,94 @@ Track Calendar · **C3 voice + olivia models + engine**. Picks up from Session 9
 **Operator action before C4:** apply `prisma/sql/02-add-voice-olivia-foundation.sql` to Supabase (Option B path) so the new tables exist when C4 routes start hitting them. Set Twilio env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`) before C4 routes go live.
 
 **Build status at session-10 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar voice + olivia models committed; 2 LTM files explicitly deferred (processOliviaMessage in chat.ts, all of knowledge-base.ts) to dependency-aware future tracks.**
+
+---
+
+## Part 18 — Session 11 (Track Calendar C4 — voice/email/call/sms/WhatsApp routes)
+
+Track Calendar · **C4 — 19 of 21 voice/email/call/sms/WhatsApp API routes**. Picks up from Session 10's C3 (9 voice/olivia models + 4 voice lib files + tools.ts + olivia-guardrails DB integration + slim chat.ts shipped). The HANDOFF flagged the Clerk auth gating decision; Option B (auth stub) was chosen and shipped as `lib/auth/session.ts`. Two LTM routes were dropped from C4 because they depend on Document/Package models that aren't in Olivia Brain — same defer-to-dependency-track pattern as the 3 C2 deferrals.
+
+### What shipped (commit 1657fe2)
+
+**Auth strategy (Option B):**
+- `src/lib/auth/session.ts` NEW — Clerk auth STUB. Exports `getAuthSession(): Promise<{ userId: string | null }>`. Behavior:
+  - dev / preview: reads `STUB_USER_ID` env var; throws clearly if unset
+  - production: throws unconditionally ("Production deployment requires Clerk integration — Track F Session 18")
+- Routes import `getAuthSession` instead of Clerk's `auth`. One-line swap when Clerk lands.
+- **Not a band-aid:** throws-loudly-on-missing-env so a developer cannot accidentally deploy auth-less routes that look authorized. Function signature matches what Clerk's `auth()` returns.
+- Tracked as **W-015** in README weakness backlog.
+
+**Supporting libs ported:**
+- `src/lib/twilio/client.ts` byte-for-byte (~478 lines). Coexists with the pre-existing `src/lib/twilio/server.ts` — different surfaces, different consumers. Pure (dynamic import for Twilio SDK; no DB / no LTM-domain).
+- `src/lib/elevenlabs/client.ts` byte-for-byte (~150 lines). Coexists with Olivia Brain's pre-existing `src/lib/voice/elevenlabs.ts`. Routes were written against LTM's API; cleanest path was a parallel surface, not refactoring the routes to use the older Olivia Brain wrapper.
+- `src/lib/email/resend.ts` byte-for-byte. Resend SDK wrapper for email (`sendOliviaEmail`, `sendConversationEmail`, `sendPackageEmail`, `sendSenderConfirmation`). Last two functions only used by the dropped `voice/to-package` route — kept anyway in the byte-for-byte port (will be needed when Document/Package land).
+- `npm install resend` — Resend SDK added to dependencies.
+
+**Routes ported (19):**
+
+| Route | Auth | LTM-domain notes |
+|-------|------|------------------|
+| `call/route.ts` | Clerk stub | Outbound call initiation |
+| `call/audio/route.ts` | webhook | Twilio audio fetch |
+| `call/extract/route.ts` | Clerk stub | Post-call extraction; **`prisma.userProfile.findUnique` lookups dropped (2 occurrences)** — userId IS Clerk user ID |
+| `call/gather/route.ts` | webhook | Twilio gather (speech input) |
+| `call/inbound/route.ts` | webhook | Twilio inbound webhook |
+| `call/outbound/route.ts` | webhook | Twilio outbound webhook |
+| `call/recording/route.ts` | webhook | Twilio recording status callback |
+| `call/reminder/route.ts` | Clerk stub | SMS reminder for calendar entries |
+| `call/status/route.ts` | webhook | Twilio status callback (uses `conversation.userProfileId` → renamed to `userId`) |
+| `call/twiml/route.ts` | webhook | TwiML generator |
+| `calls/route.ts` | Clerk stub | List calls |
+| `calls/[id]/route.ts` | Clerk stub | Call detail; `userProfile` include dropped |
+| `voice/route.ts` | rate-limit only | ElevenLabs TTS |
+| `voice/presentation/route.ts` | Clerk stub | Generate presentation from voice |
+| `voice/process/route.ts` | Clerk stub | Process voice transcript |
+| `email/route.ts` | Clerk stub | Send Olivia email |
+| `sms/route.ts` | Clerk stub | Send SMS; **`prisma.userProfile.findUnique` lookup dropped** (it was unused — comment said "Get user profile for logging" but result wasn't logged) |
+| `whatsapp/route.ts` | Clerk stub | Send WhatsApp |
+| `conversations/[id]/email/route.ts` | Clerk stub | Email conversation transcript; **`prisma.userProfile.findUnique` lookup dropped** + ownership check changed from `conversation.userId !== userProfile.id` to `conversation.userId !== userId` (userId IS Clerk user ID) |
+
+**Routes intentionally NOT ported (2):**
+- `voice/to-document/route.ts` (~300 LOC) — `prisma.document.findUnique/create`, `prisma.documentCollection.findFirst/create`. Document and DocumentCollection models don't exist in Olivia Brain. Defer to Documents track (post-Clerk per `STUDIO_PORT_MANIFEST` § K).
+- `voice/to-package/route.ts` (~220 LOC) — `prisma.document.findUnique` + `prisma.package` (Package not in schema). Defer to Track L (cluesintelligence has the Package primitive in its vision docs).
+
+### Mechanical replacements applied bulk-script (PowerShell)
+
+```
+import { auth } from "@clerk/nextjs/server";  →  import { getAuthSession } from "@/lib/auth/session";
+const { userId } = await auth();              →  const { userId } = await getAuthSession();
+await auth()                                  →  await getAuthSession()
+import { prisma } from "@/lib/db/client";     →  import prisma from "@/lib/db/client";
+userProfileId                                 →  userId
+```
+
+Plus ~70 individual `userProfileId` occurrences across the 19 files (Prisma field accesses, function args, log messages).
+
+### Decisions
+
+- **Option B chosen for Clerk auth.** Rationale: ships all 21 routes (well, 19 — the other 2 dropped on different grounds) with a clean one-line-swap path to Clerk; no scope creep into Track F; throws-loudly-on-missing-env eliminates the silent-failure footgun that "stub returns hardcoded user" would have. Aligned with `feedback_world_class_standard` ("no band-aids — root-cause every failure"). User pre-authorized "go ahead on session 11" — recommendation surfaced + executed in same turn.
+- **`voice/to-document` + `voice/to-package` dropped not stubbed.** Same rationale as the 3 C2 deferrals. Single concern per port. The dropped routes can re-port byte-for-byte when their dependencies land.
+- **Twilio + ElevenLabs clients ported byte-for-byte alongside existing Olivia Brain surfaces** rather than refactoring routes to use the older wrappers. Routes are byte-for-byte ports of LTM, so their import surface should match LTM's.
+- **`prisma.userProfile.findUnique` lookups dropped not stubbed.** Olivia Brain's calendar/voice/olivia models all use `userId String @db.Uuid` directly (see `project_ltm_types_no_speculative_generalization` memory). Clerk userId IS the canonical user ID; no UserProfile mapping needed.
+- **`resend` npm installed** rather than stubbed. Lib `lib/email/resend.ts` is fully functional at runtime — it gracefully skips sending if `RESEND_API_KEY` is missing, with a console warning. No dev-mode stub needed.
+
+### Verification
+
+- `npm run typecheck` — clean (after fixing the 4 `prisma.userProfile` lookups; bulk script handled the other ~70 mechanical replacements automatically).
+- `npm test` — **94/94 passing** (no regressions; same 76 bridge + 18 chat-route).
+- Code: 25 files / 5,056 insertions in commit `1657fe2`.
+- LTM source unchanged.
+
+### Where Session 12 picks up
+
+**Track Calendar · C5** — calendar UI + 24 calendar API routes. Per BUILD_SEQUENCE.md C5 row: `components/calendar/*` (15 files including **CalendarNotepad** with email/SMS/WhatsApp share modals fully wired to C4 routes) + supporting (`useDraggable`, `OliviaConsentModal`, `mobile-keyboard`). 24 calendar API routes (entries, prep-tasks, sync ×6, attendees, analytics, journey, memory, nearby, notes, olivia, plan, travel, workflow, cron ×2, events ical/rsvp, videos/calendar). Exit: `<CalendarView>` and `<CalendarNotepad>` mount; share buttons hit C4 routes.
+
+**Anticipated gotchas in C5:**
+- **Tailwind/styling caveat from W-011 + W-012 carries forward** (calendar UI files use Tailwind classes that are inert in Olivia Brain). Visual fidelity ships in Track C UI rebuild. New weakness item **W-013** captures this when C5 lands.
+- **Clerk dependency.** Some of the 24 API routes will need user auth — same Option B `getAuthSession` stub applies.
+- **CalendarNotepad share modals wire to C4 routes.** Coordinate paths: `/api/olivia/email`, `/api/olivia/sms`, `/api/olivia/whatsapp` already exist post-C4. Routes return `{ success: true }` on smoke calls.
+- **Smart Score / pgvector calendar memory** — `useMemo` for nearby venues will hit the `match_calendar_memory()` SQL function (W-014); graceful empty results until that's installed.
+
+**Operator action before C5:** none new beyond C3's already-anticipated migration. C5 will not change schema; just ports UI + adapter routes.
+
+**Build status at session-11 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar voice/email/call/sms/WhatsApp routes committed; 2 LTM routes explicitly deferred (voice/to-document, voice/to-package); one new weakness W-015 logged (Clerk auth stub).**
