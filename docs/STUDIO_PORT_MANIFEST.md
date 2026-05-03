@@ -373,3 +373,200 @@ Manifest § C.2 marks `OrgMapProvider.tsx` as **REFERENCE** (LTM-specific, skip)
 6. App route ports (`app/documents/*`, 13 files) defer to Session 9 or Track C.
 7. Vitest snapshot tests on the 18 block components (original Session 7 exit criterion).
 8. `mapBlocksToQuestions()` round-trip test.
+
+---
+
+## L. Calendar + voice subsystem (added 2026-05-03 — Track Calendar C1–C6 closed)
+
+LTM calendar + voice subsystems were ported across **6 sessions** (C1 → C6, run-rate Sessions 8 → 13). Same byte-for-byte pattern as § J (Map subsystem), with three categories of adaptations: (a) `userProfileId → userId`, (b) LTM-domain Prisma references stripped (Document, AnalysisResult, Event, EventRsvp, Video, Organization), (c) Clerk auth via Option B stub at `src/lib/auth/session.ts`. Per `project_ltm_types_no_speculative_generalization` memory: types like `CalendarEntryWithDetails` stay as-ported until a second non-LTM consumer (cluesintelligence Track L) requires generalization.
+
+### L.1 Schema — calendar foundation (C1: 14 models + 15 enums)
+
+| Model | Notes |
+|-------|-------|
+| `CalendarEntry` | Primary entry table. cuid → UUID; userProfileId → userId; linkedOrgId/linkedEventId/linkedPersonId FKs dropped (LTM-domain). |
+| `CalendarPreferences` | Per-user prefs. |
+| `CalendarPrepTask` | Per-entry prep checklist. |
+| `CalendarReminder` | Lead-time reminders. |
+| `CalendarEntryAttendee` | Attendees. linkedPersonId dropped. |
+| `CalendarInteraction` | Olivia ↔ entry interaction history. |
+| `CalendarSyncAccount` | Google / Outlook / Calendly OAuth state. |
+| `CalendarSyncConflict` | Sync conflict ledger. |
+| `CalendarWebhookState` | Webhook subscription tracking. |
+| `CalendarMemoryChunk` | pgvector embeddings for semantic search. |
+| `CalendarNote` | Notepad notes. |
+| `OliviaCalendarRecommendation` | AI-suggested entries. |
+| `VoiceTranscriptionLog` | Per-call transcription. |
+| `FounderWeek` | Founder-mode behavior summary. |
+
+**Dropped (intentional, LTM-domain — not ported and not stubbed):**
+- `DealRoomSession` + `DealRoomMessage` (sales-domain → clues-property-search later if vertical builds)
+- `Event`, `EventParticipant`, `EventRsvp`, `EventSeries`, `PackageEvent`, `CascadeEvent` (LTM tech-event modeling — separate concept from personal calendar)
+
+15 enums ported with full value sets: `CalendarCategory` (37 values), `CalendarEntryType`, `CalendarPriority`, `CalendarSyncProvider`, `CalendarSyncDirection`, `CalendarConflictResolution`, `CalendarInteractionType`, `CalendarPrepTaskStatus`, `CalendarAttendeeRsvp`, `CalendarAttendeeRole`, `AttendanceStatus`, `WebhookSubscriptionStatus`, `OliviaRecommendationType`, `OliviaRecommendationUrgency`, `OliviaRecommendationStatus`.
+
+### L.2 Schema — voice + olivia foundation (C3: 9 models)
+
+Added in C3 with the same C1/C2 adaptations + `voiceConversations` reverse relation wired on `CalendarEntry`.
+
+| Model | Notes |
+|-------|-------|
+| `OliviaConversation` | Multi-turn conversation root. |
+| `OliviaMessage` | Per-turn message. |
+| `OliviaPresentation` | Olivia-generated presentations (tied to conversations). |
+| `OliviaConsent` | Layer 2 GDPR consent (`data_storage`, etc.). |
+| `OliviaGuardrail` | Per-user content/PII guardrails. |
+| `OliviaUserMemory` | Per-user persistent memory (consent-gated). |
+| `VoiceConversation` | Voice-call session. UserProfile FK relation dropped; CalendarEntry FK kept; `generatedDocumentId`/`PackageId` polymorphic strings (no FK). |
+| `VoiceContact` | Contacts referenced from voice calls. linkedPersonId dropped. |
+| `VoiceActionItem` | Action items extracted from calls. `calendarEntryId` polymorphic. |
+
+SQL migration generated via `prisma migrate diff` at `prisma/sql/02-add-voice-olivia-foundation.sql` (10.5 KB). Operator path is paste-into-Supabase-SQL-Editor (Option B), same as C1.
+
+### L.3 lib/calendar (C2 — 16 of 19 LTM files ported)
+
+| File | Adaptation | Status |
+|------|------------|--------|
+| `crypto.ts` | byte-for-byte | ✅ |
+| `event-categories.ts` | byte-for-byte | ✅ |
+| `rrule-expand.ts` | byte-for-byte | ✅ |
+| `olivia-schemas.ts` | byte-for-byte | ✅ |
+| `olivia-prompts.ts` | byte-for-byte | ✅ |
+| `calendar-judge.ts` | byte-for-byte | ✅ |
+| `olivia-engine.ts` | byte-for-byte | ✅ |
+| `daily-brief.ts` | userProfileId → userId | ✅ |
+| `behavior-engine.ts` | userProfileId → userId | ✅ |
+| `travel-buffer.ts` | userProfileId → userId | ✅ |
+| `calendar-memory.ts` | userId rename + SQL identifier rename + `gen_random_uuid()` (no `::text` cast — UUID column type) | ✅ |
+| `google-sync.ts` | userProfileId → userId | ✅ |
+| `outlook-sync.ts` | userProfileId → userId | ✅ |
+| `olivia-guardrails.ts` | C2: hardcoded defaults; C3: DB integration restored when OliviaGuardrail model landed | ✅ |
+| `proximity-cluster.ts` | Only `haversineKm` survives — Organization/Event queries dropped per `project_ltm_types_no_speculative_generalization` | ✅ (trimmed) |
+| `index.ts` | barrel adjusted | ✅ |
+| `document-aware.ts` | `Document` model — Documents track post-Clerk | ⏸ DEFERRED |
+| `founder-journey.ts` | `AnalysisResult` model — Track L | ⏸ DEFERRED |
+| `workflow-generator.ts` | `AnalysisResult` model — Track L | ⏸ DEFERRED |
+
+### L.4 lib/voice (C3 — 4 files)
+
+| File | Adaptation | Status |
+|------|------------|--------|
+| `voice-conversation.ts` | byte-for-byte | ✅ |
+| `voice-document.ts` | byte-for-byte | ✅ |
+| `voice-prompts.ts` | byte-for-byte | ✅ |
+| `voice-memory.ts` | userProfileId → userId | ✅ |
+
+### L.5 lib/olivia tools + supporting (C2 + C3)
+
+| File | Adaptation | Status |
+|------|------------|--------|
+| `tools.ts` | calendar slice (C2: 2 tools — get_user_calendar, web_search) + memory tools (C3: +get_user_memory, save_user_memory + hasLearningConsent helper) — 4 tools total. The other 22 LTM tools defer to C3/C4/Track L. | ✅ partial (4 of 26) |
+| `chat.ts` | C3 slim slice — createConversation / getConversationHistory / getConversationMessages. `processOliviaMessage` NOT ported (depends on code-knowledge layer + Studio context + CristianoShell + `prisma.userProfile` — `/api/olivia/chat` cascade route serves the equivalent). `knowledge-base.ts` NOT ported (no in-scope consumer). | ✅ partial |
+| `lib/twilio/client.ts` | byte-for-byte; coexists with pre-existing `lib/twilio/server.ts` | ✅ |
+| `lib/elevenlabs/client.ts` | byte-for-byte; coexists with pre-existing `lib/voice/elevenlabs.ts` | ✅ |
+| `lib/email/resend.ts` | byte-for-byte | ✅ |
+| `lib/system-alerts.ts` | console-only stub (SystemAlert model not in OB schema; **W-016**) | ✅ stubbed |
+| `lib/auth/session.ts` | NEW. `getAuthSession()` reads `STUB_USER_ID` env in dev/preview, throws clearly in production. One-line swap when Clerk lands in Track F Session 18 (**W-015**). | ✅ |
+| `lib/video/embeddings.ts` | byte-for-byte (C1 — pre-port for memory features) | ✅ |
+| `lib/mobile-keyboard.ts` | byte-for-byte (C5) | ✅ |
+
+### L.6 API routes (C4 + C5 — 37 of 45 ported)
+
+**C4 (19 of 21):**
+- `call/*` (10): route, audio, extract, gather, inbound, outbound, recording, reminder, status, twiml
+- `calls/*` (2): list, [id]
+- `voice/*` (3): route, presentation, process
+- channel routes (3): email, sms, whatsapp
+- `conversations/[id]/email` (1)
+- **Deferred:** `voice/to-document` (Document model), `voice/to-package` (Package model)
+
+**C5 (18 of 24, plus 1 add):**
+- `entries`, `prep-tasks`, `attendees`, `analytics`, `memory`, `notes`, `olivia`, `plan`, `travel`
+- `sync/*` (8): root, google/callback, outlook/callback, conflicts, webhooks, calendly
+- `cron/*` (2): calendar-sync, calendar-plan
+- **Add:** `app/api/olivia/consent` (required by `OliviaConsentModal`)
+- **Deferred:** `journey` (AnalysisResult), `workflow` (AnalysisResult), `documents` (Document), `nearby` (`findNearbyVenues` + Org/Event), `events/ical` (Event), `events/rsvp` (EventRsvp), `videos/calendar` (Video)
+
+**C6 (page surface):**
+- `app/calendar/page.tsx` — server-component shell, title swapped to "Calendar — Olivia Brain"
+- `app/calendar/CalendarPageClient.tsx` — byte-for-byte client wrapper (OCC theater + My Calendar tab + Notes tab + agenda modal + focus-mode + consent flow)
+
+Mechanical adaptations across C4 + C5: `userProfileId → userId` (~210 occurrences via PowerShell bulk script with word-boundary safety so `clerkUserId` untouched), 14 `prisma.userProfile.findUnique` lookups dropped (userId IS the Clerk user ID directly), Calendly sync route's email-based UserProfile lookup replaced with `CalendarSyncAccount.providerEmail` match.
+
+### L.7 UI components (C5 — 15 + 3 supporting)
+
+| Component | Adaptations | Status |
+|-----------|-------------|--------|
+| `AgendaRail.tsx` | byte-for-byte | ✅ |
+| `CalendarEntryModal.tsx` | byte-for-byte (uses `react-datepicker` + `react-international-phone` + Google Maps autocomplete) | ✅ |
+| `CalendarNotepad.tsx` | byte-for-byte; share modals wire to C4 routes | ✅ |
+| `CalendarView.tsx` | drop `entry.linkedOrg?.name` + `linkedEventId` ecosystem-event linkage | ✅ |
+| `ConfirmationChip.tsx` | byte-for-byte | ✅ |
+| `EventStatusWidget.tsx` | byte-for-byte | ✅ |
+| `FloatingCalendarWidget.tsx` | byte-for-byte (uses `useDraggable` + `MapAppointmentsContext`) | ✅ |
+| `FocusMode.tsx` | byte-for-byte | ✅ |
+| `InsightsPanel.tsx` | byte-for-byte | ✅ |
+| `OliviaPanel.tsx` | byte-for-byte | ✅ |
+| `PrepTaskList.tsx` | byte-for-byte | ✅ |
+| `SyncPanel.tsx` | byte-for-byte | ✅ |
+| `TabbedAgendaView.tsx` | drop `entry.linkedOrg?.name` reference | ✅ |
+| `VoiceInput.tsx` | byte-for-byte (browser MediaRecorder → `/api/calendar/olivia` parse) | ✅ |
+| `index.ts` (barrel) | byte-for-byte | ✅ |
+| `components/tools/useDraggable.ts` | shared hook (LTM imports from this path; preserved) | ✅ |
+| `components/olivia/OliviaConsentModal.tsx` | byte-for-byte; calls `/api/olivia/consent` | ✅ |
+| `components/olivia/OliviaDisplayScreen.tsx` (C6) | byte-for-byte (696 LOC); deps already in OB (OliviaVideoAvatar, InsightsPanel, OliviaPanel) | ✅ |
+
+### L.8 Smoke tests (C6 — Vitest, jsdom)
+
+| Test file | Cases | Mocks |
+|-----------|-------|-------|
+| `__tests__/CalendarView.test.tsx` | 2 (mount + todayHighlight slot) | FullCalendar + 4 plugins, CalendarEntryModal, SyncPanel, TabbedAgendaView, EventStatusWidget |
+| `__tests__/CalendarNotepad.test.tsx` | 2 (empty entries + stub entry) | react-international-phone (PhoneInput + style.css) |
+| `__tests__/CalendarEntryModal.test.tsx` | 2 (create-mode + edit-mode) | @googlemaps/js-api-loader, react-international-phone, react-datepicker (lazy import); jsdom matchMedia stubbed in `beforeAll` |
+
+Render-only per HANDOFF C6 spec — tests do NOT exercise routes (would require MSW or DB mocking).
+
+### L.9 npm packages installed
+
+| Package | Session | Why |
+|---------|---------|-----|
+| `@fullcalendar/core` + `@fullcalendar/react` + `@fullcalendar/daygrid` + `@fullcalendar/timegrid` + `@fullcalendar/interaction` + `@fullcalendar/list` | C1 | CalendarView event grid |
+| `react-international-phone` | C1 | Attendee phone input |
+| `rrule` | C1 | Recurrence expansion (used by `rrule-expand.ts`) |
+| `resend` | C4 | Email channel (Olivia → user transcripts + invites) |
+| `react-datepicker` + `@types/react-datepicker` | C5 | CalendarEntryModal start/end pickers |
+| `@testing-library/react` + `@testing-library/dom` + `@testing-library/jest-dom` + `jsdom` | C6 | Vitest smoke tests for component mounts |
+
+### L.10 Operator actions captured during the track
+
+| Action | Status | Why |
+|--------|--------|-----|
+| Apply C1 calendar SQL migration to Supabase | ✅ Done 2026-05-03 (Option B) | C1 foundation tables |
+| Apply C3 voice/olivia SQL migration to Supabase (`prisma/sql/02-add-voice-olivia-foundation.sql`) | ⏳ Pending | Required before voice/olivia routes write to DB |
+| Set `STUB_USER_ID` env var in Vercel Preview | ⏳ Pending | C4+ routes use `getAuthSession()` stub (W-015); throws if unset |
+| Set Twilio env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`) | ⏳ Pending | Voice call routes |
+| Set ElevenLabs env vars (`ELEVENLABS_API_KEY`, `ELEVENLABS_OLIVIA_VOICE_ID`) | ⏳ Pending | Voice TTS |
+| Set `RESEND_API_KEY` (optional — graceful skip if missing) | ⏳ Pending | Email channel |
+| Set Google + Outlook OAuth keys + `CALENDAR_ENCRYPTION_KEY` + `NEXT_PUBLIC_APP_URL` | ⏳ Pending | Calendar sync OAuth |
+| Set `TAVILY_API_KEY` | ⏳ Pending | `web_search` tool |
+| Install `match_calendar_memory()` PostgreSQL function in Supabase | ⏳ Pending (W-014) | Semantic calendar memory search; degrades to empty until installed |
+
+### L.11 Visual fidelity gap (carries forward — same as § J.6)
+
+Same Tailwind / token-name divergence as the map (W-011 + W-012). Calendar UI files use Tailwind classes that are inert in Olivia Brain — components mount, FullCalendar event grid renders structurally, but the React-rendered control panels / overlays / share modals / OCC theater chrome lack visual fidelity. Tracked as **W-013**. Resolution lands in **Track C UI rebuild** (Sessions 9–14 in the original numbering, shifted to 14–19 post-Track-Calendar) alongside the map alignment.
+
+### L.12 Track Calendar closure summary
+
+| Slot | LTM source | Ported | Deferred | Adapted |
+|------|------------|--------|----------|---------|
+| Calendar Prisma models | 14 of ~22 | 14 | 8 (DealRoom + Event-family — LTM-domain) | userProfileId→userId; cuid→UUID; LTM FKs dropped |
+| Voice/olivia Prisma models | 9 | 9 | 0 | userProfileId→userId; UserProfile FK dropped from VoiceConversation; polymorphic IDs for cross-model refs |
+| `lib/calendar/*` | 19 | 16 | 3 (document-aware, founder-journey, workflow-generator) | userId rename; LTM-domain queries trimmed |
+| `lib/voice/*` | 4 | 4 | 0 | userProfileId→userId on voice-memory |
+| `lib/olivia/{tools,chat,…}` | 26+ | 4 tools + 3 chat helpers | rest defer to C3/C4/Track L | feature-slice port |
+| API routes (C4 + C5) | 45 | 37 (+ 1 new `/api/olivia/consent`) | 8 (Document/AnalysisResult/Event/Video — dependency tracks) | userProfileId→userId; UserProfile.findUnique dropped; Calendly providerEmail match; Clerk → getAuthSession stub |
+| UI components (C5 + C6) | 18 + 1 | 18 + 1 (OliviaDisplayScreen in C6) | 0 | linkedOrg/linkedEvent references dropped from CalendarView + TabbedAgendaView; rest byte-for-byte |
+| App routes (C6) | 2 | 2 | 0 | title swap; rest byte-for-byte |
+| Smoke tests (C6) | NEW | 3 files / 6 cases | — | jsdom + matchMedia stub + heavy-dep mocks |
+
+**Track Calendar exit state:** all 6 sessions ✅ closed. Build green: typecheck clean + 100/100 Vitest tests passing. Tailwind/styling caveat (W-013) and missing operator actions (above) flagged for resolution in their respective tracks.

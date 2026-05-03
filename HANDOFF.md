@@ -1,8 +1,8 @@
 # OLIVIA BRAIN — NEXT AGENT HANDOFF
 
 **Updated:** 2026-05-03
-**HEAD:** `cb678b7` on `main` (will advance one commit when this docs update lands)
-**State:** Track Calendar C5 closed (calendar UI + 18 of 24 routes; 6 deferred to dependency tracks). **Resume at Session 13 = Track Calendar C6 (app routes + smoke tests + docs — closes Track Calendar).**
+**HEAD:** `4bdb08a` on `main` (will advance one commit when this docs update lands)
+**State:** **Track Calendar CLOSED.** All 6 sessions (C1–C6) ✅. Session 13 (C6) shipped the calendar app routes (`/calendar` page + `CalendarPageClient` + `OliviaDisplayScreen`) + 3 Vitest smoke tests / 6 cases (CalendarView, CalendarNotepad, CalendarEntryModal). **Resume at Session 14 = Track C, Session 9 in original numbering: three-region shell at `/` (header + left aside + right aside + center) + Tailwind/token-alignment decision to resolve W-011 / W-012 / W-013.**
 **Working tree:** clean post-docs-commit. All commits pushed to `origin/main`. **Vercel build green.**
 
 > The previous version of this file (post-Session-11 era) is preserved in git history. This file replaces it with the current post-Session-12 state. The session series captured here (Sessions 1–12) is documented in detail in `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Parts 10–19.
@@ -13,7 +13,7 @@
 
 | Repo | Path | Status |
 |------|------|--------|
-| **Olivia Brain (this — your working repo)** | `D:\Olivia Brain` | Current. HEAD `d5fe4c3`. |
+| **Olivia Brain (this — your working repo)** | `D:\Olivia Brain` | Current. HEAD will be the post-Session-13 docs commit. |
 | **GitHub** | https://github.com/johndesautels1/Olivia-Brain | up to date with `main` |
 | London Tech Map (LTM) | `D:\London-Tech-Map` | **READ-ONLY.** Copy components OUT; never edit, rename, delete, or move ANY LTM file. |
 | Studio Olivia prototypes | `D:\Studio-Olivia` | **REFERENCE ONLY.** The 95 KB GrandMaster JSX is the design north star — don't import its code. |
@@ -78,63 +78,46 @@ Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into ev
 - **Session 9** (commits `948f6ed`, `95526a1`): **Track Calendar C2 calendar engine + queries shipped.** `src/lib/queries/calendar.ts` (1130 lines, all `userProfileId → userId` + LTM-domain selects stripped + `getMergedCalendarView` dropped). `src/lib/calendar/*` (16 of 19 files: 7 byte-for-byte, 6 with userId rename, 3 modified — olivia-guardrails minus DB call, proximity-cluster trimmed to haversineKm, index.ts barrel adjusted). 3 LTM files intentionally NOT ported (document-aware, founder-journey, workflow-generator) — defer to dependency tracks (Documents post-Clerk; AnalysisResult Track L). `src/lib/olivia/tools.ts` calendar slice ported with 2 tools (`get_user_calendar` adapted, `web_search` byte-for-byte); the other 22 LTM tools defer to C3/C4/Track L. **94/94 tests still passing. Typecheck clean.** New weakness W-014 logged (`match_calendar_memory()` SQL function not installed — graceful degradation in place).
 - **Session 10** (commits `4291a39`, `273b242`): **Track Calendar C3 voice + olivia models + engine shipped.** 9 voice/olivia Prisma models added to schema.prisma (OliviaConversation, OliviaMessage, OliviaPresentation, OliviaConsent, OliviaGuardrail, OliviaUserMemory, VoiceConversation, VoiceContact, VoiceActionItem) with same C1/C2 adaptations + the deferred `voiceConversations` reverse relation on CalendarEntry wired. SQL migration generated via `prisma migrate diff` at `prisma/sql/02-add-voice-olivia-foundation.sql` (10.5 KB). 4 voice lib files ported (3 byte-for-byte: voice-conversation/document/prompts; 1 with userId rename: voice-memory). `tools.ts` extended with `get_user_memory` + `save_user_memory` tools + `hasLearningConsent` helper (now 4 tools). `olivia-guardrails.ts` DB integration restored (OliviaGuardrail model now exists). `chat.ts` slim slice ported (createConversation / getConversationHistory / getConversationMessages only — `processOliviaMessage` deferred per HANDOFF gotcha analysis). **`knowledge-base.ts` NOT ported** — no in-scope C3 consumer; deferred to future track. **94/94 tests still passing. Typecheck clean.**
 - **Session 11** (commits `1657fe2`, `278a4f9`): **Track Calendar C4 voice/email/call/sms/WhatsApp routes shipped.** 19 of 21 LTM routes ported (call ×10, calls ×2, voice ×3, email/sms/whatsapp ×3, conversations/[id]/email ×1). 2 routes intentionally deferred: `voice/to-document` + `voice/to-package` (depend on Document/Package models not in Olivia Brain). **Auth: Option B chosen** — `lib/auth/session.ts` Clerk stub (`getAuthSession()` reads `STUB_USER_ID` env in dev/preview, throws in production). One-line swap when Clerk lands in Track F Session 18. Tracked as W-015. Supporting libs ported: `lib/twilio/client.ts` (coexists with pre-existing server.ts), `lib/elevenlabs/client.ts` (coexists with pre-existing voice/elevenlabs.ts), `lib/email/resend.ts` + `resend` npm installed. 4 routes had `prisma.userProfile.findUnique({ clerkUserId })` lookups dropped (userId IS Clerk user ID directly). **94/94 tests still passing. Typecheck clean.**
-- **Session 12** (commit `cb678b7` + this docs commit): **Track Calendar C5 calendar UI + 18 of 24 API routes shipped.** 15 calendar UI components ported byte-for-byte (`AgendaRail`, `CalendarEntryModal`, `CalendarNotepad`, `CalendarView`, `ConfirmationChip`, `EventStatusWidget`, `FloatingCalendarWidget`, `FocusMode`, `InsightsPanel`, `OliviaPanel`, `PrepTaskList`, `SyncPanel`, `TabbedAgendaView`, `VoiceInput`, `index`) + 3 supporting (`components/tools/useDraggable`, `components/olivia/OliviaConsentModal`, `lib/mobile-keyboard`). 18 routes: `entries` (with ecosystem-events `prisma.event.findMany` block dropped), `prep-tasks`, `attendees` (linkedPersonId dropped), `analytics`, `memory`, `notes`, `olivia`, `plan`, `travel`, `sync` root + 5 sub-routes (google/outlook callbacks drop UserProfile lookup; calendly drops email-based UserProfile lookup → matches via CalendarSyncAccount.providerEmail), `cron/calendar-sync`, `cron/calendar-plan`, plus added `app/api/olivia/consent` (required by OliviaConsentModal). **6 routes intentionally deferred:** journey + workflow (AnalysisResult), documents (Document), nearby (Organization+Event), events ical/rsvp (Event/EventRsvp), videos/calendar (Video). **Adaptations:** PowerShell bulk script for `userProfileId → userId` (~140 occurrences), 10 `prisma.userProfile.findUnique` lookups dropped, `linkedOrg`/`linkedEventId`/`linkedPersonId` references dropped from entries/attendees/prep-tasks/CalendarView/TabbedAgendaView. **`lib/system-alerts.ts`** console-only stub (SystemAlert model not in OB schema; **W-016**). **Tailwind/styling caveat carries forward (W-013).** Deps: `react-datepicker` + `@types/react-datepicker` installed. **94/94 tests still passing. Typecheck clean.**
+- **Session 12** (commit `cb678b7` + `715aac4` docs): **Track Calendar C5 calendar UI + 18 of 24 API routes shipped.** 15 calendar UI components ported byte-for-byte (`AgendaRail`, `CalendarEntryModal`, `CalendarNotepad`, `CalendarView`, `ConfirmationChip`, `EventStatusWidget`, `FloatingCalendarWidget`, `FocusMode`, `InsightsPanel`, `OliviaPanel`, `PrepTaskList`, `SyncPanel`, `TabbedAgendaView`, `VoiceInput`, `index`) + 3 supporting (`components/tools/useDraggable`, `components/olivia/OliviaConsentModal`, `lib/mobile-keyboard`). 18 routes: `entries` (with ecosystem-events `prisma.event.findMany` block dropped), `prep-tasks`, `attendees` (linkedPersonId dropped), `analytics`, `memory`, `notes`, `olivia`, `plan`, `travel`, `sync` root + 5 sub-routes (google/outlook callbacks drop UserProfile lookup; calendly drops email-based UserProfile lookup → matches via CalendarSyncAccount.providerEmail), `cron/calendar-sync`, `cron/calendar-plan`, plus added `app/api/olivia/consent` (required by OliviaConsentModal). **6 routes intentionally deferred:** journey + workflow (AnalysisResult), documents (Document), nearby (Organization+Event), events ical/rsvp (Event/EventRsvp), videos/calendar (Video). **Adaptations:** PowerShell bulk script for `userProfileId → userId` (~140 occurrences), 10 `prisma.userProfile.findUnique` lookups dropped, `linkedOrg`/`linkedEventId`/`linkedPersonId` references dropped from entries/attendees/prep-tasks/CalendarView/TabbedAgendaView. **`lib/system-alerts.ts`** console-only stub (SystemAlert model not in OB schema; **W-016**). **Tailwind/styling caveat carries forward (W-013).** Deps: `react-datepicker` + `@types/react-datepicker` installed. **94/94 tests still passing. Typecheck clean.**
+- **Session 13** (commit `4bdb08a` + this docs commit): **Track Calendar C6 — app routes + smoke tests + docs. CLOSES Track Calendar.** Ported `app/calendar/page.tsx` (server-component shell, title swapped to "Calendar — Olivia Brain") + `app/calendar/CalendarPageClient.tsx` byte-for-byte (1265 LOC: OCC theater + My Calendar tab + Notes tab + agenda modal + focus-mode + GDPR consent flow + conversation history dropdown + transcript download/email/read-aloud) + `OliviaDisplayScreen.tsx` byte-for-byte (696 LOC; deps already in OB — `OliviaVideoAvatar`, `InsightsPanel`, `OliviaPanel`). 3 Vitest smoke tests / 6 cases (`__tests__/{CalendarView,CalendarNotepad,CalendarEntryModal}.test.tsx`) using `@vitest-environment jsdom` magic comment with mocks for FullCalendar (+ 4 plugins), `react-datepicker` (lazy import), `react-international-phone` (PhoneInput + style.css), `@googlemaps/js-api-loader`, and a `window.matchMedia` stub in `beforeAll`. Test deps installed (devDependencies + lockfile in same commit): `@testing-library/react`, `@testing-library/dom`, `@testing-library/jest-dom`, `jsdom`. STUDIO_PORT_MANIFEST §L (Calendar + voice subsystem inventory; same shape as §J Map subsystem) appended. **No new W-IDs.** **100/100 tests passing. Typecheck clean.** **All 6 Track Calendar sessions ✅, track CLOSED.**
 
 ---
 
-## WHERE TO RESUME — Session 13 = Track Calendar C6
+## WHERE TO RESUME — Session 14 = Track C, Session 9 in original numbering (Studio UI rebuild begins)
 
-**Spec:** `docs/BUILD_SEQUENCE.md` Track Calendar C6 row.
+**Spec:** `docs/BUILD_SEQUENCE.md` Track C row labelled `**9**` (Tracks shifted +5 by Track Calendar).
 
-### C6 Deliverable (app routes + smoke tests + STUDIO_PORT_MANIFEST §L — closes Track Calendar)
+### Session 14 deliverable — three-region shell at `/`
 
-Three halves:
+Per BUILD_SEQUENCE Track C:
 
-**Half 1 — App route mount:**
-- `app/calendar/page.tsx` — server component shell that renders `CalendarPageClient`.
-- `app/calendar/CalendarPageClient.tsx` — client wrapper that:
-  - Fetches initial entries via `/api/calendar/entries?start=...&end=...`
-  - Mounts `<CalendarView>` with the FullCalendar primitive
-  - Wires `<CalendarNotepad>` share modals to the C4 routes (`/api/olivia/{email,sms,whatsapp}`)
-  - Wires `<OliviaPanel>` to `/api/calendar/olivia`
-  - Surfaces `<OliviaConsentModal>` on first load if user lacks `data_storage` consent (route `/api/olivia/consent` ported in C5)
+> Three-region shell at `/`. Header (sticky, 56px, AvatarOrb + STUDIO OLIVIA wordmark + crumb + score chips + Match/Export). Left aside (264px, scrollable). Right aside (320px, tabbed). Center (flex 1). Inline-style approach using the prototype's `C` color tokens, NOT Tailwind.
 
-**Half 2 — Vitest smoke tests:**
-- `src/components/calendar/__tests__/CalendarView.test.tsx` — mount + assert FullCalendar wrapper renders with stubbed entries
-- `src/components/calendar/__tests__/CalendarNotepad.test.tsx` — mount + assert share-modal triggers exist
-- `src/components/calendar/__tests__/CalendarEntryModal.test.tsx` — mount + assert form fields render
-- Tests should NOT exercise routes (would require MSW or DB mocking). Render-only smoke per the C6 spec.
+But Session 14 is also where **the Tailwind / design-token-alignment decision must land** (resolves W-011 + W-012 + W-013). The decision options:
 
-**Half 3 — Documentation closure:**
-- `docs/STUDIO_PORT_MANIFEST.md` — append **§L Calendar subsystem inventory** (port log of C1–C6: 14 + 9 Prisma models, ~19 lib/calendar files, 4 voice lib files, 18 + 21 routes ported / 8 routes deferred / 5 lib files deferred, with mapping back to LTM source paths). Same shape as §J (Map subsystem) for consistency.
-- `docs/BUILD_SEQUENCE.md` — flip **C6 row to ✅** + flip the Track Calendar section header check.
-- `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` — append Part 20 (Session 13 = C6).
-- `README.md` — Track Calendar entry in roadmap → ✅; no new weakness rows expected.
+1. **Add Tailwind to Olivia Brain.** Lowest-effort path for the existing 33+ ported files (map + calendar) — they were authored against Tailwind. Cost: a deps + config addition; some learning curve if the team prefers inline styles.
+2. **Stay custom-CSS-only and migrate ported files.** Highest-effort path — every ported file's class strings convert to inline-style + custom-CSS-class. Aligns with the Studio prototype's stated "inline-style approach using the prototype's `C` color tokens, NOT Tailwind."
+3. **Hybrid: keep custom-CSS for new code; add Tailwind to support the ported surfaces.** Tailwind only renders classes that appear in the codebase, so the bundle stays small. Decouples the new-code style decision from the LTM-port style decision.
 
-**Exit criterion:** `/calendar` route loads in dev (`npm run dev`); 3 component smoke tests pass; STUDIO_PORT_MANIFEST §L populated; all 6 Track Calendar rows ✅ in BUILD_SEQUENCE; SESSION_LOG Part 20 captures the Session 13 work.
+Recommended (per `01_UI_DESIGN_SYSTEM.md` § 11): **option 1 + adopt the Aurum + Aether + LCH token system as CSS custom properties + 3-input theme generator.** Tailwind references the tokens; no raw hex in components. This is what the design system locks in already.
 
-### Steps for C6
+### Steps for Session 14
 
-1. **Read in order**: this file → `docs/SESSION_LOG_…` Part 19 (Session 12 details) → `docs/BUILD_SEQUENCE.md` Track Calendar C6 row → `docs/STUDIO_PORT_MANIFEST.md` §J (Map subsystem) for the §L template shape.
-2. **Inventory the LTM source pages** in read-only mode: `D:\London-Tech-Map\src\app\calendar\page.tsx` + any `CalendarPageClient` equivalent.
-3. **Port the page shell** with userProfileId → userId rename + Option B `getAuthSession`. Drop any LTM-domain references (Event/Organization/Document/Video lookups won't survive — same pattern as C5 entries route).
-4. **Write the 3 smoke tests** using Vitest's existing `setupFilesAfterEach` + `@testing-library/react`. Mount each component with stub data; assert basic structural render. Don't assert visual fidelity (degraded per W-013).
-5. **Write `STUDIO_PORT_MANIFEST.md` §L** drawing from the SESSION_LOG Parts 14–20 (C1–C6) — port what was ported, defer what was deferred, link weakness IDs.
-6. **Verify**: `npm run typecheck` clean, `npm test` shows **97/97 passing** (94 existing + 3 new smoke tests).
-7. **Commit + push** code as `feat(calendar): Track Calendar C6 — app routes + smoke tests`.
-8. **Commit + push** docs as `docs: close Track Calendar C6 — Calendar subsystem inventory + Track Calendar ✅`.
+1. **Read in order**: this file → `docs/SESSION_LOG_…` Part 20 (Session 13 details) → `docs/BUILD_SEQUENCE.md` Track C row `**9**` → `docs/01_UI_DESIGN_SYSTEM.md` §§ 1, 5, 11 → `docs/STUDIO_OLIVIA_DESIGN.md` (the prototype's design contract).
+2. **Decide Tailwind / design-system stance** (one of the 3 options above) and capture the decision in `docs/SESSION_LOG_…` Part 21. Update W-011 / W-012 / W-013 to point at the resolution path.
+3. **Establish `src/styles/tokens.css`** with the full Aurum + Aether + canvas + foreground + border + status token set per `01_UI_DESIGN_SYSTEM.md` §§ 1 — using LCH (`oklch()`) with sRGB fallbacks.
+4. **Implement the three-region shell** at `/` (header + left rail + center + right inspector). Workspace canvas + widget grid + inspector tabs come in Sessions 15–19; Session 14 is the chrome only.
+5. **Smoke-test that ported `/map` and `/calendar` routes still load** — Track C migrates their styling, not their structure; don't break either.
+6. **Verify**: `npm run typecheck` clean, `npm test` 100+ passing (smoke tests for the new shell components if added).
+7. **Commit + push** code + docs per the standing one-concern-per-commit rule.
 
-### Anticipated gotchas in C6
+### Anticipated gotchas for Session 14
 
-- **`/calendar` route SSR hazards.** `CalendarView` uses FullCalendar which references `window` on mount. The page shell must be a server component that loads the client component dynamically — same pattern as `/map` post-Vercel-fix (`d5fe4c3`). Don't repeat the bug from Session 7.
-- **Smoke test stubs.** `CalendarEntryModal` uses `react-datepicker` (lazy-loaded) + Google Maps autocomplete (`@googlemaps/js-api-loader`). Tests need to stub or skip the lazy import + the Google Maps script load — otherwise tests hit network.
-- **CalendarNotepad share modals.** The 3 channels (email/SMS/WhatsApp) all return `{ success: true }` from C4 routes. Smoke test should mount the modal but not trigger a fetch (avoid MSW dependency in C6).
-- **Dev test for `/calendar`.** The exit criterion says "loads"; that's a `curl http://localhost:3000/calendar` 200 OK + non-empty HTML. Don't conflate with visual fidelity (degraded per W-013).
-- **STUDIO_PORT_MANIFEST §L tone.** Same factual / file-level inventory as §J — port log, not a marketing doc. Include deferral reasons + the W-IDs that capture them.
-
-### After C6: Session 14 (Track C UI rebuild — Session 9 in original numbering)
-
-Track Calendar closes at C6. Session 14 starts Track C: Studio UI rebuild + design-system alignment. The Tailwind/token-alignment session (resolving W-011 + W-012 + W-013) is the first batch. See BUILD_SEQUENCE Track C for the 6-session breakdown.
+- **`/` is currently an Olivia Brain placeholder** (or empty). Session 14 replaces it with the three-region shell — make sure existing tests + routes still resolve.
+- **AvatarOrb primitive doesn't exist yet.** Session 10 (track-C-internal session 2) ports the 5 reusable primitives. Session 14 may need a placeholder AvatarOrb.
+- **Tailwind decision blocks visual-fidelity progress on map + calendar + future ports.** Make the call in Session 14 explicitly so subsequent sessions are unblocked.
+- **Don't re-Tailwind LTM-ported files in Session 14.** Migration is its own session (likely Session 15).
+- **`01_UI_DESIGN_SYSTEM.md` is binding.** No raw hex in components, every color references a CSS custom property, focus rings always visible, Vercel Web Interface Guidelines (`:focus-visible`, `touch-action: manipulation`, 16px input floor on mobile, no `transition: all`, etc.). CI lint enforces.
 
 ---
 
@@ -178,7 +161,9 @@ These ARE the architectural decisions that took multiple painful conversations t
 ## RECENT COMMIT TRAIL (last 14)
 
 ```
-<this docs commit>  docs: close Track Calendar C5 — UI + 18 routes done; W-013 + W-016 logged; resume at C6
+<this docs commit>  docs: close Track Calendar C6 — Calendar subsystem inventory + Track Calendar ✅
+4bdb08a feat(calendar): Track Calendar C6 — app routes + smoke tests
+715aac4 docs: close Track Calendar C5 — UI + 18 routes done; W-013 + W-016 logged; resume at C6
 cb678b7 feat(calendar): Track Calendar C5 — UI components + calendar API routes
 2a69430 docs: refresh HANDOFF.md HEAD reference for fresh-conversation pickup
 d5fe4c3 fix(map): move next/dynamic out of Server Component (Vercel build fix)
@@ -190,8 +175,6 @@ d5fe4c3 fix(map): move next/dynamic out of Server Component (Vercel build fix)
 948f6ed feat(calendar): Track Calendar C2 — engine + queries
 58f98f2 docs: HANDOFF.md HEAD reference + SQL migration fold-in
 52b4fad chore(db): add raw SQL migration for Track Calendar C1 foundation
-9689797 docs: rewrite HANDOFF.md for post-Session-8 state — resume at Track Calendar C2
-1986edf docs: close Track Calendar C1 — schema + embeddings + npm done; queries to C2
 ```
 
 ---
@@ -200,7 +183,7 @@ d5fe4c3 fix(map): move next/dynamic out of Server Component (Vercel build fix)
 
 Founder direction: focus on **`clueslondon.com` (priority 1)** and **`cluesintelligence.com` (priority 2 — FLAGSHIP)**. Both ship targets. cluesxscore (priority 3) and white-label Olivia (priority 4) follow. Path 2 from the Sessions-to-Finish accounting was chosen (ship both flagships even if past 2026-06-02). ~60 sessions to finish priorities 1–4.
 
-**Sessions 1–12 done. ~48 remaining.** Track Calendar (5 of 6 sessions done — C1 + C2 + C3 + C4 + C5; C6 next) does NOT block clueslondon ship — per surface suppression rule, clueslondon-prod tenant hides Olivia's calendar (LTM provides). Track Calendar makes calendar functional for cluesintelligence + standalone + future spokes.
+**Sessions 1–13 done. ~47 remaining.** Track Calendar **CLOSED** (all 6 of 6 sessions ✅). Track Calendar does NOT block clueslondon ship — per surface suppression rule, clueslondon-prod tenant hides Olivia's calendar (LTM provides). Track Calendar makes calendar + voice functional for cluesintelligence + standalone + future spokes. **Next: Track C UI rebuild (Sessions 14–19, original Track C Sessions 9–14 shifted +5).**
 
 ---
 
@@ -214,10 +197,11 @@ git log --oneline -5                          # confirm HEAD is at the post-Sess
 
 Then in Claude Code:
 1. Read this file (`HANDOFF.md`).
-2. Read `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Part 19 for Session 12 details (the C5 port + the 6 deferred routes + the W-013 / W-016 weakness rationale).
-3. Read `docs/BUILD_SEQUENCE.md` Track Calendar C6 row for the deliverable spec.
-4. Read `docs/STUDIO_PORT_MANIFEST.md` §J (Map subsystem) for the §L template shape — C6 produces the equivalent inventory for Calendar.
-5. Pull up the LTM source files in **read-only** mode: `D:\London-Tech-Map\src\app\calendar\` (page + client wrapper).
-6. Begin C6 with the page-shell port (avoid the SSR hazard from Session 7 — `next/dynamic` must be in a client component, see commit `d5fe4c3`), then the 3 Vitest smoke tests, then STUDIO_PORT_MANIFEST §L.
+2. Read `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Part 20 for Session 13 details (the C6 port + smoke-test rationale + Track Calendar closure summary).
+3. Read `docs/BUILD_SEQUENCE.md` Track C row `**9**` for Session 14's three-region-shell spec.
+4. Read `docs/01_UI_DESIGN_SYSTEM.md` §§ 1, 5, 11 for the design-system tokens, modular workspace architecture, and target file layout.
+5. Read `docs/STUDIO_OLIVIA_DESIGN.md` for the Studio prototype's design contract.
+6. Decide the **Tailwind / design-token alignment** stance up front (resolves W-011 / W-012 / W-013) and capture it in SESSION_LOG Part 21 before any shell code lands.
+7. Begin Session 14 with `src/styles/tokens.css` (Aurum + Aether + canvas + foreground + border + status tokens, LCH with sRGB fallbacks per `01_UI_DESIGN_SYSTEM.md` §§ 1, 11), then the three-region shell at `/`.
 
-**Standing rule reminder:** stop after C6's deliverable lands. Track Calendar closes at C6 — confirm with the user before starting Track C (Session 14). Update docs alongside the code commit per the doc-discipline rule.
+**Standing rule reminder:** stop after Session 14's deliverable lands. Track C is 6 sessions (S14–S19); confirm with the user before starting S15. Update docs alongside the code commit per the doc-discipline rule.

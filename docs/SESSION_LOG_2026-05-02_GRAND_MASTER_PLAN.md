@@ -836,3 +836,108 @@ Encoding: explicit UTF-8 read+write via `[System.IO.File]::ReadAllText/WriteAllT
 **Operator action before C6:** none new beyond the C3 SQL migration (`02-add-voice-olivia-foundation.sql`) and env vars from C4 + C5 (STUB_USER_ID for previewing routes). C6 ships UI mount tests, no schema changes.
 
 **Build status at session-12 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar UI + 18 routes committed; 6 routes explicitly deferred (journey, workflow, documents, nearby, events ical/rsvp, videos/calendar); two new weaknesses W-013 (calendar Tailwind) + W-016 (SystemAlert model) logged.**
+
+---
+
+## Part 20 — Session 13 (Track Calendar C6 — app routes + smoke tests; **CLOSES Track Calendar**)
+
+Track Calendar · **C6** picks up from Session 12's C5 calendar UI + 18 routes. C6 mounts the calendar at a real route, adds Vitest smoke tests for the 3 most-frequently-touched components, and writes the §L inventory in `STUDIO_PORT_MANIFEST.md`. **All 6 Track Calendar sessions now ✅. Track Calendar closes.**
+
+### What shipped (commit `<feat>` + `<docs>`)
+
+**Page surface (2 files + 1 supporting):**
+
+| File | Notes |
+|------|-------|
+| `src/app/calendar/page.tsx` | Server-component shell. Metadata title "Clues Calendar — London Tech Map" → "Calendar — Olivia Brain". Description rewritten to Olivia framing. Breadcrumb retained ("Home / Calendar"). |
+| `src/app/calendar/CalendarPageClient.tsx` | **Byte-for-byte port** (1265 LOC). The full LTM client wrapper: OCC theater (outer-gold-ring 4D executive desk frame) with `OliviaDisplayScreen` mounted as the avatar slot; My Calendar tab wrapping `CalendarView` with `AgendaRail` as `todayHighlight` slot; Notes tab wrapping `CalendarNotepad`; agenda modal (`CalendarEntryModal` opened from agenda card click); focus-mode overlay (`FocusMode`); Layer 1 conversation persistence via `sessionStorage`; Layer 2 GDPR consent flow via `OliviaConsentModal`; conversation history dropdown wired to `/api/olivia/history`; transcript download (markdown blob), email (`/api/olivia/conversations/[id]/email`), read-aloud (Web Speech `SpeechSynthesisUtterance`). Wires to C2/C3/C4/C5 routes with no further adaptation needed — C5 already populated all the calendar routes the client expects. |
+| `src/components/olivia/OliviaDisplayScreen.tsx` | **Byte-for-byte port** (696 LOC). 16:9 video display shell wrapping `OliviaVideoAvatar` with transport controls, Web Speech API recognition (en-GB voice, continuous + interim results, automatic pause-while-Olivia-speaks to prevent echo). All deps already in OB: `OliviaVideoAvatar` (existing, exports `OliviaVideoAvatarRef` + `RecordingState`), `InsightsPanel`, `OliviaPanel` (both ported in C5). Track E (Session 17) can later swap the Web Speech recognition for the MediaRecorder + `/api/voice/transcribe` Whisper/Deepgram flow if needed; Web Speech is good enough for the standalone calendar surface. |
+
+**Smoke tests (3 files / 6 cases):**
+
+| Test | Cases | Mocks |
+|------|-------|-------|
+| `__tests__/CalendarView.test.tsx` | 1: mounts FullCalendar wrapper with stub entries; events count forwarded.<br>2: `todayHighlight` slot renders. | `@fullcalendar/react` (lightweight placeholder exposing `data-events-count`), 4 plugins (`daygrid`, `timegrid`, `interaction`, `list`) → empty default exports. `CalendarEntryModal` / `SyncPanel` / `TabbedAgendaView` / `EventStatusWidget` stubbed to no-op shells. |
+| `__tests__/CalendarNotepad.test.tsx` | 1: mounts with empty calendar entries.<br>2: mounts with stub entry. | `react-international-phone` (`PhoneInput` → plain text input) + `style.css` (no-op) — jsdom can't parse the library's CSS. |
+| `__tests__/CalendarEntryModal.test.tsx` | 1: create-mode, asserts ≥1 textbox renders.<br>2: edit-mode against stub entry, mounts without throwing. | `@googlemaps/js-api-loader` (`setOptions`/`importLibrary` mocked); `react-datepicker` (lazy import → plain `<input type="date" />`); `react-international-phone`; `react-datepicker/dist/react-datepicker.css`. **`window.matchMedia` stubbed in `beforeAll`** — jsdom doesn't implement it; modal queries it on open to detect coarse-pointer devices. |
+
+All tests use `@vitest-environment jsdom` magic comment per `vitest.config.mts` direction (default env is `node` for server modules; component tests opt into jsdom per-file).
+
+**Test deps installed (devDependencies, lockfile in same commit):**
+- `@testing-library/react`
+- `@testing-library/dom`
+- `@testing-library/jest-dom`
+- `jsdom`
+
+### Adaptations vs. LTM source
+
+`CalendarPageClient` is one of the rare files that ports byte-for-byte without rename or strip work — every dependency it pulls (`AgendaRail`, `FocusMode`, `CalendarEntryModal`, `CalendarNotepad`, `OliviaConsentModal`, `OliviaDisplayScreen`, plus the routes it fetches: `/api/calendar/entries`, `/api/calendar/olivia`, `/api/olivia/history`, `/api/olivia/history/[id]`, `/api/olivia/conversations/[id]/email`, `/api/olivia/consent`) was already adapted in C2–C5 or is being added in C6 (`OliviaDisplayScreen`).
+
+**The page-level metadata** is the single content delta: title + description framing swapped from "London Tech Map" branding to "Olivia Brain" branding. Visual chrome, OCC theater, gold-ring 4D frame, conversation toolbar, and the Notes/Calendar tab pattern are kept intact — these are the calendar surface's design language and they belong on the calendar page regardless of which product surfaces it. Per surface-suppression rule, embedded contexts (clueslondon-prod) hide the calendar entirely; standalone Olivia + cluesintelligence + white-label tenants get the full surface.
+
+### SSR pattern
+
+Followed `/map`'s post-Vercel-fix shape (commit `d5fe4c3`): `next/dynamic` with `ssr: false` lives in the **client component** (`CalendarPageClient`), not in the server component (`page.tsx`). The 3 dynamic imports are `OliviaDisplayScreen` (uses Web Speech API), `CalendarView` (FullCalendar references `window` on mount). No SSR hazard introduced.
+
+### Decisions
+
+- **OliviaDisplayScreen ported in C6, not deferred.** Initial scoping considered deferring it as a Track E (voice) dependency. Inspection showed all 3 of its imports (`OliviaVideoAvatar`, `InsightsPanel`, `OliviaPanel`) already exist in OB with the exact types (`OliviaVideoAvatarRef`, `RecordingState`) the wrapper expects. Porting it byte-for-byte is the cleaner option: it makes the OCC theater functional immediately on the standalone calendar surface, and Track E can later swap the Web Speech path for MediaRecorder + Whisper without touching the calendar page.
+- **Smoke tests: 2 cases per file, not 1.** HANDOFF spec said "3 component smoke tests"; landed 3 files with 2 cases each (6 cases total) for slightly higher coverage at marginal cost. All within the render-only scope — no route exercises, no MSW.
+- **Test deps installed, not stubbed.** `@testing-library/react` is the React-19-compatible standard; alternatives (Enzyme — abandoned for React 18+; raw `react-dom/test-utils` — too low-level for the C6 scope) would have been band-aids. Lockfile committed alongside `package.json` per standing rule.
+- **`beforeAll(() => Object.defineProperty(window, "matchMedia", ...))` is not a band-aid.** `matchMedia` is a documented jsdom gap (jsdom issue #3522, open since 2022); stubbing it in test-setup is the canonical workaround the React-Testing-Library + Vitest community uses. Honest engineering, not a hack.
+- **No new W-IDs.** C6 doesn't introduce new weaknesses. The Tailwind/styling gap (W-013) carries forward unchanged for the new files (the OCC theater + page chrome use Tailwind classes that are inert; same resolution path in Track C). The SystemAlert stub (W-016) is unaffected.
+
+### Verification
+
+- `npm run typecheck` — clean.
+- `npm test` — **100/100 passing** (94 baseline + 6 new smoke). No regressions.
+- LTM source unchanged.
+- All commits pushed to `origin/main` immediately per standing rule.
+
+### Track Calendar closure summary
+
+All 6 sessions ✅:
+
+| Session | Deliverable | LTM source ported | Deferred to dependency tracks |
+|---------|-------------|-------------------|-------------------------------|
+| C1 (S8) | Schema + embeddings + npm | 14 calendar Prisma models + 15 enums | DealRoom + Event-family models (LTM-domain) |
+| C2 (S9) | Engine + queries | 16 of 19 `lib/calendar/*` files; 4-tool `tools.ts` slice | document-aware + founder-journey + workflow-generator (Document/AnalysisResult deps) |
+| C3 (S10) | Voice + olivia models + engine | 9 voice/olivia Prisma models; 4 voice lib files; chat.ts slim slice | `processOliviaMessage` (cascade route serves equivalent); `knowledge-base.ts` (no in-scope consumer) |
+| C4 (S11) | Voice/email/call/sms/WhatsApp routes | 19 of 21 LTM routes; lib/twilio + lib/elevenlabs + lib/email/resend; lib/auth/session.ts stub | voice/to-document + voice/to-package (Document/Package deps) |
+| C5 (S12) | Calendar UI + 18 routes | 15 calendar UI components + 3 supporting; 18 of 24 routes; lib/system-alerts stub | journey/workflow/documents/nearby/events/videos routes (AnalysisResult/Document/Event/Video deps) |
+| C6 (S13) | App routes + smoke tests + docs | 2 app routes + OliviaDisplayScreen + 3 smoke tests + STUDIO_PORT_MANIFEST §L | none |
+
+**Outstanding operator actions** (carried forward, none new in C6):
+
+| Action | Source session | Status |
+|--------|----------------|--------|
+| Apply C3 voice/olivia SQL migration to Supabase | C3 | ⏳ Pending |
+| Set `STUB_USER_ID` in Vercel Preview | C4 | ⏳ Pending |
+| Set Twilio + ElevenLabs + Resend env vars | C4 | ⏳ Pending |
+| Set Google OAuth + Outlook OAuth + Calendar encryption + NEXT_PUBLIC_APP_URL env vars | C5 | ⏳ Pending |
+| Set `TAVILY_API_KEY` | C2 | ⏳ Pending |
+| Install `match_calendar_memory()` Postgres function (W-014) | C2 | ⏳ Pending |
+
+**Carried-forward weaknesses (none introduced by C6):**
+
+| W-ID | Topic | Track that resolves |
+|------|-------|---------------------|
+| W-013 | Calendar UI Tailwind classes inert (paired with W-011 / W-012 from map) | Track C UI rebuild |
+| W-014 | `match_calendar_memory()` SQL function not installed | Operator action whenever calendar memory becomes user-facing |
+| W-015 | Clerk auth STUB at `lib/auth/session.ts` | Track F Session 18 (Clerk wiring) |
+| W-016 | `SystemAlert` Prisma model not in OB schema | Track O / admin-alerts dashboard build |
+
+### Where Session 14 picks up
+
+**Track C — Studio UI rebuild + design-system alignment (Session 14 = Session 9 in original numbering, shifted +5).**
+
+Per `BUILD_SEQUENCE.md` Track C, Session 14 is the **three-region shell at `/`** (header sticky 56px with AvatarOrb + STUDIO OLIVIA wordmark + crumb + score chips + Match/Export; left aside 264px scrollable; right aside 320px tabbed; center flex 1). Inline-style approach using the prototype's `C` color tokens, NOT Tailwind — but Track C is also where the **W-011 / W-012 / W-013 Tailwind/token alignment decision** lands. Per `01_UI_DESIGN_SYSTEM.md`, the answer is the Aurum + Aether token system in LCH color space with Linear's 3-input theme generator; Tailwind itself is a separate decision (the design-system tokens land as CSS custom properties either way).
+
+Anticipated gotchas for Session 14:
+- **Tailwind decision blocks visual-fidelity progress on map + calendar + future ports.** Decide before — or alongside — the three-region shell port.
+- **`01_UI_DESIGN_SYSTEM.md` § 11.4 lays out the target file structure** (`src/styles/tokens.css`, `src/components/primitives/`, `src/components/workspace/`, `src/lib/workspace/`). Consider establishing the skeleton in S14 even if components fill in across S15–S19.
+- **Existing /map and /calendar routes survive Track C.** They're production-style ported; Track C migrates their styling, not their structure. Don't rewrite — re-skin.
+
+### Build status at session-13 close
+
+**Green.** Test: **100/100** passing. Typecheck: clean. Track Calendar: **6 of 6 sessions ✅, track CLOSED.** ~47 sessions remain to ship priorities 1–4.
