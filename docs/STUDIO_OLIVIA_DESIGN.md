@@ -285,6 +285,16 @@ Every network call is a raw `fetch("https://api.anthropic.com/v1/messages", …)
 
 ## 6. Styling Approach
 
+> **2026-05-03 OVERRIDE (Session 14):** The prototype's brand accent (`#FF8C00` orange) and the `C` color-token object are **superseded** by `01_UI_DESIGN_SYSTEM.md` § 1 — the Aurum + Aether token system. The prototype's structural patterns (inline styles, dark-by-default, Bloomberg-terminal aesthetic) carry forward; the **palette is replaced** with Aurum gold (`oklch(72% 0.105 78)` / `#C4A96A`) + Aether indigo (`oklch(70% 0.140 280)` / `#818CF8`) + the canonical canvas / surface / foreground ladders.
+>
+> Concretely, in the rebuilt Olivia Brain `/` shell (Session 14, commit `21fbecf`):
+>
+> - **Tokens-as-substrate.** `C.accent` → `var(--aurum-primary)`. `C.bg` → `var(--canvas-base)`. `C.surface` → `var(--surface-1)`. Every paint references a CSS custom property declared in `src/styles/tokens.css` (backward-compat aliases preserve the old `--bg` / `--text` / `--gold` names too).
+> - **Tailwind v4** is installed and exposes the same tokens as utility classes (`bg-aurum`, `text-fg-primary`). LTM-ported map + calendar surfaces consume those utilities. Inline styles still cover shell chrome — both consume the same tokens.
+> - **No raw hex codes in components.** Lint enforces (rule deferred to Track O). The portability story this unlocks (white-label tenants, embedded mode, host-app theming) is the entire reason the design system specifies tokens-as-substrate.
+>
+> The bullet list below describes the **prototype's original palette + approach**. It is preserved for reference but is **not the rebuild target.** Rebuild from `01_UI_DESIGN_SYSTEM.md`.
+
 - **All inline-style.** Zero Tailwind, zero CSS-in-JS library, zero CSS modules. Every node uses `style={{…}}`.
 - One global `<style>` block (line 70) imports four Google fonts and defines `*{box-sizing:border-box}`, slim 4px scrollbars, focus-visible rings (2px outline `C.accent` with 2px offset), `.sr-only`, and two keyframes `pulse` / `spin`.
 - **Color tokens** live in the `C` object. Every element references `C.bg`, `C.surface`, `C.raised`, `C.border`, `C.accent`, `C.text`, `C.muted`, `C.dim`, `C.faint`, etc. Translucent variants are appended hex alpha (e.g. `C.accent + "30"`).

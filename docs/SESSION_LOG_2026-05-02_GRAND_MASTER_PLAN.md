@@ -941,3 +941,108 @@ Anticipated gotchas for Session 14:
 ### Build status at session-13 close
 
 **Green.** Test: **100/100** passing. Typecheck: clean. Track Calendar: **6 of 6 sessions ✅, track CLOSED.** ~47 sessions remain to ship priorities 1–4.
+
+---
+
+## Part 21 — Session 14 (Track C, Session 9 in original numbering — three-region shell + Aurum/Aether design system + Tailwind v4)
+
+Track C opens. Session 14 establishes the **canonical design substrate** the entire CLUES product universe builds on: tokens-as-substrate, Tailwind v4 utilities, theme generator, three-region workspace shell. Resolves W-011, W-012, W-013 in one stroke.
+
+### The strategic decision (locked 2026-05-03)
+
+**Adopt the canonical Aurum + Aether token system as CSS custom properties + Tailwind v4 utilities + inline styles for shell chrome.** All three styling paradigms consume the same token primitives.
+
+Three styling approaches, one substrate:
+
+1. **CSS custom properties** (`--canvas-base`, `--aurum-primary`, etc.) are the universal lingua franca. Every paint references a token.
+2. **Tailwind v4 utility classes** (`bg-aurum`, `text-fg-primary`) are generated from those tokens via the `@theme` directive. The 33+ ported LTM files (map + calendar) immediately render correctly.
+3. **Inline styles** (`style={{ background: "var(--aurum-primary)" }}`) are allowed for shell chrome — matches the Studio prototype's pattern, avoids the rewrite cost of converting `C.accent` strings.
+
+The **Aurum gold** (`#C4A96A`) wins over the Studio prototype's `C.accent` orange (`#FF8C00`). `01_UI_DESIGN_SYSTEM.md` is the authoritative design contract; `STUDIO_OLIVIA_DESIGN.md` § 6 gets a docs update separately.
+
+The portability rationale (per the user's product question, founder-direction 2026-05-03): **no hardcoded colors or sizes in components, only token references.** A tenant rebrands by overriding 3 inputs (`base`, `accent`, `contrast`) — the entire UI repaints. Olivia embeds in a host app by inheriting that host's tokens. A host app embeds Olivia by setting tokens on a wrapper element. Both directions, same primitive.
+
+### What shipped (commit `21fbecf`)
+
+**Design substrate:**
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `src/styles/tokens.css` | 217 | Canonical token ladder per `01_UI_DESIGN_SYSTEM.md` §§ 1-7. LCH (`oklch()`) with sRGB fallbacks. Backward-compat aliases (`--bg`, `--text`, `--gold`, `--background`, `--foreground`, `--card-bg`, `--card-border`, `--accent`, `--brand-50` … `--brand-900`) so existing OB Phase-1 surfaces + LTM-ported map + calendar render without rewrite. Tailwind v4 `@theme` block at the bottom exposes tokens as utility classes. |
+| `src/styles/base.css` | 130 | Element resets + accessibility primitives. `:focus-visible` for focus rings, `touch-action: manipulation`, 16px font-size floor on inputs, `overscroll-behavior: contain` on modals, skip-to-content link, `.sr-only` utility, `prefers-reduced-motion`, 44×44 touch targets, forced-colors support. |
+| `src/app/globals.css` | replaced | Imports tokens + base + Tailwind. Phase-1 surface selectors (`.shell`, `.hero`, `.bubble`, `.admin-*`) preserved verbatim; render correctly via the backward-compat aliases. |
+| `postcss.config.mjs` | new | `@tailwindcss/postcss` (v4 plugin). |
+
+Tailwind v4 uses CSS-first configuration — no separate `tailwind.config.ts`. The `@theme` directive in `tokens.css` is the single source of truth for both CSS-variable consumers and Tailwind utility consumers.
+
+**Theme generator (the white-label primitive):**
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `src/lib/theme/generate.ts` | 230 | Pure function `generateThemeTokens({base, accent, contrast})` produces the canonical token map. `serializeThemeTokens(tokens, themeId)` emits a CSS rule body keyed on `[data-theme="<id>"]`. LCH parser + formatter + 3 contrast levels (standard / high / aaa). Surface ladder steps `+2.1%` lightness perceptually. Accent flows through to aurum; aether + status colours stay universal across tenants. |
+| `src/lib/theme/__tests__/generate.test.ts` | 12 cases | Determinism, surface ladder monotonicity, contrast level monotonicity, border-alpha lift, accent override + isolation, runtime LCH validation, serializer contract. |
+
+**Three-region workspace shell (the chrome):**
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `WorkspaceShell.tsx` | 86 | Four-region layout: optional ticker rail + sticky header + left rail + center + right inspector. Skip-to-main-content link. Embedded mode supports `rail={null}` / `inspector={null}` per `project_olivia_surface_suppression`. |
+| `Header.tsx` | 165 | 56px sticky. AvatarOrb + wordmark + breadcrumb (left); score chips + actions (right). All paint via tokens. |
+| `RailLeft.tsx` | 38 | 264px expanded / 56px collapsed (transition 220ms). Slot for content. |
+| `Inspector.tsx` | 116 | 320px right aside. ARIA-correct `role="tablist"` strip, arrow-key tab rover (Home/End wrap), focus management, slot for active tab body. |
+| `Center.tsx` | 47 | Flex-1 main canvas. Optional toolbar slot. |
+| `AvatarOrb.tsx` (placeholder) | 144 | 4 sizes (40/56/96/240), 6 states (idle/listening/thinking/speaking/error/connecting). Aurum + aether twin-pulse signature animation. Reduced-motion respected. Full impl lands S15. |
+
+**Smoke tests (component-level):**
+
+- `__tests__/AvatarOrb.test.tsx` — 11 cases. All 6 states, glyph default + custom + hidden when `hasVideo`, button-vs-div by `onClick` presence, click handler.
+- `__tests__/WorkspaceShell.test.tsx` — 11 cases across `WorkspaceShell`, `Header`, `RailLeft`, `Center`, `Inspector`. Skip-to-content always present, four-region wiring, breadcrumb rendering, score chips, tab strip ARIA, click + arrow-key tab rover, wrap-around at edges, `open=false` rendering null.
+
+**Root surface refresh:**
+
+- `src/app/page.tsx` — replaced. Mounts the three-region shell with **placeholder content** per region: rail = quick-link cards to `/calendar`, `/map`, `/test-avatar`, `/admin`, `/admin/phase1`; inspector = Olivia + Library + Audit tabs (each tab body explains "wires up Session N"); center = welcome card explaining the design-system substrate + Aurum design-system note.
+- `src/app/admin/phase1/page.tsx` — relocated Phase-1 readiness UI. The previous `/` mounted `Phase1Studio` directly; that surface lives at `/admin/phase1` now so the root is freed for the Studio shell.
+- `/map`, `/calendar`, `/test-avatar`, `/admin` survive untouched.
+
+**Test infrastructure:**
+
+- `vitest.setup.ts` — registers `@testing-library/react`'s `cleanup` in `afterEach`. Sibling tests in the same file pollute each other's DOM otherwise (the AvatarOrb 6-state `it.each` block + WorkspaceShell multi-test file caught this immediately on first run).
+- `vitest.config.mts` — adds `setupFiles: ["./vitest.setup.ts"]`.
+- `cleanup` is a no-op in node-environment tests, so the global registration is safe across the 76 server-side test files.
+
+### Decisions
+
+- **Aurum + Aether wins over `C` orange.** `01_UI_DESIGN_SYSTEM.md` is authoritative. The Studio prototype's orange/sapphire palette was an earlier iteration. STUDIO_OLIVIA_DESIGN.md § 6 gets a docs update flagging this override.
+- **Tailwind v4, not v3.** v4's CSS-first `@theme` directive aligns perfectly with our tokens-as-substrate strategy — no parallel JS config, no theme-object duplication. Single source of truth.
+- **Tokens defined in LCH (`oklch()`) with sRGB hex fallbacks.** § 1.7 — perceptually uniform; equal-saturation values look the same brightness regardless of hue. Future cluesxscore needs 23 module accents that look balanced; HSL would have given 23 inconsistent visual weights.
+- **Backward-compat aliases declared, not migrated.** `--bg → --canvas-base` etc. — Phase-1 surfaces + ported LTM surfaces keep working without rewrite. The aliases are pointers; the underlying colors are unified. Migration happens organically as components touch their styles in future sessions.
+- **Inline styles allowed for shell chrome.** Matches the Studio prototype pattern + avoids the rewrite cost of converting `C.accent` strings. The tokens-as-substrate strategy unblocks this — inline styles reference `var(--aurum-primary)` not `"#C4A96A"`. Same portability story as Tailwind utilities.
+- **AvatarOrb is a placeholder.** 144 lines. Full implementation (LiveAvatar wrapping, council-mode orbital agent dots, Cristiano gold-saturated transition) lands S15 alongside the other 4 primitives. Surface contract stable from S14 — `Header`, `RailLeft`, `Inspector` import from the same path now and don't move when the full impl lands.
+- **No raw hex codes in any new file shipped this session.** Lint rule for enforcement defers to Track O — every new file follows the rule by construction.
+
+### Verification
+
+- `npm run typecheck` — clean.
+- `npm test` — **134/134 passing** (94 baseline + 6 calendar smoke + 12 theme generator + 11 AvatarOrb + 11 workspace shell). No regressions.
+- LTM source unchanged.
+- All commits pushed to `origin/main`.
+
+### W-IDs resolved
+
+| W-ID | Status | How resolved |
+|------|--------|--------------|
+| W-011 | ✅ Resolved | Tailwind v4 installed; map's 223+ Tailwind classes now render correctly. |
+| W-012 | ✅ Resolved | Backward-compat aliases (`--background → --canvas-base-srgb`, `--card-bg → --surface-1-srgb`, etc.) in `tokens.css`. Map's `var(--xxx)` references now resolve. |
+| W-013 | ✅ Resolved | Same fix as W-011 + W-012 — Calendar UI's Tailwind classes + `var(--xxx)` refs both resolve. |
+
+### Where Session 15 picks up
+
+**Track C — Session 15 (Track C internal session 2):** five reusable primitives.
+
+Per `BUILD_SEQUENCE.md` Track C row 10: `AvatarOrb` (full impl — already placeholder-shipped in S14), `ConsensusDots`, `Badge`, `CompletionRing`, `DeckDetailModal`. Vitest unit tests on each. Existing `Badge` + `CompletionRing` in OB get refactored to match the prototype spec.
+
+The S14 placeholder `AvatarOrb` exports the canonical surface contract — S15 replaces the implementation while keeping the prop signature stable. `Header`, `RailLeft`, `Inspector` (all importing from `@/components/primitives`) require zero updates.
+
+### Build status at session-14 close
+
+**Green.** Test: **134/134** passing. Typecheck: clean. Track C: **1 of 6 sessions ✅** (S14 done; S15-S19 remain). Three open weaknesses (W-011 / W-012 / W-013) closed in one stroke. ~46 sessions remain to ship priorities 1–4.
