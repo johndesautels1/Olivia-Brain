@@ -1,9 +1,9 @@
 # OLIVIA BRAIN — NEXT AGENT HANDOFF
 
 **Updated:** 2026-05-03
-**HEAD:** `1657fe2` on `main` (will advance once this doc commit lands)
-**State:** Track Calendar C4 closed. **Resume at Session 12 = Track Calendar C5 (calendar UI + 24 calendar API routes).**
-**Working tree:** clean. All commits pushed to `origin/main`.
+**HEAD:** `d5fe4c3` on `main`
+**State:** Track Calendar C4 closed + map build fix shipped. **Resume at Session 12 = Track Calendar C5 (calendar UI + 24 calendar API routes).**
+**Working tree:** clean. All commits pushed to `origin/main`. **Vercel build green** (was failing pre-`d5fe4c3` — see commit message).
 
 > The previous version of this file (dated 2026-05-03, post-Session-10 era) is preserved in git history. This file replaces it with the current post-Session-11 state. The session series captured here (Sessions 1–11) is documented in detail in `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Parts 10–18.
 
@@ -13,7 +13,7 @@
 
 | Repo | Path | Status |
 |------|------|--------|
-| **Olivia Brain (this — your working repo)** | `D:\Olivia Brain` | Current. HEAD `1657fe2`. |
+| **Olivia Brain (this — your working repo)** | `D:\Olivia Brain` | Current. HEAD `d5fe4c3`. |
 | **GitHub** | https://github.com/johndesautels1/Olivia-Brain | up to date with `main` |
 | London Tech Map (LTM) | `D:\London-Tech-Map` | **READ-ONLY.** Copy components OUT; never edit, rename, delete, or move ANY LTM file. |
 | Studio Olivia prototypes | `D:\Studio-Olivia` | **REFERENCE ONLY.** The 95 KB GrandMaster JSX is the design north star — don't import its code. |
@@ -197,7 +197,9 @@ These ARE the architectural decisions that took multiple painful conversations t
 ## RECENT COMMIT TRAIL (last 14)
 
 ```
-<this docs commit>  docs: close Track Calendar C4 — voice/email/call/sms/WhatsApp routes done
+<this docs commit>  docs: refresh HANDOFF.md HEAD reference for fresh-conversation pickup
+d5fe4c3 fix(map): move next/dynamic out of Server Component (Vercel build fix)
+278a4f9 docs: close Track Calendar C4 — voice/email/call/sms/WhatsApp routes done
 1657fe2 feat(calendar): Track Calendar C4 — voice/email/call/sms/WhatsApp routes
 273b242 docs: close Track Calendar C3 — voice + olivia models + engine done
 4291a39 feat(calendar): Track Calendar C3 — voice + olivia models + engine
@@ -209,8 +211,6 @@ These ARE the architectural decisions that took multiple painful conversations t
 1986edf docs: close Track Calendar C1 — schema + embeddings + npm done; queries to C2
 49ed993 feat(calendar): Track Calendar C1 foundation — 14 Prisma models + 15 enums + embeddings + npm install
 ecfb38b docs: add Track Calendar (6 sessions C1-C6) — calendar + voice + email/call/share
-c86e24f docs: post-Session-7 audit — data-layer + styling deferrals
-76c3fb0 docs: close Session 7 — map port done, documents deferred to Session 8
 ```
 
 ---
