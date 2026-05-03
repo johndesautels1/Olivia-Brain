@@ -725,3 +725,556 @@ model tenant_api_keys {
   @@index([tenant_id, is_active])
   @@index([key_prefix])
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// CALENDAR SUBSYSTEM — Track Calendar C1 (added 2026-05-03)
+// ════════════════════════════════════════════════════════════════════════════
+//
+// 14 models + 15 enums ported from LTM (D:\London-Tech-Map) per Track Calendar
+// in BUILD_SEQUENCE.md. Adaptations applied:
+//
+//   - id @default(cuid()) → @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//     (consistent with rest of Olivia Brain schema)
+//
+//   - userProfileId String + userProfile UserProfile @relation(...)
+//     → userId String @db.Uuid (no FK constraint until Track F Session 18
+//       wires Clerk; userId then references Clerk user IDs)
+//
+//   - linkedOrgId / linkedEventId / linkedPersonId fields + relations DROPPED
+//     (LTM-domain FKs — Olivia Brain doesn't own Org/Event/Person; see
+//     project_ltm_types_no_speculative_generalization memory)
+//
+//   - voiceConversations VoiceConversation[] reverse relation NOT YET ADDED
+//     (lands in Track Calendar C3 when VoiceConversation model ports)
+//
+//   - dealRoomSessions DealRoomSession[] reverse relation DROPPED permanently
+//     (DealRoom moves to real-estate spoke when that vertical builds)
+//
+//   - Event / EventParticipant / EventRsvp / EventSeries / PackageEvent /
+//     CascadeEvent NOT PORTED (LTM tech-event modeling, separate concept
+//     from personal calendar)
+//
+// Field naming: camelCase preserved (matches LTM) so lib/queries/calendar.ts
+// ports with mechanical userProfileId → userId rename only. Diverges from
+// the snake_case convention used in older Olivia Brain models above.
+
+// ── Calendar enums ─────────────────────────────────────────────────────────
+
+enum CalendarCategory {
+  vc_meeting
+  angel_meeting
+  board_meeting
+  advisory_call
+  investor_update
+  founder_meeting
+  team_standup
+  one_on_one
+  conference_attend
+  meetup_attend
+  pitch_event
+  demo_day_attend
+  hackathon_attend
+  workshop_attend
+  networking_event
+  gala_awards
+  focus_time
+  deep_work
+  deal_prep
+  admin_block
+  email_block
+  funding_deadline
+  product_launch
+  hiring_milestone
+  legal_deadline
+  weekly_review
+  monthly_retrospective
+  quarterly_planning
+  annual_planning
+  personal_event
+  travel
+  lunch_meeting
+  coffee_chat
+  ecosystem_event
+  community_event
+  olivia_suggestion
+  synced_external
+}
+
+enum CalendarEntryType {
+  meeting
+  event
+  time_block
+  deadline
+  recurring
+  personal
+  signal
+  constraint
+  block
+  milestone
+  ritual
+}
+
+enum CalendarPriority {
+  critical
+  high
+  medium
+  low
+}
+
+enum CalendarSyncProvider {
+  google
+  outlook
+  calendly
+  ical_url
+}
+
+enum CalendarSyncDirection {
+  inbound
+  outbound
+  bidirectional
+}
+
+enum CalendarConflictResolution {
+  pending
+  local_wins
+  remote_wins
+  merged
+  dismissed
+}
+
+enum CalendarInteractionType {
+  created
+  updated
+  deleted
+  moved
+  accepted_suggestion
+  dismissed_suggestion
+  snoozed_suggestion
+  completed_prep_task
+  skipped_prep_task
+  rsvp_changed
+  attendance_changed
+}
+
+enum CalendarPrepTaskStatus {
+  pending
+  in_progress
+  completed
+  skipped
+}
+
+enum CalendarAttendeeRsvp {
+  pending
+  accepted
+  declined
+  tentative
+}
+
+enum CalendarAttendeeRole {
+  required
+  optional
+  organizer
+  speaker
+}
+
+enum AttendanceStatus {
+  pending
+  attended
+  rescheduled
+  missed
+  cancelled
+}
+
+enum WebhookSubscriptionStatus {
+  active
+  expiring
+  expired
+  failed
+  revoked
+}
+
+enum OliviaRecommendationType {
+  proactive
+  reactive
+  scheduled
+}
+
+enum OliviaRecommendationUrgency {
+  immediate
+  today
+  this_week
+  when_relevant
+}
+
+enum OliviaRecommendationStatus {
+  pending
+  accepted
+  dismissed
+  snoozed
+  expired
+}
+
+// ── Calendar models ────────────────────────────────────────────────────────
+
+/// Personal calendar items. userId references Clerk user (post-Session 18).
+/// LTM-domain FKs (linkedOrg, linkedEvent, linkedPerson) intentionally
+/// dropped per project_ltm_types_no_speculative_generalization memory.
+model CalendarEntry {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String                @db.Uuid
+  title               String
+  description         String?               @db.Text
+  location            String?
+  virtualUrl          String?
+  startDatetime       DateTime
+  endDatetime         DateTime
+  allDay              Boolean               @default(false)
+  entryType           CalendarEntryType     @default(event)
+  category            CalendarCategory
+  priority            CalendarPriority      @default(medium)
+  tagsJson            Json?
+  isAiGenerated       Boolean               @default(false)
+  aiConfidenceScore   Decimal?              @db.Decimal(3, 2)
+  aiSource            String?
+  rrule               String?
+  recurrenceParentId  String?               @db.Uuid
+  ecosystemOrgName    String?
+  investmentStage     String?
+  externalCalendarId  String?
+  externalProvider    CalendarSyncProvider?
+  externalLastSyncAt  DateTime?
+  attendanceStatus    AttendanceStatus      @default(pending)
+  attendanceNote      String?               @db.Text
+  rescheduledFromId   String?               @db.Uuid
+  rescheduledFromDate DateTime?
+  isVip               Boolean               @default(false)
+  isArchived          Boolean               @default(false)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  recurrenceParent   CalendarEntry?          @relation("CalendarRecurrence", fields: [recurrenceParentId], references: [id], onDelete: SetNull)
+  recurrenceChildren CalendarEntry[]         @relation("CalendarRecurrence")
+  rescheduledFrom    CalendarEntry?          @relation("CalendarReschedule", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledTo      CalendarEntry[]         @relation("CalendarReschedule")
+  prepTasks          CalendarPrepTask[]
+  attendees          CalendarEntryAttendee[]
+  interactions       CalendarInteraction[]
+  reminders          CalendarReminder[]
+  memoryChunks       CalendarMemoryChunk[]
+  notes              CalendarNote[]
+
+  @@index([userId, startDatetime])
+  @@index([userId, isArchived])
+  @@index([userId, category])
+  @@index([userId, entryType])
+  @@index([externalCalendarId, externalProvider])
+  @@index([recurrenceParentId])
+  @@index([rescheduledFromId])
+  @@index([attendanceStatus])
+  @@index([isArchived, startDatetime])
+  @@map("calendar_entries")
+}
+
+/// Per-user calendar settings.
+model CalendarPreferences {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String   @unique @db.Uuid
+  timezone              String   @default("Europe/London")
+  defaultView           String   @default("week")
+  densityMode           String   @default("standard")
+  workingHoursStart     Int      @default(9)
+  workingHoursEnd       Int      @default(18)
+  workingDaysJson       Json     @default("[1,2,3,4,5]")
+  defaultEventDuration  Int      @default(60)
+  briefingTime          String?
+  startupStage          String?
+  focusAreasJson        Json?
+  oliviaEnabled         Boolean  @default(true)
+  oliviaConfidenceScore Decimal  @default(0.5) @db.Decimal(3, 2)
+  voiceInputEnabled     Boolean  @default(false)
+  autoSendVoice         Boolean  @default(false)
+  travelBufferEnabled   Boolean  @default(false)
+  travelBufferMinutes   Int      @default(30)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("calendar_preferences")
+}
+
+/// Pre-event preparation items.
+model CalendarPrepTask {
+  id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  calendarEntryId    String                 @db.Uuid
+  title              String
+  description        String?                @db.Text
+  status             CalendarPrepTaskStatus @default(pending)
+  priority           CalendarPriority       @default(medium)
+  dueAt              DateTime?
+  dueOffsetHours     Int?
+  linkedDocumentType String?
+  autoGenerate       Boolean                @default(false)
+  completedAt        DateTime?
+  isArchived         Boolean                @default(false)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  calendarEntry CalendarEntry @relation(fields: [calendarEntryId], references: [id], onDelete: Cascade)
+
+  @@index([calendarEntryId])
+  @@index([status])
+  @@index([dueAt])
+  @@index([isArchived])
+  @@map("calendar_prep_tasks")
+}
+
+/// Per-entry reminder settings.
+model CalendarReminder {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  calendarEntryId String    @db.Uuid
+  reminderMinutes Int
+  reminderType    String    @default("notification")
+  isSent          Boolean   @default(false)
+  sentAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  calendarEntry CalendarEntry @relation(fields: [calendarEntryId], references: [id], onDelete: Cascade)
+
+  @@index([calendarEntryId])
+  @@index([isSent])
+  @@map("calendar_reminders")
+}
+
+/// People attending calendar entries. linkedPerson FK dropped (LTM-domain).
+model CalendarEntryAttendee {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  calendarEntryId String               @db.Uuid
+  name            String
+  email           String?
+  phone           String?
+  socialUrl       String?
+  role            CalendarAttendeeRole @default(required)
+  rsvpStatus      CalendarAttendeeRsvp @default(pending)
+  isOrganizer     Boolean              @default(false)
+  responseNote    String?
+  notifiedAt      DateTime?
+  respondedAt     DateTime?
+  isArchived      Boolean              @default(false)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  calendarEntry CalendarEntry @relation(fields: [calendarEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([calendarEntryId, email])
+  @@index([calendarEntryId])
+  @@index([rsvpStatus])
+  @@index([isArchived])
+  @@map("calendar_entry_attendees")
+}
+
+/// Behavior tracking for self-learning.
+model CalendarInteraction {
+  id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String                  @db.Uuid
+  calendarEntryId String?                 @db.Uuid
+  interactionType CalendarInteractionType
+  metadataJson    Json?
+  createdAt       DateTime                @default(now())
+
+  calendarEntry CalendarEntry? @relation(fields: [calendarEntryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([interactionType])
+  @@index([calendarEntryId])
+  @@map("calendar_interactions")
+}
+
+/// External calendar provider connections (Google, Outlook, Calendly).
+/// AES-256-GCM encrypted tokens via lib/calendar/crypto.ts (ports in C2).
+model CalendarSyncAccount {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String                @db.Uuid
+  provider          CalendarSyncProvider
+  providerAccountId String
+  providerEmail     String?
+  accessTokenEnc    String?               @db.Text
+  refreshTokenEnc   String?               @db.Text
+  tokenExpiresAt    DateTime?
+  syncDirection     CalendarSyncDirection @default(bidirectional)
+  syncToken         String?
+  lastSyncAt        DateTime?
+  lastSyncError     String?               @db.Text
+  consecutiveErrors Int                   @default(0)
+  isActive          Boolean               @default(true)
+  isArchived        Boolean               @default(false)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  syncConflicts CalendarSyncConflict[]
+  webhookStates CalendarWebhookState[]
+
+  @@unique([userId, provider, providerAccountId])
+  @@index([userId])
+  @@index([provider])
+  @@index([isActive])
+  @@map("calendar_sync_accounts")
+}
+
+/// Sync conflict resolution log.
+model CalendarSyncConflict {
+  id              String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  syncAccountId   String                     @db.Uuid
+  localEntryId    String?
+  externalEventId String?
+  conflictType    String
+  localDataJson   Json?
+  remoteDataJson  Json?
+  resolution      CalendarConflictResolution @default(pending)
+  resolvedAt      DateTime?
+  createdAt       DateTime                   @default(now())
+
+  syncAccount CalendarSyncAccount @relation(fields: [syncAccountId], references: [id], onDelete: Cascade)
+
+  @@index([syncAccountId])
+  @@index([resolution])
+  @@map("calendar_sync_conflicts")
+}
+
+/// Webhook subscription tracking. Provider expirations: Google ~7d, Outlook ~3d.
+model CalendarWebhookState {
+  id                    String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  syncAccountId         String                    @db.Uuid
+  provider              CalendarSyncProvider
+  subscriptionId        String
+  callbackUrl           String
+  eventTypesJson        Json?
+  status                WebhookSubscriptionStatus @default(active)
+  expiresAt             DateTime?
+  renewalAttemptedAt    DateTime?
+  renewedAt             DateTime?
+  lastDeliveryAt        DateTime?
+  lastDeliveryEventType String?
+  consecutiveFailures   Int                       @default(0)
+  lastFailureAt         DateTime?
+  lastFailureReason     String?                   @db.Text
+  providerMetaJson      Json?
+  isArchived            Boolean                   @default(false)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  syncAccount CalendarSyncAccount @relation(fields: [syncAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subscriptionId])
+  @@index([syncAccountId])
+  @@index([provider, status])
+  @@index([status, expiresAt])
+  @@index([isArchived])
+  @@map("calendar_webhook_states")
+}
+
+/// pgvector embeddings for semantic calendar search (OpenAI text-embedding-3-small, 1536 dims).
+model CalendarMemoryChunk {
+  id              String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String                       @db.Uuid
+  calendarEntryId String                       @db.Uuid
+  chunkIndex      Int                          @default(0)
+  text            String                       @db.Text
+  embedding       Unsupported("vector(1536)")?
+  createdAt       DateTime                     @default(now())
+
+  calendarEntry CalendarEntry @relation(fields: [calendarEntryId], references: [id], onDelete: Cascade)
+
+  @@unique([calendarEntryId, chunkIndex])
+  @@index([userId])
+  @@index([calendarEntryId])
+  @@map("calendar_memory_chunks")
+}
+
+/// AI-generated calendar suggestions from Olivia.
+model OliviaCalendarRecommendation {
+  id                 String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String                      @db.Uuid
+  type               OliviaRecommendationType
+  urgency            OliviaRecommendationUrgency @default(when_relevant)
+  status             OliviaRecommendationStatus  @default(pending)
+  message            String                      @db.Text
+  reasoningJson      Json?
+  triggerType        String?
+  triggerDescription String?
+  eventDraftJson     Json?
+  confidenceScore    Decimal?                    @db.Decimal(3, 2)
+  actedAt            DateTime?
+  dismissedAt        DateTime?
+  snoozedUntil       DateTime?
+  isArchived         Boolean                     @default(false)
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([urgency])
+  @@index([status])
+  @@index([isArchived])
+  @@map("olivia_calendar_recommendations")
+}
+
+/// Audit trail for voice inputs that create calendar entries.
+/// calendarEntryId is polymorphic (no FK relation) — links to a CalendarEntry
+/// when one was successfully created from this voice input.
+model VoiceTranscriptionLog {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String   @db.Uuid
+  rawTranscript    String   @db.Text
+  parsedResultJson Json?
+  calendarEntryId  String?  @db.Uuid
+  confidenceScore  Decimal? @db.Decimal(3, 2)
+  durationMs       Int?
+  wasAccepted      Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("voice_transcription_logs")
+}
+
+/// Weekly snapshot for founder journey tracking.
+model FounderWeek {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String   @db.Uuid
+  weekStartDate        DateTime @db.Date
+  meetingsCount        Int      @default(0)
+  networkingCount      Int      @default(0)
+  focusHours           Decimal  @default(0) @db.Decimal(5, 1)
+  prepTasksCompleted   Int      @default(0)
+  prepTasksTotal       Int      @default(0)
+  suggestionsAccepted  Int      @default(0)
+  suggestionsDismissed Int      @default(0)
+  topCategoriesJson    Json?
+  oliviaSummary        String?  @db.Text
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([userId, weekStartDate])
+  @@index([userId, weekStartDate])
+  @@map("founder_weeks")
+}
+
+/// Rich notepad entries (text + drawing). The sophisticated note-taking
+/// surface flagged by user 2026-05-03 — appends to calendar entries via
+/// optional calendarEntryId link.
+model CalendarNote {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @db.Uuid
+  calendarEntryId String?  @db.Uuid
+  title           String   @default("Untitled Note")
+  content         String?  @db.Text
+  drawingData     Json?
+  isArchived      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  calendarEntry CalendarEntry? @relation(fields: [calendarEntryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isArchived])
+  @@index([userId, calendarEntryId])
+  @@index([calendarEntryId])
+  @@map("calendar_notes")
+}
