@@ -1,8 +1,8 @@
 # OLIVIA BRAIN — NEXT AGENT HANDOFF
 
 **Updated:** 2026-05-03
-**HEAD:** `21fbecf` on `main` (will advance one commit when this docs update lands)
-**State:** **Track C opened — Session 14 ✅.** Three-region workspace shell at `/` + canonical Aurum/Aether design substrate + Tailwind v4 + theme generator + AvatarOrb placeholder. Resolves **W-011 + W-012 + W-013** in one stroke (LTM-ported map + calendar render with full visual fidelity). Phase-1 readiness UI relocated to `/admin/phase1`. **Resume at Session 15 = Track C, Session 10 in original numbering: five reusable primitives (`AvatarOrb` full impl, `ConsensusDots`, `Badge`, `CompletionRing`, `DeckDetailModal`) with Vitest unit tests on each.**
+**HEAD:** `22f1454` on `main` (will advance one commit when this docs update lands)
+**State:** **Track C — Session 15 ✅.** Five reusable primitives shipped: `AvatarOrb` (full impl with Cristiano gold-saturated transition § 6.3 + council-mode orbital sub-agent dots § 6.4 + lazy LiveAvatar at size 240), `Badge` + `CompletionRing` (canonical Aurum/Aether tokens, four tiers each, legacy `pitch/` paths now re-export shims), `ConsensusDots` (single `role="img"` with descriptive label), `DeckDetailModal` (Radix Dialog wrapper). 47 new unit tests; **180/180 total**. **Resume at Session 16 = Track C, Session 11 in original numbering: Library tab + DeckDetailModal interaction (75 archetypes + 12 plan templates + scoring + Apply flow).**
 **Working tree:** clean post-docs-commit. All commits pushed to `origin/main`. **Vercel build green.**
 
 > The previous version of this file (post-Session-11 era) is preserved in git history. This file replaces it with the current post-Session-12 state. The session series captured here (Sessions 1–12) is documented in detail in `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Parts 10–19.
@@ -80,46 +80,46 @@ Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into ev
 - **Session 11** (commits `1657fe2`, `278a4f9`): **Track Calendar C4 voice/email/call/sms/WhatsApp routes shipped.** 19 of 21 LTM routes ported (call ×10, calls ×2, voice ×3, email/sms/whatsapp ×3, conversations/[id]/email ×1). 2 routes intentionally deferred: `voice/to-document` + `voice/to-package` (depend on Document/Package models not in Olivia Brain). **Auth: Option B chosen** — `lib/auth/session.ts` Clerk stub (`getAuthSession()` reads `STUB_USER_ID` env in dev/preview, throws in production). One-line swap when Clerk lands in Track F Session 18. Tracked as W-015. Supporting libs ported: `lib/twilio/client.ts` (coexists with pre-existing server.ts), `lib/elevenlabs/client.ts` (coexists with pre-existing voice/elevenlabs.ts), `lib/email/resend.ts` + `resend` npm installed. 4 routes had `prisma.userProfile.findUnique({ clerkUserId })` lookups dropped (userId IS Clerk user ID directly). **94/94 tests still passing. Typecheck clean.**
 - **Session 12** (commit `cb678b7` + `715aac4` docs): **Track Calendar C5 calendar UI + 18 of 24 API routes shipped.** 15 calendar UI components ported byte-for-byte (`AgendaRail`, `CalendarEntryModal`, `CalendarNotepad`, `CalendarView`, `ConfirmationChip`, `EventStatusWidget`, `FloatingCalendarWidget`, `FocusMode`, `InsightsPanel`, `OliviaPanel`, `PrepTaskList`, `SyncPanel`, `TabbedAgendaView`, `VoiceInput`, `index`) + 3 supporting (`components/tools/useDraggable`, `components/olivia/OliviaConsentModal`, `lib/mobile-keyboard`). 18 routes: `entries` (with ecosystem-events `prisma.event.findMany` block dropped), `prep-tasks`, `attendees` (linkedPersonId dropped), `analytics`, `memory`, `notes`, `olivia`, `plan`, `travel`, `sync` root + 5 sub-routes (google/outlook callbacks drop UserProfile lookup; calendly drops email-based UserProfile lookup → matches via CalendarSyncAccount.providerEmail), `cron/calendar-sync`, `cron/calendar-plan`, plus added `app/api/olivia/consent` (required by OliviaConsentModal). **6 routes intentionally deferred:** journey + workflow (AnalysisResult), documents (Document), nearby (Organization+Event), events ical/rsvp (Event/EventRsvp), videos/calendar (Video). **Adaptations:** PowerShell bulk script for `userProfileId → userId` (~140 occurrences), 10 `prisma.userProfile.findUnique` lookups dropped, `linkedOrg`/`linkedEventId`/`linkedPersonId` references dropped from entries/attendees/prep-tasks/CalendarView/TabbedAgendaView. **`lib/system-alerts.ts`** console-only stub (SystemAlert model not in OB schema; **W-016**). **Tailwind/styling caveat carries forward (W-013).** Deps: `react-datepicker` + `@types/react-datepicker` installed. **94/94 tests still passing. Typecheck clean.**
 - **Session 13** (commit `4bdb08a` + `c25bbfc` docs): **Track Calendar C6 — app routes + smoke tests + docs. CLOSES Track Calendar.** Ported `app/calendar/page.tsx` (server-component shell, title swapped to "Calendar — Olivia Brain") + `app/calendar/CalendarPageClient.tsx` byte-for-byte (1265 LOC: OCC theater + My Calendar tab + Notes tab + agenda modal + focus-mode + GDPR consent flow + conversation history dropdown + transcript download/email/read-aloud) + `OliviaDisplayScreen.tsx` byte-for-byte (696 LOC; deps already in OB — `OliviaVideoAvatar`, `InsightsPanel`, `OliviaPanel`). 3 Vitest smoke tests / 6 cases (`__tests__/{CalendarView,CalendarNotepad,CalendarEntryModal}.test.tsx`) using `@vitest-environment jsdom` magic comment with mocks for FullCalendar (+ 4 plugins), `react-datepicker` (lazy import), `react-international-phone` (PhoneInput + style.css), `@googlemaps/js-api-loader`, and a `window.matchMedia` stub in `beforeAll`. Test deps installed (devDependencies + lockfile in same commit): `@testing-library/react`, `@testing-library/dom`, `@testing-library/jest-dom`, `jsdom`. STUDIO_PORT_MANIFEST §L (Calendar + voice subsystem inventory; same shape as §J Map subsystem) appended. **No new W-IDs.** **100/100 tests passing. Typecheck clean.** **All 6 Track Calendar sessions ✅, track CLOSED.**
-- **Session 14** (commit `21fbecf` + this docs commit): **Track C opens — three-region shell + Aurum/Aether design system + Tailwind v4.** Decision locked (per founder Q on portability 2026-05-03): **tokens-as-substrate** (CSS custom properties) + Tailwind v4 utilities + inline styles for shell chrome — all three styling approaches consume the same canonical token primitives. Aurum gold (`#C4A96A`) overrides the Studio prototype's `C.accent` orange (`#FF8C00`); `01_UI_DESIGN_SYSTEM.md` is authoritative. **Shipped:** `src/styles/tokens.css` (canonical Aurum + Aether ladder, LCH with sRGB fallbacks, backward-compat aliases, Tailwind `@theme` block); `src/styles/base.css` (a11y primitives — `:focus-visible`, `touch-action: manipulation`, 16px input floor, `overscroll-behavior: contain`, skip-to-content, `prefers-reduced-motion`, 44×44 touch targets, forced-colors); `src/lib/theme/generate.ts` (white-label primitive — pure function, 230 lines); `src/components/workspace/{WorkspaceShell,Header,RailLeft,Inspector,Center}.tsx`; `src/components/primitives/AvatarOrb.tsx` (placeholder; full impl S15); `/` mounts the shell with placeholder region content; Phase-1 readiness UI relocated to `/admin/phase1`; `vitest.setup.ts` registers `@testing-library/react` cleanup globally. **Resolves W-011 + W-012 + W-013.** **134/134 tests passing** (94 baseline + 6 calendar smoke + 12 theme generator + 11 AvatarOrb + 11 workspace shell). Typecheck clean.
+- **Session 14** (commit `21fbecf` + `2cab220` docs): **Track C opens — three-region shell + Aurum/Aether design system + Tailwind v4.** Decision locked (per founder Q on portability 2026-05-03): **tokens-as-substrate** (CSS custom properties) + Tailwind v4 utilities + inline styles for shell chrome — all three styling approaches consume the same canonical token primitives. Aurum gold (`#C4A96A`) overrides the Studio prototype's `C.accent` orange (`#FF8C00`); `01_UI_DESIGN_SYSTEM.md` is authoritative. **Shipped:** `src/styles/tokens.css` (canonical Aurum + Aether ladder, LCH with sRGB fallbacks, backward-compat aliases, Tailwind `@theme` block); `src/styles/base.css` (a11y primitives — `:focus-visible`, `touch-action: manipulation`, 16px input floor, `overscroll-behavior: contain`, skip-to-content, `prefers-reduced-motion`, 44×44 touch targets, forced-colors); `src/lib/theme/generate.ts` (white-label primitive — pure function, 230 lines); `src/components/workspace/{WorkspaceShell,Header,RailLeft,Inspector,Center}.tsx`; `src/components/primitives/AvatarOrb.tsx` (placeholder; full impl S15); `/` mounts the shell with placeholder region content; Phase-1 readiness UI relocated to `/admin/phase1`; `vitest.setup.ts` registers `@testing-library/react` cleanup globally. **Resolves W-011 + W-012 + W-013.** **134/134 tests passing** (94 baseline + 6 calendar smoke + 12 theme generator + 11 AvatarOrb + 11 workspace shell). Typecheck clean.
+- **Session 15** (commit `22f1454` + this docs commit): **Track C — five reusable primitives.** `AvatarOrb` (full impl, surface contract preserved from S14; **Cristiano gold-saturated transition** § 6.3 — `intent="judge"` + `state="speaking"` → `data-cristiano="true"` + 1s gold swell; **council mode** § 6.4 — `subAgents={[...]}` orbits coloured dots per agent kind: Olivia/Cristiano aurum, Research aether, Persona mint, Math sky, Multilingual coral-mute; LiveAvatar `lazy()` + `Suspense` mounts only at size 240 OR explicit `hasVideo`). `Badge` (color-tiered percent pill, 4 tiers via `data-badge-tier`: high mint / medium amber / low coral / empty fg-disabled). `CompletionRing` (SVG progress, same 4 tiers via `data-ring-tier`, `role="progressbar"` + `aria-valuenow`). `ConsensusDots` (5 dots, single `role="img"` with descriptive label so screen readers don't count individual dots). `DeckDetailModal` (Radix Dialog — focus-trap + return-focus + Esc-to-close + ARIA all handled by Radix per § 8.3; renders category chip + stage + ConsensusDots + score Badge + name + tag + Insight + Fit + Match Reasons + Olivia Action + gradient Apply CTA; custom `applyLabel` for non-pitch contexts). Old `src/components/pitch/{Badge,CompletionRing}` paths now thin re-export shims (canonical impls in `primitives/`; no internal imports use legacy paths). `@radix-ui/react-dialog ^1.1.15` installed. **47 new unit tests** (10 Badge + 11 CompletionRing + 8 ConsensusDots + 9 DeckDetailModal + 8 AvatarOrb additions). **180/180 total tests passing**. Typecheck clean.
 
 ---
 
-## WHERE TO RESUME — Session 15 = Track C, Session 10 in original numbering (five reusable primitives)
+## WHERE TO RESUME — Session 16 = Track C, Session 11 in original numbering (Library tab + DeckDetailModal interaction)
 
-**Spec:** `docs/BUILD_SEQUENCE.md` Track C row labelled `**10**`.
+**Spec:** `docs/BUILD_SEQUENCE.md` Track C row labelled `**11**`.
 
-### Session 15 deliverable — five reusable primitives + Vitest unit tests
+### Session 16 deliverable — Library tab + scoring + Apply flow
 
-Per BUILD_SEQUENCE Track C row 10:
+Per BUILD_SEQUENCE Track C row 11:
 
-> Five reusable primitives: `AvatarOrb`, `ConsensusDots`, `Badge`, `CompletionRing`, `DeckDetailModal`. Vitest unit tests on each. (`Badge` and `CompletionRing` already exist; refactor to match prototype spec.)
+> Library + DeckDetailModal interaction. 75 archetypes + 12 templates from the prototype's static data, scored by `scoreDecks` / `scoreTemplates`. Apply-archetype regenerates slides. Real backend, not stubbed Anthropic calls.
 
-**Critical context from S14 (the substrate is now in place):**
+**Critical context from S15 (the primitives are in place):**
 
-- Tokens are canonical (`--aurum-primary`, `--aether-primary`, `--canvas-base`, etc.) — NEVER raw hex.
-- Tailwind v4 is installed and reads tokens via `@theme` directive in `src/styles/tokens.css`.
-- `AvatarOrb` placeholder already exists at `src/components/primitives/AvatarOrb.tsx` exporting the canonical surface contract (`size`, `state`, `onClick`, `label`, `glyph`, `hasVideo`). S15 replaces the **implementation** while keeping the prop shape stable. No consumer (`Header`, `RailLeft`, `Inspector`) requires updates.
-- `vitest.setup.ts` already registers `@testing-library/react` `cleanup` globally — sibling tests won't pollute each other.
+- `DeckDetailModal` exports the canonical surface contract (`Deck`, `DeckDetailModalProps`). It already renders the full prototype payload — S16 just feeds it data + wires the Apply handler.
+- `Badge` + `ConsensusDots` are token-aware primitives — Library cards consume them directly.
+- `Inspector` (S14) has a `library` tab slot already wired in `/`'s page. S16 fills its body.
 
-### Steps for Session 15
+### Steps for Session 16
 
-1. **Read in order**: this file → `docs/SESSION_LOG_…` Part 21 (Session 14 details + the design-system decisions) → `docs/01_UI_DESIGN_SYSTEM.md` § 8 (component primitives spec) → `docs/STUDIO_OLIVIA_DESIGN.md` § 2.1 (prototype's primitives — note the 2026-05-03 OVERRIDE block at § 6: Aurum/Aether wins over `C` orange).
-2. **AvatarOrb (full impl):** add LiveAvatar wrapping (when `hasVideo` is true, mount `OliviaVideoAvatar`); council-mode orbital agent dots when `subAgents={[...]}` is supplied; Cristiano gold-saturated transition for `state="speaking"` + `intent="judge"`. Keep the existing prop contract.
-3. **ConsensusDots:** 5 6-px dots, filled in `--aurum-primary` up to `n`. ARIA `role="img"` + `aria-label="N out of 5 sources"`. § 8.2.
-4. **Badge:** color-tiered percent pill: `--mint-up` ≥80, `--amber-warn` ≥50, `--coral-down` >0, `--fg-disabled` 0. Sizes `sm` / `lg`. Refactor existing `src/components/Badge.tsx` (if present) to match.
-5. **CompletionRing:** SVG circular progress, same color tiers. Default 20px.
-6. **DeckDetailModal:** Radix Dialog primitive wrapper. Renders `category chip + stage + ConsensusDots + score + name + tag + Insight + Fit + Match Reasons + Olivia Action + "Apply This Archetype" gradient CTA`. Per Studio prototype § 2.1.
-7. **Vitest unit tests** on each: `__tests__/<Primitive>.test.tsx`. Render variants, prop forwarding, accessibility tree (correct ARIA roles), keyboard navigation where applicable.
-8. **Verify**: `npm run typecheck` clean, `npm test` ~150+ passing.
-9. **Commit + push** code (`feat(primitives): Track C Session 15 — five reusable primitives`) + docs (`docs: close Track C Session 15`).
+1. **Read in order**: this file → `docs/SESSION_LOG_…` Part 22 (Session 15 details) → `docs/BUILD_SEQUENCE.md` Track C row `**11**` → `docs/STUDIO_OLIVIA_DESIGN.md` § 2.5 (Library tab spec) + § 8 #4 (Library scoring with reasons).
+2. **Lift archetype + template data** from `D:\Studio-Olivia\StudioOliviaGrandMaster (2).jsx` into `src/lib/studio/archetypes.ts` + `src/lib/studio/templates.ts`. Strict TypeScript types — no inline arrays. 75 archetypes + 12 templates per the prototype.
+3. **Implement scoring helpers** as pure functions: `scoreDecks(deck, deckConfig)` + `scoreTemplates(template, deckConfig)` → `{ score, reasons }`. Standalone tested helpers in `src/lib/studio/scoring.ts`.
+4. **Build the Library tab body component** at `src/components/studio/LibraryTab.tsx`. Search input + Decks/Plans toggle + relevance line ("X archetypes · Stage/Industry relevance") + scrollable card list (Studio prototype § 2.5 spec — 3px left bar in category color, name, category pill, stage, ConsensusDots, optional `raised` chip, 2-line clamped insight, big mono score number).
+5. **Wire the click → DeckDetailModal flow.** Selected card sets local state; passing the deck to `DeckDetailModal` opens it. `onApply` regenerates slides (S16 may stub the slide-state slot — S17 likely owns the slide engine wiring).
+6. **Replace the placeholder Library tab body** in `src/app/page.tsx`. The Library inspector tab now mounts `LibraryTab`.
+7. **Vitest unit tests:** scoring helpers (pure-function determinism + per-input edge cases); `LibraryTab` smoke (search filter, toggle, click → modal).
+8. **Verify**: `npm run typecheck` clean, `npm test` ~210+ passing.
+9. **Commit + push** code (`feat(studio): Track C Session 16 — Library tab + scoring + Apply flow`) + docs (`docs: close Track C Session 16`).
 
-### Anticipated gotchas for Session 15
+### Anticipated gotchas for Session 16
 
-- **AvatarOrb full impl must NOT break the placeholder's animation.** The aurum + aether twin-pulse "thinking" state is signature; preserve it. Reduced-motion freezes both pulses.
-- **DeckDetailModal needs Radix UI.** `npm install @radix-ui/react-dialog` per § 8.3 (don't reinvent a11y-correct primitives). Lockfile in same commit.
-- **Existing Badge / CompletionRing in OB may have different APIs.** Check `src/components/Badge.tsx` etc. before writing new ones — refactor to match prototype spec, don't shadow.
-- **Color references must be tokens, never raw hex.** Lint deferred to Track O but every new file follows the rule by construction.
-- **`01_UI_DESIGN_SYSTEM.md` § 8.3 forbids reinventing a11y primitives.** Modals → Radix Dialog. Tooltips/popovers → Radix Popover. Tabs → already done in `Inspector` (S14 manual impl with arrow-key rover); a future session may consolidate around `@radix-ui/react-tabs` if API surface grows.
+- **Static data sources from the prototype.** The 95 KB single-file JSX has the archetype + template arrays inline. Lift them carefully — preserve all 75 + 12 entries with their full payloads (consensus dots, scores, raised, insight, fit, matchReasons).
+- **Scoring math must match the prototype.** `scoreDecks` interpolates stage / industry / goal / tone match; `scoreTemplates` is similar. Translate the prototype's logic literally; pure functions; unit-test edges.
+- **Apply flow needs a slides state slot.** Decision: land the slide-state model now (S16) or defer to S17 (Section nav + document tree). Recommend S16 lands a minimal `slides: Slide[]` state in the Studio context provider; S17 fills in the per-section editor.
+- **The Library card's left bar uses a category-specific color.** Map category strings to canonical token names (no raw hex). Add a `category` → `--aurum-primary` / `--aether-primary` / `--mint-up` / etc. lookup in `src/lib/studio/category-colors.ts`.
+- **`DeckDetailModal` is already done in S15** — don't rebuild it. S16 just feeds it the selected deck.
 
 ---
 
@@ -163,7 +163,9 @@ These ARE the architectural decisions that took multiple painful conversations t
 ## RECENT COMMIT TRAIL (last 14)
 
 ```
-<this docs commit>  docs: close Track C Session 14 — design system + Tailwind decision + W-011/12/13 ✅
+<this docs commit>  docs: close Track C Session 15 — five reusable primitives shipped
+22f1454 feat(primitives): Track C Session 15 — five reusable primitives + Cristiano transition + council mode
+2cab220 docs: close Track C Session 14 — design system + Tailwind decision + W-011/12/13 ✅
 21fbecf feat(workspace): Track C Session 14 — three-region shell + Aurum/Aether design system + Tailwind v4
 c25bbfc docs: close Track Calendar C6 — Calendar subsystem inventory + Track Calendar ✅
 4bdb08a feat(calendar): Track Calendar C6 — app routes + smoke tests
@@ -175,8 +177,6 @@ d5fe4c3 fix(map): move next/dynamic out of Server Component (Vercel build fix)
 1657fe2 feat(calendar): Track Calendar C4 — voice/email/call/sms/WhatsApp routes
 273b242 docs: close Track Calendar C3 — voice + olivia models + engine done
 4291a39 feat(calendar): Track Calendar C3 — voice + olivia models + engine
-95526a1 docs: close Track Calendar C2 — engine + queries done
-948f6ed feat(calendar): Track Calendar C2 — engine + queries
 ```
 
 ---
@@ -185,7 +185,7 @@ d5fe4c3 fix(map): move next/dynamic out of Server Component (Vercel build fix)
 
 Founder direction: focus on **`clueslondon.com` (priority 1)** and **`cluesintelligence.com` (priority 2 — FLAGSHIP)**. Both ship targets. cluesxscore (priority 3) and white-label Olivia (priority 4) follow. Path 2 from the Sessions-to-Finish accounting was chosen (ship both flagships even if past 2026-06-02). ~60 sessions to finish priorities 1–4.
 
-**Sessions 1–14 done. ~46 remaining.** Track Calendar **CLOSED** (all 6 of 6 sessions ✅). Track C **Session 14 ✅** (1 of 6 — design substrate + workspace shell). W-011 / W-012 / W-013 closed. **Next: Track C Session 15 — five reusable primitives (`AvatarOrb` full impl, `ConsensusDots`, `Badge`, `CompletionRing`, `DeckDetailModal`).**
+**Sessions 1–15 done. ~45 remaining.** Track Calendar **CLOSED** (all 6 of 6 sessions ✅). Track C **Sessions 14–15 ✅** (2 of 6 — design substrate + workspace shell + five primitives). W-011 / W-012 / W-013 closed. **Next: Track C Session 16 — Library tab + DeckDetailModal interaction (75 archetypes + 12 templates + scoring + Apply flow).**
 
 ---
 
@@ -199,10 +199,10 @@ git log --oneline -5                          # confirm HEAD is at the post-Sess
 
 Then in Claude Code:
 1. Read this file (`HANDOFF.md`).
-2. Read `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Part 21 for Session 14 details (the design-system decisions + tokens-as-substrate + workspace shell).
-3. Read `docs/BUILD_SEQUENCE.md` Track C row `**10**` for Session 15's five-primitives spec.
-4. Read `docs/01_UI_DESIGN_SYSTEM.md` § 8 (component primitives spec) + § 6 (multi-agent presence — drives the AvatarOrb full impl + council mode).
-5. Read `docs/STUDIO_OLIVIA_DESIGN.md` § 2.1 (note the 2026-05-03 OVERRIDE block at § 6: Aurum/Aether wins over `C` orange).
-6. Begin Session 15 with the AvatarOrb full impl (canonical surface contract already exported from S14) — LiveAvatar wrapping + council-mode orbital agent dots + Cristiano gold-saturated transition. Then `ConsensusDots`, `Badge`, `CompletionRing`, `DeckDetailModal`. Vitest unit tests on each.
+2. Read `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Part 22 for Session 15 details (five primitives + Cristiano transition + council mode + DeckDetailModal contract).
+3. Read `docs/BUILD_SEQUENCE.md` Track C row `**11**` for Session 16's Library-tab spec.
+4. Read `docs/STUDIO_OLIVIA_DESIGN.md` § 2.5 (Library tab spec) + § 8 #4 (Library scoring with reasons).
+5. Open `D:\Studio-Olivia\StudioOliviaGrandMaster (2).jsx` in **read-only** mode to inventory the 75 archetypes + 12 plan templates + the scoring math.
+6. Begin Session 16 by lifting the static archetype + template arrays into typed modules (`src/lib/studio/archetypes.ts` + `src/lib/studio/templates.ts`), then the scoring helpers, then the `LibraryTab` component, then wire it into the Inspector library tab + the existing `DeckDetailModal`.
 
-**Standing rule reminder:** stop after Session 15's deliverable lands. Track C is 6 sessions (S14–S19); confirm with the user before starting S16. Update docs alongside the code commit per the doc-discipline rule.
+**Standing rule reminder:** stop after Session 16's deliverable lands. Track C is 6 sessions (S14–S19); confirm with the user before starting S17. Update docs alongside the code commit per the doc-discipline rule.

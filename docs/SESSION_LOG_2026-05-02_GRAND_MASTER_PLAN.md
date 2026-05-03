@@ -1046,3 +1046,75 @@ The S14 placeholder `AvatarOrb` exports the canonical surface contract — S15 r
 ### Build status at session-14 close
 
 **Green.** Test: **134/134** passing. Typecheck: clean. Track C: **1 of 6 sessions ✅** (S14 done; S15-S19 remain). Three open weaknesses (W-011 / W-012 / W-013) closed in one stroke. ~46 sessions remain to ship priorities 1–4.
+
+---
+
+## Part 22 — Session 15 (Track C, Session 10 in original numbering — five reusable primitives)
+
+Track C Session 10 ships the **five reusable primitives** the Studio prototype defines (`docs/STUDIO_OLIVIA_DESIGN.md` § 2.1) and `01_UI_DESIGN_SYSTEM.md` § 8.2. The S14 placeholder `AvatarOrb` is replaced with the full implementation; `ConsensusDots`, `Badge`, `CompletionRing`, and `DeckDetailModal` are net-new. Every paint references a canonical Aurum / Aether token; no raw hex codes anywhere in this commit.
+
+### What shipped (commit `22f1454`)
+
+| Primitive | Purpose | Lines | Tests |
+|-----------|---------|-------|-------|
+| `AvatarOrb` (full impl) | The signature Olivia chrome — 5 sizes, 6 states, council mode, Cristiano transition, lazy LiveAvatar | 290 | 19 |
+| `Badge` | Color-tiered percent pill, four tiers via `data-badge-tier` | 120 | 10 |
+| `CompletionRing` | SVG circular progress, four tiers via `data-ring-tier` | 130 | 11 |
+| `ConsensusDots` | N-of-5 dot strip, single `role="img"` with descriptive label | 65 | 8 |
+| `DeckDetailModal` | Radix Dialog wrapper for archetype detail + Apply CTA | 270 | 9 |
+
+**AvatarOrb full impl details:**
+
+- **Cristiano gold-saturated transition (§ 6.3).** When `intent="judge"` + `state="speaking"`, the orb swells to gold-fill for 1s and reflects via `data-cristiano="true"`. The user always knows when a unilateral judge call has happened. Animation freezes under `prefers-reduced-motion`.
+- **Council mode (§ 6.4).** When `subAgents={[...]}`, dots orbit the orb at evenly-spaced angles in their assigned colours: Olivia + Cristiano (aurum), Research (aether), Persona (mint-up), Math (sky-info), Multilingual (coral-down-mute). Active dots pulse + glow; inactive dots fade to 0.35 opacity. Each dot exposes its own ARIA label per § 6.4 colour assignments.
+- **LiveAvatar lazy-mount.** `OliviaVideoAvatar` is dynamically imported via `lazy()` + `Suspense` and mounted only at size 240 OR when `hasVideo` is explicitly true. Smaller sizes (40/56/96) keep the glyph + state animation; the heavyweight LiveKit + ElevenLabs pipeline doesn't load until needed. Reduces initial-load JS for surfaces that only need the status indicator.
+- **Surface contract preserved from S14.** `Header`, `RailLeft`, `Inspector` (S14 consumers) require zero updates. New props (`subAgents`, `intent`, `adminKey`, `lastReply`, `onReady`, `onDisconnect`, `onSpeakingChange`) are all optional.
+
+**Badge tier rules** (drives `data-badge-tier`):
+- ≥80 → high → mint-up
+- 50-79 → medium → amber-warn
+- 1-49 → low → coral-down
+- 0 → empty → fg-disabled
+
+**CompletionRing tier rules** identical to Badge so cards carrying both read coherently. SVG with two circles (background track + progress arc); animated `stroke-dashoffset` + `stroke` transitions; `role="progressbar"` + `aria-valuenow` / `aria-valuemin` / `aria-valuemax`.
+
+**ConsensusDots** renders as a single `role="img"` with `aria-label="N of M sources agree"` so screen readers don't have to count dots individually. Five 6-px dots by default; `total` / `dotSize` / `gap` are configurable; clamping at the boundaries; floats round down via floor.
+
+**DeckDetailModal** is built on `@radix-ui/react-dialog` (`npm install @radix-ui/react-dialog`) per § 8.3 — never reinvent a11y primitives. Focus-trap, return-focus, Esc-to-close, ARIA all handled by Radix. The modal renders the full Studio prototype payload: category chip + stage + year + slideCount eyebrow row, dialog title, optional tag, ConsensusDots + raised chip + score Badge, four optional sections (Insight, Fit, Match Reasons, Olivia Action), and the gradient "Apply This Archetype" CTA. Custom `applyLabel` lets cluesintelligence verdict modal and cluesxscore metric-detail modal reuse the same primitive shape.
+
+### Backward-compat shims
+
+`src/components/pitch/Badge.tsx` and `src/components/pitch/CompletionRing.tsx` were the prior locations — both used raw hex codes (`#80d8c3`, `#d8aa60`, `#f28d7f`) which violated `01_UI_DESIGN_SYSTEM.md` § 1.6. They are now **thin re-export shims** pointing at the canonical primitives in `src/components/primitives/`. No internal imports use the legacy paths today (verified via grep), but the shim preserves the import contract for any future code that does. The migration is zero-risk.
+
+### Decisions
+
+- **Pitch primitives moved, not duplicated.** Old paths re-export; canonical impls live in `primitives/`. Single source of truth, zero duplication.
+- **`data-badge-tier` / `data-ring-tier` attributes.** Selectors for testing + visual-diff tools without parsing inline styles. Cheap; no bundle cost.
+- **Radix Dialog over a hand-rolled modal.** § 8.3 — focus-trap + return-focus + Esc + ARIA correctness all hard to get right; Radix is the industry standard. cmdk + react-day-picker + react-grid-layout will land same way as their dependencies surface in S16-S19.
+- **AvatarOrb size 240 implies `hasVideo` by default.** A 240px orb is the hero / inspector-fullscreen size — its only realistic content is the LiveAvatar video stream. Default-true reduces caller boilerplate; explicit `hasVideo={false}` opts out (e.g., for static profile-photo renders).
+- **Council-mode dots use the orb's own border-radius math.** Dots position at `(cos θ × R, sin θ × R)` where R = orb-radius + 18px. Even spacing regardless of `subAgents.length`. The animation `prefers-reduced-motion` clamps follow `base.css`.
+- **Cristiano transition is a documented behaviour, not an aesthetic flourish.** The user-facing contract: any time a unilateral judge call happens, the orb visually announces it. Captured in § 6.3 (design system) + § 8 #1 (notable design choices) + this session log.
+
+### Verification
+
+- `npm run typecheck` — clean.
+- `npm test` — **180/180 passing** (134 baseline + 10 Badge + 11 CompletionRing + 8 ConsensusDots + 9 DeckDetailModal + 8 net new AvatarOrb cases for Cristiano transition + council mode + lazy-mount). No regressions.
+- LTM source unchanged.
+- All commits pushed to `origin/main`.
+
+### Where Session 16 picks up
+
+**Track C — Session 16 (Track C internal session 3):** Library tab + DeckDetailModal interaction.
+
+Per `BUILD_SEQUENCE.md` Track C row 11: 75 archetypes + 12 templates from the prototype's static data, scored by `scoreDecks` / `scoreTemplates`. Apply-archetype regenerates slides. Real backend wiring, not stubbed Anthropic calls.
+
+The S15 `DeckDetailModal` exports the canonical surface contract — S16 wires the library list + scoring + apply flow into it.
+
+**Anticipated S16 gotchas:**
+- **Static archetype + template data lives in the prototype JSX (`D:\Studio-Olivia\StudioOliviaGrandMaster (2).jsx`).** Lift it into `src/lib/studio/archetypes.ts` + `src/lib/studio/templates.ts` with proper TypeScript types, not inline arrays.
+- **`scoreDecks` / `scoreTemplates` are pure functions** of `(deck, deckConfig)` → score + reasons. Keep them as standalone tested helpers.
+- **Apply flow regenerates slides.** S16 needs a `slides` state slot somewhere — this is the entry point for the Studio engine port (Track B Session 8's deferred work). Decide whether to land the slides state model in S16 or defer to S17.
+
+### Build status at session-15 close
+
+**Green.** Test: **180/180** passing. Typecheck: clean. Track C: **2 of 6 sessions ✅** (S14 + S15 done; S16-S19 remain). ~45 sessions remain to ship priorities 1–4.
