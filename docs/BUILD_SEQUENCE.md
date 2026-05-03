@@ -12,7 +12,13 @@
 
 ---
 
-## Done — Sessions 1–5 (status post-Session 5 commit)
+## Strategic priority (locked 2026-05-03)
+
+Founder direction: **focus on `clueslondon.com` (priority 1) and `cluesintelligence.com` (priority 2, FLAGSHIP).** Both ship targets. cluesxscore (priority 3) and white-label Olivia (priority 4) follow. Priorities 5–7 (clues-property-search, Heart-Recovery-Calendar, London transit) are explicit future builds. Path 1 from the Sessions-to-Finish accounting (hold deadline → ship slice) was rejected; path 2 (ship both flagships even if past 2026-06-02) was chosen. Sessions 6–18 land Olivia core + clueslondon. Sessions M (Brain Enrichment Engine) + L (cluesintelligence Track) follow. Total ~60 sessions to finish priorities 1–4.
+
+---
+
+## Done — Sessions 1–6 (status post-Session 6 commit)
 
 | # | Track | Outcome |
 |---|---|---|
@@ -42,7 +48,7 @@ Without this, every Studio "Ask Olivia" button is a placeholder. Highest-value u
 |---------|-------------|----------------|
 | **4** ✅ | `/api/olivia/chat` route on Olivia Brain. Single-provider first (Anthropic Sonnet 4.6 via `@ai-sdk/anthropic`). Persistence to `conversations` + `conversation_turns`. AbortSignal+timeout + Langfuse trace. | **DONE.** `POST /api/olivia/chat { message }` returns `{ conversationId, messageId, reply }`, persists turns via `getConversationStore()`, opens an OTel span. Unconfigured path (no `ANTHROPIC_API_KEY`) returns a clean structured fallback and still persists. 16 new tests, 92/92 passing, typecheck clean. |
 | **5** ✅ | Cascade: extend `/api/olivia/chat` to use the existing cascade in `src/lib/services/`. Intent router → fallback chain. Companies House + Kimi providers added per `MERGE_PLAN.md` Phase 2. | **DONE for the cascade refactor.** `/api/olivia/chat` now calls `runModelCascade` with intent classification, memory recall, full attempts trail in turn metadata, mock-mode degrade. Forced-fault failover test exercises Anthropic → OpenAI handoff via the cascade contract. **DEFERRED:** Companies House (structurally a `UniversalKnowledgeProvider` not a cascade LLM) and Kimi (needs SDK + env-var work) are tracked in `API_INTEGRATION_BACKLOG.md` for follow-up sessions. LangGraph wrapping of the route lands in Sessions 19–20 (Track G). |
-| **6** | Wire `OliviaProvider.sendMessage` to the new route. The `/test-avatar` smoke page now demonstrates a full conversation: type → cascade → reply → ElevenLabs → LiveAvatar lip-syncs. | Live demo: ask Olivia anything in the smoke page, she answers in voice + face. |
+| **6** ✅ | Wire `OliviaProvider.sendMessage` to the new route. The `/test-avatar` smoke page now demonstrates a full conversation: type → cascade → reply → ElevenLabs → LiveAvatar lip-syncs. | **DONE.** `/test-avatar` now has two flows: (A) manual lip-sync (existing), (B) full conversation loop using `useOlivia().sendMessage` — a chat composer posts to `/api/olivia/chat`, the cascade walks, and the latest assistant reply is routed through a `useEffect` watcher into the LiveAvatar's `lastReply` prop so the cascade response gets spoken with lip-sync. Conversation history rendered inline. Outdated comment in `OliviaProvider.tsx` claiming the chat route doesn't exist was corrected. **94/94 tests still passing**, typecheck clean. |
 
 ### Track B — Studio engine port (Sessions 7–8)
 

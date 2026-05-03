@@ -3,18 +3,23 @@
 // src/components/olivia/OliviaProvider.tsx
 // Central state management for Olivia — shared between bubble, panel, and /olivia page
 //
-// ─── PORT NOTE (Olivia Brain, session 2) ─────────────────────────────────
-// Copied from D:\London-Tech-Map\src\components\olivia\OliviaProvider.tsx.
-// LTM original is read-only and untouched.
+// ─── PORT NOTE (Olivia Brain) ────────────────────────────────────────────
+// Originally copied from D:\London-Tech-Map\src\components\olivia\OliviaProvider.tsx
+// in session 2. LTM original is read-only and untouched.
 //
-// The fetch URLs below (/api/olivia/chat, /api/olivia/voice,
-// /api/olivia/history/[convId], /api/olivia/conversations/[id]/email) are
-// not yet implemented in Olivia Brain — they are scheduled for Phase 2 of
-// MERGE_PLAN.md (Backend Consolidation, Weeks 3-5). The session-2 smoke
-// test only exercises the LiveAvatar plumbing and does NOT invoke
-// sendMessage / loadConversation / speakText / emailConversation, so the
-// missing routes do not block the proof-of-life test. Routes will be
-// stood up in subsequent sessions.
+// Status of fetch URLs in Olivia Brain:
+//   - /api/olivia/chat — IMPLEMENTED (sessions 4-5; cascade-routed via
+//     runModelCascade with intent classification, persistence, full
+//     attempts trail). sendMessage flows end-to-end.
+//   - /api/olivia/voice — TBD; Track E (session 17) lands voice input.
+//   - /api/olivia/history/[convId] — TBD; conversation hydration is a
+//     follow-up. loadConversation will 404 until it lands.
+//   - /api/olivia/conversations/[id]/email — TBD; emailConversation will
+//     fail until that route exists.
+//
+// The session-6 smoke test on /test-avatar exercises sendMessage end-to-
+// end (type → cascade → reply → routed to LiveAvatar lastReply →
+// ElevenLabs PCM → lip-sync).
 // ──────────────────────────────────────────────────────────────────────────
 
 import React, {

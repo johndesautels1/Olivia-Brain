@@ -1,23 +1,35 @@
 "use client";
 
 /**
- * /test-avatar — Session 2 Smoke Test
+ * /test-avatar — Sessions 2 + 6 Smoke Test
  *
- * Proof-of-life for the LiveAvatar LITE pipeline ported in session 1+2:
- *   1. Click "Start Live Avatar" → POST /api/olivia/liveavatar
- *   2. LiveKit room connects, video element starts streaming
- *   3. WebSocket to LiveAvatar opens
- *   4. Type a message, click "Speak" → POST /api/olivia/liveavatar/speak
- *      → ElevenLabs PCM → forward as agent.speak frame → avatar lip-syncs
+ * Two flows exercised on this page:
  *
- * Auth: routes are gated by requireAdminKey (Authorization: Bearer ADMIN_API_KEY)
- * until Clerk lands in week 1. Pass the key via query param: /test-avatar?key=...
+ *  A. Manual lip-sync (session 2):
+ *     1. Click "Start Live Avatar" → POST /api/olivia/liveavatar
+ *     2. LiveKit room connects, video element starts streaming
+ *     3. WebSocket to LiveAvatar opens
+ *     4. Type text in "Make Olivia speak this exact text", click Speak →
+ *        POST /api/olivia/liveavatar/speak → ElevenLabs PCM → lip-syncs
+ *
+ *  B. Full conversation loop (session 6):
+ *     1. Type a question in "Talk to Olivia", click Ask
+ *     2. useOlivia().sendMessage() → POST /api/olivia/chat
+ *     3. Cascade walks (Anthropic → OpenAI → Google → ...)
+ *     4. Reply persists to conversations + conversation_turns
+ *     5. Latest assistant message in messages[] is routed into the
+ *        avatar's `lastReply` prop, triggering ElevenLabs + lip-sync
+ *
+ * Auth posture:
+ *   - /api/olivia/liveavatar is gated by requireAdminKey (Bearer ADMIN_API_KEY)
+ *     until Clerk lands in Track F / Session 18. Pass via ?key= or paste below.
+ *   - /api/olivia/chat is NOT gated (session 4 design); rate-limited per IP.
  *
  * NOT a production page. Will be removed or relocated once Clerk auth is wired.
  */
 
-import { useEffect, useRef, useState } from "react";
-import { OliviaProvider } from "@/components/olivia/OliviaProvider";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { OliviaProvider, useOlivia } from "@/components/olivia/OliviaProvider";
 import {
   OliviaVideoAvatar,
   type OliviaVideoAvatarRef,
@@ -25,15 +37,49 @@ import {
 } from "@/components/olivia/OliviaVideoAvatar";
 
 function SmokeTest() {
+  const olivia = useOlivia();
   const [adminKey, setAdminKey] = useState<string>("");
   const [keyInput, setKeyInput] = useState<string>("");
   const [draft, setDraft] = useState<string>(
     "Hello, I'm Olivia. This is the session two smoke test for Olivia Brain."
   );
+  const [chatInput, setChatInput] = useState<string>(
+    "Hi Olivia — what can you do for me on Olivia Brain today?"
+  );
   const [lastReply, setLastReply] = useState<string>("");
   const [avatarState, setAvatarState] = useState<AvatarState>("disconnected");
   const [history, setHistory] = useState<string[]>([]);
   const avatarRef = useRef<OliviaVideoAvatarRef>(null);
+
+  /**
+   * Latest assistant message from the cascade. Memoised so the effect below
+   * fires once per new reply, not on every messages[] reference change.
+   */
+  const latestAssistant = useMemo(() => {
+    const finished = olivia.messages.filter(
+      (m) => m.role === "assistant" && !m.isLoading && m.content.trim().length > 0,
+    );
+    return finished[finished.length - 1];
+  }, [olivia.messages]);
+
+  /**
+   * When the cascade returns a new assistant reply, route it into the
+   * avatar's `lastReply` prop so the LiveAvatar speaks it with lip-sync.
+   * Also push it into the recent-prompts list so the user can replay it.
+   */
+  useEffect(() => {
+    if (!latestAssistant) return;
+    if (latestAssistant.content === lastReply) return;
+    setLastReply(latestAssistant.content);
+    setHistory((prev) => [latestAssistant.content, ...prev].slice(0, 10));
+  }, [latestAssistant, lastReply]);
+
+  async function handleAskOlivia() {
+    const text = chatInput.trim();
+    if (!text || olivia.isLoading) return;
+    setChatInput("");
+    await olivia.sendMessage(text);
+  }
 
   // Load admin key from ?key= on mount. Plain DOM read — no useSearchParams
   // (which forces a Suspense boundary at the page level) and no Next route
@@ -176,7 +222,138 @@ function SmokeTest() {
         />
       </section>
 
-      {/* Compose + actions */}
+      {/* Talk to Olivia — full conversation loop (session 6) */}
+      <section
+        style={{
+          padding: 16,
+          borderRadius: 16,
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <label
+          htmlFor="chatInput"
+          style={{
+            color: "var(--gold)",
+            fontFamily: "var(--font-mono), monospace",
+            fontSize: "0.72rem",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+          }}
+        >
+          Talk to Olivia (cascade reply → avatar speaks)
+        </label>
+        <textarea
+          id="chatInput"
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          rows={3}
+          disabled={olivia.isLoading}
+          style={{
+            width: "100%",
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid var(--border)",
+            background: "rgba(5, 11, 21, 0.72)",
+            color: "var(--text)",
+            fontFamily: "inherit",
+            fontSize: "0.95rem",
+            resize: "vertical",
+            opacity: olivia.isLoading ? 0.6 : 1,
+          }}
+          placeholder="Ask Olivia anything. Goes to /api/olivia/chat → cascade → reply."
+        />
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <button
+            onClick={() => void handleAskOlivia()}
+            disabled={!chatInput.trim() || olivia.isLoading}
+            style={{
+              padding: "10px 18px",
+              borderRadius: 999,
+              border: "none",
+              background: "linear-gradient(135deg, var(--gold), #e2c78b)",
+              color: "#1b1308",
+              fontWeight: 700,
+              cursor:
+                chatInput.trim() && !olivia.isLoading ? "pointer" : "not-allowed",
+              opacity: chatInput.trim() && !olivia.isLoading ? 1 : 0.5,
+            }}
+          >
+            {olivia.isLoading ? "Thinking…" : "Ask Olivia"}
+          </button>
+          <span
+            style={{
+              color: "var(--muted)",
+              fontFamily: "var(--font-mono), monospace",
+              fontSize: "0.78rem",
+            }}
+          >
+            turns · {olivia.messages.length}
+          </span>
+          {olivia.error && (
+            <span
+              style={{
+                color: "var(--coral, #f28d7f)",
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "0.78rem",
+                marginLeft: "auto",
+              }}
+            >
+              error · {olivia.error}
+            </span>
+          )}
+        </div>
+        {olivia.messages.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              maxHeight: 220,
+              overflowY: "auto",
+              paddingRight: 4,
+            }}
+          >
+            {olivia.messages.map((m) => (
+              <div
+                key={m.id}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background:
+                    m.role === "user"
+                      ? "rgba(5, 11, 21, 0.5)"
+                      : "rgba(216, 170, 96, 0.08)",
+                  color: "var(--text)",
+                  fontSize: "0.88rem",
+                  opacity: m.isLoading ? 0.55 : 1,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono), monospace",
+                    fontSize: "0.7rem",
+                    color: m.role === "user" ? "var(--muted)" : "var(--gold)",
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    marginBottom: 4,
+                  }}
+                >
+                  {m.role}
+                  {m.isLoading ? " · thinking" : ""}
+                </div>
+                <div>{m.isLoading ? "…" : m.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Manual lip-sync (session 2) — speak exact text without cascade */}
       <section
         style={{
           padding: 16,
@@ -198,7 +375,7 @@ function SmokeTest() {
             textTransform: "uppercase",
           }}
         >
-          What should Olivia say?
+          Make Olivia speak this exact text (no cascade)
         </label>
         <textarea
           id="draft"

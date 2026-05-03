@@ -22,7 +22,7 @@ Surfaces this repo serves:
 
 **Multi-million-dollar deliverable. 2026 world-class production code on every line. No band-aids. No symptom suppression.**
 
-**Deadline:** 2026-06-02. **Today:** 2026-05-03 (sessions 1–5 complete; ~24 sessions remaining).
+**Deadline:** 2026-06-02 (clueslondon-and-Olivia-core). Cluesintelligence + cluesxscore + white-label finish ~Session 60 (post-deadline by design — strategic priority decision 2026-05-03). **Today:** 2026-05-03 (sessions 1–6 complete; ~54 sessions remaining to finish priorities 1–4).
 
 ---
 
@@ -40,9 +40,9 @@ LTM contains **two** Studio implementations side-by-side: the original engine (S
 
 ---
 
-## Current state — sessions 1–5
+## Current state — sessions 1–6
 
-HEAD: post-`5ef0f45`, after Session 5's cascade refactor.
+HEAD: post-Session 6 wiring commit, after `009a629` (architecture-locking pass).
 
 Shipped:
 - **LiveAvatar pipeline end-to-end.** Server: session token + start endpoints, ElevenLabs PCM streaming. Browser: `OliviaVideoAvatar.tsx` + `OliviaProvider.tsx` ported from LTM. Smoke test: `/test-avatar`. Click Start → her face appears → type a message → she speaks. **Highest-risk item in the 30-day plan is behind us.**

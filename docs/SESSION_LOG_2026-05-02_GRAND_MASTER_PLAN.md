@@ -339,3 +339,37 @@ Track A · Session 5 of `BUILD_SEQUENCE.md`. Goal: replace the direct `generateT
 Track A · Session 6: wire `OliviaProvider.sendMessage` to actually exercise `/api/olivia/chat` from the browser, so `/test-avatar` demonstrates the full conversation loop in voice + face. The route is ready; the front-end change is a small one-line update to include any required headers (none today; Bearer auth lands Session 18 with Clerk). End-to-end smoke test must show: type a message → cascade walks → reply text comes back → ElevenLabs renders audio → LiveAvatar lip-syncs.
 
 **Build status at session-5 close: green. Test status: 94/94 passing. Typecheck: clean.**
+
+---
+
+## Part 13 — Session 6 (chat brain wired into the smoke flow)
+
+Track A · Session 6 of `BUILD_SEQUENCE.md`. Goal: light up `OliviaProvider.sendMessage` end-to-end on `/test-avatar` so a typed message walks the cascade, returns through Olivia's chat brain, and gets spoken by the LiveAvatar with lip-sync.
+
+### What shipped
+
+- **`src/components/olivia/OliviaProvider.tsx`** — corrected the now-outdated port-note comment claiming `/api/olivia/chat`, `/api/olivia/voice`, `/api/olivia/history/[convId]`, and `/api/olivia/conversations/[id]/email` were all unimplemented. New comment captures status accurately: `chat` is live (Sessions 4–5); `voice` lands Track E / Session 17; `history` and `email` are follow-ups. No code logic changed.
+- **`src/app/test-avatar/page.tsx`** — added a full-conversation-loop flow alongside the original session-2 manual lip-sync flow. The page now has two interactions:
+  - **Talk to Olivia** (new) — chat composer (`textarea` + Ask button) calls `useOlivia().sendMessage(text)`, which posts to `/api/olivia/chat`. The provider updates `messages`. A `useEffect` watcher derives the latest finished assistant message via `useMemo` and feeds it into the existing `lastReply` state — which the `OliviaVideoAvatar` already lip-syncs. Conversation history is rendered inline (user turns vs assistant turns visually distinct via background tint). `isLoading`, `error`, and turn-count surfaced as compact metadata.
+  - **Manual lip-sync** (existing, session 2) — labeled "Make Olivia speak this exact text (no cascade)" so the two paths are unambiguous; original Speak / Interrupt / Replay buttons preserved.
+- **Doc updates** — `BUILD_SEQUENCE.md` Session 6 row marked ✅ with the deliverable summary; new "Strategic priority" section locks the founder-directed focus on clueslondon + cluesintelligence as the two ship targets. `BOOTSTRAP.md` session count + HEAD reference updated; the deadline split into "clueslondon-and-Olivia-core at 2026-06-02; cluesintelligence + cluesxscore + white-label finish ~Session 60 (post-deadline by design)."
+
+### Decisions
+
+- **Re-used `lastReply` rather than introducing a new prop.** The `OliviaVideoAvatar` component already speaks any text passed to its `lastReply` prop; routing the latest assistant message into that prop avoided invasive changes to the avatar component. One useEffect watcher, one state variable, no new contract.
+- **`useMemo` over derived state.** The "latest assistant message" calculation runs on every render that touches `olivia.messages`. Memoising it keeps the watcher effect from firing on render-only mutations.
+- **Did not gate Talk to Olivia behind the admin key.** `/api/olivia/chat` is not gated (Session 4 design — the route is rate-limited per IP rather than admin-key-gated, since the browser provider doesn't forward an Authorization header). Manual lip-sync still requires the admin key because `/api/olivia/liveavatar` *is* gated. The page makes this distinction explicit in the auth-posture header comment.
+- **Did not add component tests for the smoke page.** The chat-route already has 18 vitest assertions covering the API; the avatar pipeline is verified manually on `/test-avatar`. Adding jsdom + RTL for one smoke component is disproportionate; manual smoke pass replaces it.
+
+### Verification
+
+- `npm test` — **94 passing** (no regressions; no new tests added — same 76 prior + 18 chat-route).
+- `npm run typecheck` — clean.
+- No `package.json` change.
+- Manual smoke flow (to be performed by next agent or user): `npm run dev`, open `/test-avatar?key=<ADMIN_API_KEY>`, click Start Live Avatar, type a question in "Talk to Olivia," click Ask. Expected: cascade walks, reply text appears in conversation history, avatar lip-syncs the reply via ElevenLabs PCM.
+
+### Where Session 7 picks up
+
+Track B · Session 7: port `src/lib/studio/{types,entityModes,questionMapper}.ts` (3 files, 616 LOC) and `src/components/documents/*` (37 files, 6,172 LOC) from LTM into Olivia Brain at the equivalent paths. LTM stays read-only. See `STUDIO_PORT_MANIFEST.md`.
+
+**Build status at session-6 close: green. Test status: 94/94 passing. Typecheck: clean.**
