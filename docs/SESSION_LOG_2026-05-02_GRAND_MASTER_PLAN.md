@@ -373,3 +373,72 @@ Track A · Session 6 of `BUILD_SEQUENCE.md`. Goal: light up `OliviaProvider.send
 Track B · Session 7: port `src/lib/studio/{types,entityModes,questionMapper}.ts` (3 files, 616 LOC) and `src/components/documents/*` (37 files, 6,172 LOC) from LTM into Olivia Brain at the equivalent paths. LTM stays read-only. See `STUDIO_PORT_MANIFEST.md`.
 
 **Build status at session-6 close: green. Test status: 94/94 passing. Typecheck: clean.**
+
+---
+
+## Part 14 — Session 7 (LTM map port — mid-session pivot from documents engine)
+
+Track B (revised) · Session 7. Original goal: port `lib/studio` (3 files) + `components/documents` (37 files) from LTM. **Mid-session pivot:** after attempting the documents port and surfacing deeper-than-manifest LTM entanglement, the user confirmed LTM map + calendar are flawless ("state of the art the way we layered and architected them") and approved redirecting Session 7 to the LTM map subsystem byte-for-byte port. Documents engine port re-scoped to Session 8 with explicit Clerk-strategy prerequisite.
+
+### What shipped
+
+**3 doc additions before pivot** (committed `faa8ab1`):
+- `README.md` — new "Visual Manifestation Stack" section (Tier 1–4 APIs; Gamma flagged as partner integration, never competitor — per durable feedback memory) + new "Weakness Backlog" (W-001 through W-007 from 2026-05-03 competitive analysis).
+- `BUILD_SEQUENCE.md` — Track N (Sessions N1–N5, split-screen Olivia + Canvas with Mapbox/Mermaid/Recharts/Tremor/v0/Cesium/Spline + deeper Gamma integration) and Track O (Sessions O1–O5, weakness closure: Composio tool dispatch, weekly eval runtime, sub-600ms voice via Cartesia, citation-first RAG wiring, Tavus avatar A/B harness).
+- `API_INTEGRATION_BACKLOG.md` — new §10 with 25 APIs (numbered 26–50) covering visual manifestation + tool dispatch.
+
+**Chore commit (`991f411`)** — pre-installed `recharts` + `lucide-react` for Track N3. Both were already scheduled in Track N3; pre-installing eliminates deferred npm churn.
+
+**Aborted documents port** (no commit, fully reverted):
+- Copied 33 LTM files (3 `lib/studio` + 14 `components/documents` top-level + 16 `components/documents/blocks`) with 6 deferred files (CalloutBlock, ListBlock, DocumentCard, DocumentEditor, DocumentFilters, PackageProgressBar).
+- Added 2 missed LTM utility files (`@/types/blocks.ts`, `@/lib/documents/content.ts`).
+- Typecheck surfaced: `OrgMapProvider` imports in **4** blocks (not 2 as manifest claimed — `ParagraphBlock` + `DocumentBody` also use it; ParagraphBlock is the workhorse so deferring it would gut the engine); `@clerk/nextjs` imports in `BookmarkButton` + `DocumentActionBar`; missing `react-markdown` + `remark-gfm`; `DocumentRenderer` cross-imports break when blocks defer.
+- Even `typedRoutes: false` (already set in `next.config.ts`) didn't suppress stale `.next/types` `RouteImpl` errors — required clearing the cache.
+- Reverted entirely. Working tree returned to a state with only `package.json` + `package-lock.json` modifications (the npm chore).
+
+**Map port** (committed `55ff466`) — 28 files, 6,107 LOC byte-for-byte from LTM (read-only, never modified):
+- `src/components/map/` — 20 files: `GoogleMap3DView` (photorealistic 3D, primary), `GoogleMapView` (standard Google Maps), `MapView` (Mapbox fallback), `MapAppointmentsContext`, `constants`, `types`; `controls/` (CategoryFilterPanel, DraggableMapControls, LayerPanel, MapSearchBar, SectorFilterBar, StatsPanel, ViewPresetButtons); `overlays/` (ClusterCardGrid, MapLegend, StreetViewModal); `hooks/` (useClusterInteraction, useMapData, useMapLayers); `data/district-boundaries`.
+- `src/app/map/` — 3 files: `page.tsx` (3-tier vendor fallback: Google 3D → Google standard → Mapbox → "key required" message), `loading.tsx`, `MapPageClient.tsx` (next/dynamic wrappers with `ssr:false`).
+- `src/components/ExternalLinkFrame.tsx` — LTM utility (Provider + Link + hook + iframe overlay; 403 LOC).
+- `src/types/index.ts` — LTM types barrel (`DistrictWithStats`, `TechGravityInput`, `TechGravityResult`).
+- `src/types/google.d.ts` — new triple-slash reference for `@types/google.maps` (auto-discovery doesn't fire under `moduleResolution: bundler`; this file forces the global namespace to load).
+- npm packages: `mapbox-gl`, `@googlemaps/js-api-loader`, `@types/google.maps` (devDep).
+
+**Doc updates this commit:**
+- `STUDIO_PORT_MANIFEST.md` — added §J (Map subsystem inventory + dep notes + outstanding deferrals) and §K (Documents subsystem entanglement post-mortem with explicit Session 8 plan).
+- `BUILD_SEQUENCE.md` — Session 7 row marked ✅ with full pivot narrative; Track I Session 24 expanded with adaptive-surface-suppression rule (`ui.suppressedSurfaces` per-tenant config so embedded contexts hide Olivia surfaces the host already provides).
+- `README.md` — Weakness Backlog gains W-008 (LTM map links to `/directory/{id}` + `/videos/{id}` routes that don't exist), W-009 (documents subsystem entanglement summary), W-010 (`ExternalOverlayProvider` not yet wrapped in root layout).
+- 2 new project memories saved — `project_ltm_map_calendar_adaptive` and `project_olivia_surface_suppression`.
+
+### Decisions
+
+- **Pivoted instead of pushing through documents.** Standing rules "no band-aids" + "raise the conflict, never silently lower the bar" applied directly. Documents subsystem needs (a) Clerk plan, (b) OrgMap stub, (c) react-markdown install, (d) renderer-routes coordination — too much to land cleanly in one session.
+- **Map ported byte-for-byte, no restyling.** Per user's "port over exactly" + standing rule "LTM stays read-only." Only addition was the new `src/types/google.d.ts` reference file (new file, not a modification of any LTM source).
+- **Did not wrap `ExternalOverlayProvider` in root layout.** Default context returns `{ openUrl: () => {} }` so unwrapped links degrade to no-op. Map renders fully; only modal-link clicks are inert. Layout integration needs design alignment with future Studio-Olivia structure — defer.
+- **Did not stub `/directory` or `/videos` routes.** Olivia Brain has neither. Map links to those routes will 404 until Track J vertical adapters port them OR an earlier session creates stubs. Tracked as W-008.
+- **Did not add Vitest snapshot tests for map components.** Original Session 7 exit criterion (18 block snapshots + 1 round-trip) belongs to the documents engine, which deferred. Map smoke tests scheduled for follow-up or Track N2.
+- **Did not modify `next.config.ts`.** `typedRoutes` was already `false`; the `RouteImpl` errors were stale-cache artifacts cleared by deleting `.next/` and `tsconfig.tsbuildinfo`.
+
+### Verification
+
+- `npm test` — **94 passing** (76 prior + 18 chat-route; no regressions; no new tests added — Vitest map snapshots pushed to a follow-up).
+- `npm run typecheck` — clean (after `.next/` cache + `tsconfig.tsbuildinfo` cleared; stale `RouteImpl` types from a prior build had to be flushed).
+- `package.json` + `package-lock.json` updated for `mapbox-gl`, `@googlemaps/js-api-loader`, `@types/google.maps`, plus the earlier chore for `recharts` + `lucide-react`.
+- LTM source unchanged (verified by intent — `Read` + `Grep` + `Copy-Item` only on LTM paths; no `Edit` / `Write` / `Remove-Item` ever touched LTM).
+
+### Where Session 8 picks up
+
+**Track B (revised) · Session 8** — documents-subsystem port with Clerk-strategy prerequisite. Per §K of `STUDIO_PORT_MANIFEST.md`:
+
+1. Pull Track F Session 18 (Clerk) forward OR build a Clerk stub provider before any documents work — gates `BookmarkButton` + `DocumentActionBar`.
+2. Port `OrgMapProvider` as soft-stub (renders children verbatim, no entity linking) so the 4 OrgMap-using blocks unblock — the manifest's "REFERENCE / skip" classification was wrong.
+3. Port the 3 missed LTM utility files (`types/blocks`, `lib/autolinker`, `lib/documents/content`).
+4. Install `react-markdown` + `remark-gfm`.
+5. Port all 18 blocks + 18 top-level documents files + `DocumentRenderer` **together** — partial ports break the renderer.
+6. App route ports (`app/documents/*`, 13 files) defer to Session 9 or Track C.
+7. Vitest snapshot tests on the 18 block components (original Session 7 exit criterion, postponed).
+8. `mapBlocksToQuestions()` round-trip test (also postponed).
+
+**Calendar subsystem** (36 files, ~638 KB, includes full `lib/calendar/` Olivia engine) remains a separate track — to be inserted before Track L per `project_ltm_map_calendar_adaptive` memory.
+
+**Build status at session-7 close: green. Test status: 94/94 passing. Typecheck: clean. Map subsystem ported byte-for-byte; documents subsystem deferred to Session 8 with revised plan.**

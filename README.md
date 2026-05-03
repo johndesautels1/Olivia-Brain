@@ -183,6 +183,9 @@ Append-only. Items resolve only on explicit user say-so. New observations from c
 | W-005 | LiveAvatar lip-sync at parity, not leadership — Tavus / HeyGen Interactive Avatar quality is ahead | 2026-05-03 competitive analysis | Track O Session O5 |
 | W-006 | 250-agent registry is specs not behavior — risk of "library of facades" until Track H lands | OLIVIA_BUILD_STATE audit | Track H Sessions 21–23 (already scoped) |
 | W-007 | UI polish discipline session-over-session is the determinant on whether `01_UI_DESIGN_SYSTEM.md` ceiling actually gets hit | 2026-05-03 competitive analysis | Spread across Tracks C / N (no single fix; gate every session on visual review) |
+| W-008 | LTM map links to `/directory/{id}` and `/videos/{id}` routes that don't exist in Olivia Brain — clicks 404 until route stubs ship | 2026-05-03 Session 7 typecheck | Track J (vertical adapters) or earlier — stub routes in `src/app/directory/[slug]/page.tsx` + `src/app/videos/[id]/page.tsx` |
+| W-009 | LTM documents subsystem entanglement — port surfaced 3 missed LTM utility files (`@/types/blocks`, `@/lib/autolinker`, `@/lib/documents/content`); Clerk dependencies in BookmarkButton + DocumentActionBar; OrgMapProvider used by 4 blocks (not 2 as manifest claimed); react-markdown + remark-gfm dependencies; DocumentRenderer routes break when any block defers; cannot ship clean without Clerk strategy | 2026-05-03 Session 7 attempted port | Session 8 with explicit Clerk plan first (either pull Track F Session 18 forward or build a Clerk-stub provider) |
+| W-010 | `ExternalOverlayProvider` (from `src/components/ExternalLinkFrame.tsx`) not yet wrapped in `src/app/layout.tsx` — clicks on external links from `StreetViewModal` are inert (graceful no-op due to default-context fallback) | 2026-05-03 Session 7 map port | Layout integration session (precedes Track C UI rebuild) |
 
 ---
 

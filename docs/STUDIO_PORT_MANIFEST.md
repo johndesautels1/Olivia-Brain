@@ -238,3 +238,109 @@ Features worth preserving across all three sources, with which source is canonic
 This manifest reflects LTM HEAD as of 2026-05-02. If LTM gains new Studio components after that date, this doc is out-of-date. Re-glob `D:\London-Tech-Map\src\components\studio\` and `D:\London-Tech-Map\src\components\documents\` before any Track B session and update this file in-place.
 
 **Sacred:** `BUILD_SEQUENCE.md`, `BOOTSTRAP.md`, this file. Never delete; update in place.
+
+---
+
+## J. Map subsystem (added 2026-05-03 — Session 7 actual deliverable)
+
+LTM map subsystem is **state of the art** (user confirmation 2026-05-03) and ports byte-for-byte. Self-described as "flawless." Picked up Session 7 after the documents-subsystem port hit deeper-than-manifest entanglement (see § K).
+
+### J.1 LTM map files (24 total)
+
+| File | LOC est. | Role | Port plan |
+|------|----------|------|-----------|
+| `components/map/GoogleMap3DView.tsx` | ~1,200 | **Primary view** — Photorealistic 3D Google Maps. Loaded first; falls back to GoogleMapView if 3D Tiles aren't enabled on the API key. | **PORT** ✅ (Session 7) |
+| `components/map/GoogleMapView.tsx` | ~900 | Standard Google Maps with markers + clustering. Fallback when 3D unavailable. | **PORT** ✅ |
+| `components/map/MapView.tsx` | ~280 | Mapbox-based fallback when no Google Maps key is present. | **PORT** ✅ |
+| `components/map/MapAppointmentsContext.tsx` | ~200 | Context for map ↔ calendar event coordination. | **PORT** ✅ |
+| `components/map/constants.ts` | ~110 | `MAP_DEFAULTS`, `SCORE_BLOB_COLORS`, `VIEW_PRESETS`, `sectorColor`, `ALL_SECTORS`, `ORG_TYPE_LABELS`. | **PORT** ✅ |
+| `components/map/types.ts` | ~25 | `MapOrg`, `MapVideo`, `ClusterClickState`. | **PORT** ✅ |
+| `components/map/controls/CategoryFilterPanel.tsx` | ~250 | Category filter UI with `CategoryKey` enum + `ALL_CATEGORIES`. | **PORT** ✅ |
+| `components/map/controls/DraggableMapControls.tsx` | ~200 | Floating draggable control cluster. | **PORT** ✅ |
+| `components/map/controls/LayerPanel.tsx` | ~140 | Layer-toggle panel (Mapbox path). | **PORT** ✅ |
+| `components/map/controls/MapSearchBar.tsx` | ~400 | Address autocomplete via Google Places. | **PORT** ✅ |
+| `components/map/controls/SectorFilterBar.tsx` | ~40 | Sector chip strip. | **PORT** ✅ |
+| `components/map/controls/StatsPanel.tsx` | ~25 | Top-right stats card. | **PORT** ✅ |
+| `components/map/controls/ViewPresetButtons.tsx` | ~25 | Preset camera-view buttons. | **PORT** ✅ |
+| `components/map/data/district-boundaries.ts` | ~230 | London district boundary polygons. | **PORT** ✅ |
+| `components/map/hooks/useClusterInteraction.ts` | ~50 | Cluster click + zoom hook (Mapbox). | **PORT** ✅ |
+| `components/map/hooks/useMapData.ts` | ~95 | Fetches `DistrictWithStats[]` via SWR. | **PORT** ✅ |
+| `components/map/hooks/useMapLayers.ts` | ~500 | Adds + manages Mapbox layers + sources. | **PORT** ✅ |
+| `components/map/overlays/ClusterCardGrid.tsx` | ~85 | Cluster contents grid card. | **PORT** ✅ |
+| `components/map/overlays/MapLegend.tsx` | ~80 | Score-blob legend. | **PORT** ✅ |
+| `components/map/overlays/StreetViewModal.tsx` | ~310 | Street-view + org detail modal. Uses `ExternalLinkFrame`. | **PORT** ✅ |
+| `app/map/page.tsx` | ~55 | Server entry; reads `NEXT_PUBLIC_GOOGLE_MAPS_KEY` + `NEXT_PUBLIC_MAPBOX_TOKEN`; 3-tier vendor fallback. | **PORT** ✅ |
+| `app/map/loading.tsx` | ~13 | Route loading UI. | **PORT** ✅ |
+| `app/map/MapPageClient.tsx` | ~55 | Client wrapper with `next/dynamic` imports for the 3 view variants. | **PORT** ✅ |
+
+### J.2 Transitive deps the manifest didn't initially capture
+
+| Path | What | Port plan |
+|------|------|-----------|
+| `src/types/index.ts` | LTM types barrel — `DistrictWithStats`, `TechGravityInput`, `TechGravityResult`. Imported by `useMapData`, `useMapLayers`. | **PORT** ✅ |
+| `src/components/ExternalLinkFrame.tsx` | LTM utility — `ExternalOverlayProvider` (context + iframe overlay) + `ExternalLinkFrame` (link replacement). 403 LOC. Imported by `StreetViewModal`. | **PORT** ✅ |
+
+### J.3 npm packages installed for the map port
+
+| Package | Why | Type |
+|---------|-----|------|
+| `mapbox-gl` | Used by `MapView`, `useMapLayers`, `useClusterInteraction`, `ViewPresetButtons`, `ClusterCardGrid`, `constants` | runtime |
+| `@googlemaps/js-api-loader` | Used by `GoogleMap3DView`, `GoogleMapView`, `MapSearchBar` | runtime |
+| `@types/google.maps` | Global `google.*` namespace for TypeScript (auto-discovery doesn't fire under `moduleResolution: bundler`; reference file `src/types/google.d.ts` triggers load) | dev |
+
+### J.4 Outstanding deferrals from Session 7
+
+| Item | Where | When |
+|------|-------|------|
+| Wrap `ExternalOverlayProvider` in `src/app/layout.tsx` so `ExternalLinkFrame` clicks open the iframe overlay (currently no-op due to default-context fallback) | `src/app/layout.tsx` | Layout integration session (precedes Track C) |
+| Stub `/directory/[slug]/page.tsx` and `/videos/[id]/page.tsx` so map-link clicks don't 404 | `src/app/directory/`, `src/app/videos/` | Track J or earlier — tracked as W-008 in `README.md` |
+| Set `NEXT_PUBLIC_GOOGLE_MAPS_KEY` + `NEXT_PUBLIC_MAPBOX_TOKEN` env vars in Vercel | `.env` / Vercel env | Operator action — `NEXT_PUBLIC_*` vars use **All Environments** per `~/CLAUDE.md` (they're designed to be public) |
+| Update Track N2 in `BUILD_SEQUENCE.md` to reflect Google Maps primary + Mapbox fallback (was Mapbox-only) | `BUILD_SEQUENCE.md` Track N | Track N planning session |
+| Adaptive surface suppression rule: in `clueslondon-prod` tenant, hide Olivia's `/map` route since LTM provides the canonical surface | Tenant config + Studio shell | Track I Session 24 — see `project_olivia_surface_suppression` memory |
+
+---
+
+## K. Documents subsystem entanglement (added 2026-05-03 — port aborted)
+
+Session 7 originally targeted the documents subsystem per the original deliverable. The port was attempted, then **reverted** after typecheck surfaced deeper LTM coupling than this manifest captured. **Session 8 picks up the documents port with the corrections below.**
+
+### K.1 Manifest deltas — what was missing
+
+The original Section A + Section C + Section D file list was incomplete. Real port also requires:
+
+| Path | What | Why missed |
+|------|------|------------|
+| `src/types/blocks.ts` | Block prop type definitions (`HeroBlockProps`, `BarChartBlockProps`, `CalloutBlockProps`, etc.) — imported by 12+ block files | Sibling file, not under `components/` |
+| `src/lib/autolinker.tsx` | Prose-to-link conversion (entity names → org-map links) — imported by `CalloutBlock`, `ListBlock`, `ParagraphBlock`, `DocumentBody` | Sibling file, not under `components/` |
+| `src/lib/documents/content.ts` | Document content metadata helpers — imported by `DocumentCard`, `DocumentEditor`, `DocumentQuickView`, `DocumentSourcePanel` | Sibling file, not under `components/` |
+
+### K.2 OrgMapProvider scope error
+
+Manifest § C.2 marks `OrgMapProvider.tsx` as **REFERENCE** (LTM-specific, skip). Reality: OrgMap is imported by **4 block files** (not the 2 the manifest implies):
+
+- `CalloutBlock.tsx`
+- `ListBlock.tsx`
+- `ParagraphBlock.tsx` ← not flagged
+- `DocumentBody.tsx` ← not flagged
+
+`ParagraphBlock` is the **most-used block type** — deferring it would gut the engine. Session 8 must port `OrgMapProvider` (as either a real port or a no-op stub) — the "REFERENCE / skip" classification is wrong.
+
+### K.3 Other entanglements
+
+| Issue | Affected files | Resolution path |
+|-------|----------------|-----------------|
+| `@clerk/nextjs` imports | `BookmarkButton.tsx`, `DocumentActionBar.tsx` | Session 8 must precede with a Clerk plan: either pull Track F Session 18 forward, or build a Clerk-stub provider |
+| `react-markdown` + `remark-gfm` | `DocumentBody.tsx` | npm install during Session 8 |
+| Next 16 typed routes on `/documents/${id}` and `/documents/${id}/edit` strings | `DocumentCard`, `DocumentEditor`, `DocumentFilters`, `PackageProgressBar`, `DocumentActionBar` | `next.config.ts` already has `typedRoutes: false`; stale `.next/types` cache caused false errors during Session 7. Session 8 needs to confirm clean baseline. |
+| `DocumentRenderer.tsx` routes to every block — deferring any block breaks the renderer | `DocumentRenderer.tsx` + 18 blocks | Session 8 ports all 18 blocks together OR comments out routes for unported blocks (band-aid) |
+
+### K.4 Recommended Session 8 plan
+
+1. Pull Clerk forward (or stub) before any documents work — gates auth-using files.
+2. Port `OrgMapProvider` as a soft-stub component (renders children verbatim, no entity linking) so the 4 blocks unblock.
+3. Port the 3 missed LTM utility files (`types/blocks`, `lib/autolinker`, `lib/documents/content`).
+4. Install `react-markdown` + `remark-gfm`.
+5. Port all 18 blocks + 18 top-level documents files + `DocumentRenderer` together — partial ports break renderer.
+6. App route ports (`app/documents/*`, 13 files) defer to Session 9 or Track C.
+7. Vitest snapshot tests on the 18 block components (original Session 7 exit criterion).
+8. `mapBlocksToQuestions()` round-trip test.
