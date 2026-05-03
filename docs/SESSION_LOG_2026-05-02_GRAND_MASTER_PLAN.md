@@ -512,3 +512,67 @@ Track Calendar (new track inserted post-pivot, slot: between Track B's Session 7
 **Operator action before C2:** run `npx prisma migrate dev --name add_calendar_foundation` against your dev Postgres so the new tables exist when C2 engine code starts hitting them.
 
 **Build status at session-8 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar foundation committed (schema + embeddings + 8 npm packages); queries deferred to C2 with engine; migration deferred to operator.**
+
+---
+
+## Part 16 — Session 9 (Track Calendar C2 — calendar engine + queries)
+
+Track Calendar · **C2 calendar engine + queries**. Picks up from Session 8's C1 foundation (14 Prisma models + embeddings + 8 npm packages). Operator-side: C1's migration was applied to Supabase via SQL Editor paste (Option B per the updated HANDOFF), so calendar tables exist in the dev DB before C2's engine code lands.
+
+### What shipped (commit 948f6ed)
+
+- **`src/lib/queries/calendar.ts`** (1130 lines) ported from LTM (`src/lib/queries/calendar.ts`, 1252 lines) with these adaptations:
+  - `userProfileId` → `userId` everywhere (~80 occurrences, including the `userProfileId_weekStartDate` compound key on FounderWeek → `userId_weekStartDate`).
+  - `CALENDAR_ENTRY_SELECT` lost `linkedEventId`, `linkedOrgId`, `linkedEvent.{...}`, `linkedOrg.{...}` selects; `attendees.linkedPersonId` dropped from nested select.
+  - `CalendarEntryWithDetails` interface lost the matching fields.
+  - `parseCalendarEntry()` lost the linkedEvent/linkedOrg parser branches.
+  - `createCalendarEntry()` / `updateCalendarEntry()` input types lost `linkedEventId?` / `linkedOrgId?` fields.
+  - `addAttendeeToEntry()` / `updateAttendee()` / `bulkSetAttendees()` input types + data clauses lost `linkedPersonId?`.
+  - **`getMergedCalendarView()` dropped entirely** (lines 754-811 of LTM source). Called `prisma.event.findMany` with includes for `organizerOrg` / `venueLocation` / `districtLocation` — all LTM-domain models that aren't in the C1 schema. Verified zero callers in `lib/calendar/*` (only references were in LTM's auto-generated `code-knowledge/registry.generated.ts`, which Olivia Brain doesn't port). Cluesintelligence will get its own `getMergedCityView()` in Track L.
+  - All 22 other exported functions kept identical signatures + behavior.
+  - Webhook section (8 functions, lines 1047+) only adapted in nested `syncAccount: { select: { userId, ... } }` selects.
+  - All `findUnique({ where: { userProfileId } })` for CalendarPreferences become `{ where: { userId } }` (C1 schema declares `userId @unique` on that model).
+  - C1 added `externalLastSyncAt` field to CalendarEntry not in LTM's SELECT — left out of adapted SELECT (would be feature creep beyond byte-for-byte; nothing reads it).
+- **`src/lib/calendar/*`** ported as **16 of 19 LTM files**:
+  - **7 byte-for-byte:** `crypto.ts`, `event-categories.ts`, `rrule-expand.ts`, `olivia-schemas.ts`, `olivia-prompts.ts`, `calendar-judge.ts`, `olivia-engine.ts`.
+  - **6 with `userProfileId → userId` rename only:** `daily-brief.ts`, `behavior-engine.ts` (incl. compound key `userProfileId_weekStartDate → userId_weekStartDate`), `travel-buffer.ts`, `calendar-memory.ts` (incl. `"userProfileId" → "userId"` in raw SQL identifiers + `gen_random_uuid()::text → gen_random_uuid()` since C1 schema uses `@db.Uuid` not String), `google-sync.ts` (incl. compound key `userProfileId_provider_providerAccountId → userId_provider_providerAccountId`), `outlook-sync.ts` (same compound key adaptation).
+  - **3 with structural modifications:**
+    - `olivia-guardrails.ts`: dropped the `prisma.oliviaGuardrail.findMany` call entirely + the cache + the merge — the model lands in C3. Hardcoded `getDefaultGuardrails()` is real, useful behavior on its own; `buildGuardrailsPromptSection()` returns those defaults until C3 wires the DB integration. Top-of-file comment + `Guardrail` interface preserved so C3 re-port is trivial.
+    - `proximity-cluster.ts`: only `haversineKm()` survives the port. The 3 query functions (`findNearbyOrganizations`, `findNearbyEvents`, `findNearbyVenues`) and their result types were dropped — they queried `prisma.organization` and `prisma.event` (LTM-domain). Per `project_ltm_types_no_speculative_generalization`, per-spoke adapters in Track J / Track L will write the correct surface against each spoke's own data shape, not a stub against models we don't own.
+    - `index.ts`: barrel adjusted — exports trimmed to match what was actually ported.
+- **3 LTM files intentionally NOT ported in C2** (deferred to dependency tracks):
+  - `document-aware.ts` → needs `prisma.document` (Documents track, post-Clerk per `STUDIO_PORT_MANIFEST.md` § K).
+  - `founder-journey.ts` → needs `prisma.analysisResult` (Cristiano Analysis Engine — Track L).
+  - `workflow-generator.ts` → needs `prisma.analysisResult` AND uses dropped `linkedOrgId` field on `CalendarEntry` (Track L).
+  - Each re-ports in its own track when its dependency lands. Single concern per port. No band-aid stubs.
+- **`src/lib/olivia/tools.ts`** ported as the calendar slice of LTM's 75 KB `lib/olivia/tools.ts`:
+  - Just 2 tools land in C2: **`get_user_calendar`** (adapted — drop `linkedOrg` + `linkedEvent` includes from the Prisma SELECT, drop the `userProfile.findUnique({ clerkUserId })` lookup since Olivia Brain's calendar models use `userId` directly, drop the matching fields from formatted output) and **`web_search`** (Tavily, byte-for-byte — pure utility, no DB deps).
+  - The other 22 LTM tools defer: `search_platform`/`get_organization`/`get_district`/`get_document`/`get_document_collection`/`get_user_analysis`/`get_user_packages`/`get_package_detail`/`get_events`/`get_programs`/`dispatch_agent`/`suggest_document_for_valuation` → LTM-domain (Track L); `get_user_memory`/`save_user_memory` → C3 (OliviaUserMemory model); `send_sms` → C4 (Twilio); `run_valuation`/`get_valuation_result`/`explain_valuation_method`/`compare_buyer_valuations`/`identify_valuation_gaps` → valuation engine (Track L for cluesintelligence equivalent).
+
+### Decisions
+
+- **Stub-but-preserve REJECTED for the 3 LTM-domain files (document-aware, founder-journey, workflow-generator).** User-confirmed strategy 2026-05-03: drop entirely, re-port in dependency tracks. Reasoning: stub functions returning empty arrays/zero counts are a band-aid (silent failure for callers who think the function works), and barrel-export hygiene is cleaner without dead code. Rejected explicit "stub-but-preserve" alternative I proposed during scoping. Aligned with `feedback_world_class_standard` ("no band-aids — root-cause every failure") and `project_ltm_types_no_speculative_generalization` ("don't stub LTM-specific data routes").
+- **olivia-guardrails partial port (vs. full defer to C3).** The hardcoded `getDefaultGuardrails()` block has real value standalone. Porting the file with the DB call removed (not stubbed) gives C2 callers a working guardrails source. C3's OliviaGuardrail wiring just adds the dynamic merge layer back in.
+- **proximity-cluster trimmed to `haversineKm` only.** The Haversine helper is pure math, exported from the barrel, and used by future per-spoke adapters. The 3 query functions can't survive without Organization/Event models we don't own.
+- **HANDOFF gotcha re-evaluated and corrected.** HANDOFF said `google-sync.ts` / `outlook-sync.ts` need a Clerk auth stub. **Wrong** — those files don't import Clerk or NextAuth. They take `userProfileId` as a parameter; the future API route (C5) is what'll need Clerk to extract it. Lib functions are clean. No `getAuthSession()` stub needed.
+- **C1's `extractUserMemory()` in olivia-engine.ts ports as-is** — it's a pure Anthropic call (no DB), used by C3 callers for OliviaUserMemory population. No barrel export, internal-only. Safe to ship in C2.
+- **`get_user_calendar` adapted to use Clerk userId directly.** LTM's handler did `getUserProfileId(userId)` first to map Clerk → UserProfile.id. Olivia Brain doesn't have UserProfile (replaced by Clerk + the `userId` column). Direct passthrough, no lookup needed.
+
+### Verification
+
+- `npm run typecheck` — clean after fixing 4 small typecheck errors in `tools.ts`: `import { prisma }` → `import prisma` (default export); `Record<string, unknown>` → `Prisma.CalendarEntryWhereInput` (loose type was widening Prisma return type to `any[]` and breaking `.map()` callbacks).
+- `npm test` — **94/94 passing** (no regressions; same 76 bridge + 18 chat-route as Session 8).
+- Code: 18 files / 5,741 insertions in commit `948f6ed`.
+- LTM source unchanged (verified by intent — Read + Grep + Copy-Item only on LTM paths; no Edit / Write / Remove-Item ever touched LTM).
+
+### New weakness item
+
+**W-014** — `match_calendar_memory()` PostgreSQL function not installed in Olivia Brain Supabase. `calendar-memory.searchCalendarMemory()` calls it via `prisma.$queryRawUnsafe` for cosine-similarity semantic search. Wrapped in try/catch — degrades gracefully to empty array + console warning. No runtime crash, but semantic search returns nothing until the SQL function is installed. Operator action when calendar memory becomes a user-facing feature; LTM reference body in `D:\London-Tech-Map\prisma\sql\`.
+
+### Where Session 10 picks up
+
+**Track Calendar · C3** — voice + Olivia models + engine. Per BUILD_SEQUENCE.md C3 row: 10 voice/olivia Prisma models (`VoiceConversation`, `VoiceContact`, `VoiceActionItem`, `OliviaConversation`, `OliviaMessage`, `OliviaPresentation`, `OliviaConsent`, `OliviaGuardrail`, `OliviaUserMemory`) + same schema adaptations as C1. Port `lib/olivia/voice-{conversation,document,memory,prompts}.ts` (52 KB). Port voice slice of `lib/olivia/tools.ts` + `lib/olivia/knowledge-base.ts` (31 KB) + chat slice of `lib/olivia/chat.ts`. Voice models migrate; voice lib files typecheck.
+
+**Operator action before C3:** none new beyond C1's already-applied migration. C3 will add a new migration for the 10 voice/olivia models — operator runs that when C3 lands.
+
+**Build status at session-9 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar engine + queries committed (16 of 19 lib/calendar files + adapted queries.ts + calendar slice of tools.ts); 3 LTM-domain files explicitly deferred to their dependency tracks; one new weakness item W-014 logged.**

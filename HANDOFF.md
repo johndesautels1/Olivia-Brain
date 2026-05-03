@@ -1,11 +1,11 @@
 # OLIVIA BRAIN — NEXT AGENT HANDOFF
 
 **Updated:** 2026-05-03
-**HEAD:** `52b4fad` on `main`
-**State:** Track Calendar C1 closed. **Resume at Session 9 = Track Calendar C2 (engine + queries port).**
+**HEAD:** `948f6ed` on `main` (will advance once this doc commit lands)
+**State:** Track Calendar C2 closed. **Resume at Session 10 = Track Calendar C3 (voice + Olivia models + engine).**
 **Working tree:** clean. All commits pushed to `origin/main`.
 
-> The previous version of this file (dated 2026-05-01, Phase 4.5 era) is preserved in git history. This file replaces it with the current post-pivot state. The session series captured here (Sessions 1–8) is documented in detail in `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Parts 10–15.
+> The previous version of this file (dated 2026-05-03, post-Session-8 era) is preserved in git history. This file replaces it with the current post-Session-9 state. The session series captured here (Sessions 1–9) is documented in detail in `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Parts 10–16.
 
 ---
 
@@ -13,7 +13,7 @@
 
 | Repo | Path | Status |
 |------|------|--------|
-| **Olivia Brain (this — your working repo)** | `D:\Olivia Brain` | Current. HEAD `1986edf`. |
+| **Olivia Brain (this — your working repo)** | `D:\Olivia Brain` | Current. HEAD `948f6ed`. |
 | **GitHub** | https://github.com/johndesautels1/Olivia-Brain | up to date with `main` |
 | London Tech Map (LTM) | `D:\London-Tech-Map` | **READ-ONLY.** Copy components OUT; never edit, rename, delete, or move ANY LTM file. |
 | Studio Olivia prototypes | `D:\Studio-Olivia` | **REFERENCE ONLY.** The 95 KB GrandMaster JSX is the design north star — don't import its code. |
@@ -75,46 +75,45 @@ Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into ev
 - **Sessions 1–6** (commits pre-`c109d0f`): LiveAvatar pipeline, bridge providers, chat brain v1 (single-provider), chat brain v2 (cascade-routed), `/test-avatar` end-to-end smoke flow. **94/94 tests passing.**
 - **Session 7** (commits `faa8ab1`, `991f411`, `55ff466`, `76c3fb0`, `c86e24f`): Pivoted from documents-engine port (entanglement post-mortem in `STUDIO_PORT_MANIFEST.md` § K) to **LTM map port byte-for-byte** (28 files, 6,107 LOC). Added Track N (Visual Manifestation, N1–N5) + Track O (Weakness Closure, O1–O5). Added W-008 through W-010 + later W-011/W-012 (Tailwind + token divergence).
 - **Session 8** (commits `ecfb38b`, `49ed993`, `1986edf`): Added Track Calendar (6 sessions C1–C6) for calendar + voice + email/call/share infrastructure. **C1 foundation shipped:** 14 calendar Prisma models + 15 enums (schema validates clean; Prisma client generated), `lib/video/embeddings.ts` ported byte-for-byte, 8 npm packages installed (FullCalendar suite + react-international-phone + rrule). 94/94 tests still passing. Schema adaptations: `cuid → UUID`, `userProfileId → userId`, LTM-domain FKs dropped, DealRoom dropped (real-estate spoke), Event-family not ported. **`lib/queries/calendar.ts` port DEFERRED to C2** — discovery surfaced 93 LTM-domain references requiring engine-aware adaptation, not the originally-scoped mechanical rename.
+- **Session 9** (commits `948f6ed` + this docs commit): **Track Calendar C2 calendar engine + queries shipped.** `src/lib/queries/calendar.ts` (1130 lines, all `userProfileId → userId` + LTM-domain selects stripped + `getMergedCalendarView` dropped). `src/lib/calendar/*` (16 of 19 files: 7 byte-for-byte, 6 with userId rename, 3 modified — olivia-guardrails minus DB call, proximity-cluster trimmed to haversineKm, index.ts barrel adjusted). 3 LTM files intentionally NOT ported (document-aware, founder-journey, workflow-generator) — defer to dependency tracks (Documents post-Clerk; AnalysisResult Track L). `src/lib/olivia/tools.ts` calendar slice ported with 2 tools (`get_user_calendar` adapted, `web_search` byte-for-byte); the other 22 LTM tools defer to C3/C4/Track L. **94/94 tests still passing. Typecheck clean.** New weakness W-014 logged (`match_calendar_memory()` SQL function not installed — graceful degradation in place).
 
 ---
 
-## WHERE TO RESUME — Session 9 = Track Calendar C2
+## WHERE TO RESUME — Session 10 = Track Calendar C3
 
-**Spec:** `docs/BUILD_SEQUENCE.md` Track Calendar C2 row.
+**Spec:** `docs/BUILD_SEQUENCE.md` Track Calendar C3 row.
 
-### C2 Deliverable (calendar engine + queries)
+### C3 Deliverable (voice + Olivia models + engine)
 
-1. **Adapt + port `lib/queries/calendar.ts`** (LTM source: `D:\London-Tech-Map\src\lib\queries\calendar.ts`, 35 KB, 93 LTM-domain references). Mechanical:
-   - `userProfileId` → `userId` rename (all occurrences).
-   - Remove `linkedEvent` SELECT clause.
-   - Remove `linkedOrg` SELECT clause.
-   - Remove `linkedEventId`, `linkedOrgId`, `linkedPersonId` from select objects + `CalendarEntryWithDetails` interface.
-   - Remove `attendees.linkedPersonId` from select.
-   - Verify nothing else breaks against the C1 Prisma schema.
-2. **Port `lib/calendar/*` byte-for-byte** (19 files, ~189 KB):
-   - `olivia-engine.ts`, `olivia-prompts.ts`, `olivia-schemas.ts` (the Olivia voice-aware calendar AI core).
-   - `calendar-judge.ts` (Cristiano Opus judge for calendar conflicts).
-   - `calendar-memory.ts` (uses `lib/video/embeddings.ts` from C1).
-   - `behavior-engine.ts` (self-learning from interactions).
-   - `document-aware.ts`, `daily-brief.ts`, `event-categories.ts`, `founder-journey.ts`.
-   - `google-sync.ts`, `outlook-sync.ts` (OAuth token sync).
-   - `crypto.ts` (AES-256-GCM for OAuth tokens).
-   - `proximity-cluster.ts`, `rrule-expand.ts`, `travel-buffer.ts`, `workflow-generator.ts`.
-   - `olivia-guardrails.ts`, `index.ts`.
-3. **Carve out the calendar slice of `lib/olivia/tools.ts`** (LTM source: 75 KB). Only the calendar-relevant tools — `OLIVIA_TOOLS` and `executeOliviaTool` calendar functions. The voice slice ports in C3.
-4. **Verify**: `npm run typecheck` clean, `npm test` 94/94 still passing (no calendar tests yet — those land in C5/C6).
-5. **Commit + push** code as `feat(calendar): Track Calendar C2 — engine + queries`.
-6. **Doc updates** (per doc-discipline rule):
-   - `BUILD_SEQUENCE.md` C2 row → ✅ with what shipped.
-   - `SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` → append Part 16.
-   - Commit + push as `docs: close Track Calendar C2 — engine + queries done`.
+1. **Add 10 voice/olivia Prisma models** to `prisma/schema.prisma`:
+   - `VoiceConversation`, `VoiceContact`, `VoiceActionItem`
+   - `OliviaConversation`, `OliviaMessage`, `OliviaPresentation`
+   - `OliviaConsent`, `OliviaGuardrail`, `OliviaUserMemory`
+   - Apply same schema adaptations as C1: `cuid → UUID`, `userProfileId → userId`, LTM-domain FKs dropped (linkedOrg/linkedEvent/linkedPerson never appear here, but verify), camelCase field naming preserved for byte-for-byte port of LTM lib files.
+   - Generate raw SQL migration (same Option A or Option B path as C1) so operator can apply via Supabase SQL Editor.
+2. **Port voice/olivia lib files** (4 files, ~52 KB):
+   - `D:\London-Tech-Map\src\lib\olivia\voice-conversation.ts`
+   - `D:\London-Tech-Map\src\lib\olivia\voice-document.ts`
+   - `D:\London-Tech-Map\src\lib\olivia\voice-memory.ts`
+   - `D:\London-Tech-Map\src\lib\olivia\voice-prompts.ts`
+3. **Port voice slice of `lib/olivia/tools.ts`**: extend the 2-tool C2 carve with the voice-related tools (`get_user_memory`, `save_user_memory`, possibly `dispatch_agent` if it has a voice angle). Now that OliviaUserMemory + OliviaConsent exist, the `getUserProfileId` / `hasLearningConsent` helpers from LTM tools.ts also port (adapted to use Clerk `userId` directly, no UserProfile lookup).
+4. **Re-port `olivia-guardrails.ts` DB integration**: now that `OliviaGuardrail` model exists, restore the LTM `fetchGuardrails()` + `clearGuardrailsCache()` + `formatGuardrailsForPrompt()` functions and the merge logic in `buildGuardrailsPromptSection()`. LTM source unchanged (still at `D:\London-Tech-Map\src\lib\calendar\olivia-guardrails.ts`); just re-introduce what C2 dropped.
+5. **Port `lib/olivia/knowledge-base.ts`** (31 KB) — page descriptions used by `get_page_content` tool.
+6. **Port chat slice of `lib/olivia/chat.ts`** — thin wrapper around the cascade chat that's voice-aware.
+7. **Verify**: `npm run typecheck` clean, `npm test` 94/94 still passing (no voice tests yet — those land in C5/C6).
+8. **Commit + push** code as `feat(calendar): Track Calendar C3 — voice + olivia models + engine`.
+9. **Doc updates** (per doc-discipline rule):
+   - `BUILD_SEQUENCE.md` C3 row → ✅ with what shipped.
+   - `SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` → append Part 17.
+   - `HANDOFF.md` → re-point at Session 11 = Track Calendar C4.
+   - Commit + push as `docs: close Track Calendar C3 — voice + olivia models + engine done`.
 
-### Anticipated gotchas in C2
+### Anticipated gotchas in C3
 
-- **Tools.ts slice extraction**: 75 KB file — need to identify which exports are calendar-only vs. voice/chat. The full file imports from many `@/lib/...` — be careful about transitive deps (probably need `lib/olivia/voice-prompts.ts` for some tools — defer those tools to C3).
-- **Google/Outlook sync**: `google-sync.ts` and `outlook-sync.ts` use OAuth flows. They probably reference NextAuth or Clerk for the auth context. Those don't exist in Olivia Brain yet (Clerk lands Track F Session 18). Workaround: add a stub `getAuthSession()` that throws "not yet wired" until Clerk lands. Track as **W-014** if not already.
-- **`lib/calendar/calendar-memory.ts`**: uses `prisma.$queryRaw<...>` with `match_calendar_chunks()` SQL function (similar to the video-search pattern in `lib/video/embeddings.ts`). The SQL function won't exist in Olivia Brain's Supabase. Calls degrade to empty results gracefully if you copy LTM's pattern. Note in commit message.
-- **camelCase preservation**: the queries file uses camelCase fields matching LTM. Olivia Brain's older models use snake_case. The mixed convention is documented in `prisma/schema.prisma` header (added in C1). Don't refactor either side.
+- **Voice file transitive deps**: `voice-conversation.ts` etc. likely import from `@/lib/twilio/client` (which lands in C4) and `@/lib/olivia/chat`. Be careful about circular dependencies. The voice files probably also reference `prisma.voiceConversation` and `prisma.oliviaConversation` heavily — same `userProfileId → userId` rename pattern as C2.
+- **Memory model schema**: `OliviaUserMemory` likely keys on `(userId, category, factKey)` as a compound unique. C1's pattern of dropping `cuid` defaults and using `gen_random_uuid()` applies; verify the LTM source for any `@db.Decimal` or `@db.Text` annotations.
+- **Knowledge-base.ts page paths**: hardcoded LTM page paths like `/districts/...` won't exist in Olivia Brain. Either (a) port verbatim and let `get_page_content` return "page not found" for routes that don't exist (graceful), or (b) trim to only Olivia Brain routes (`/test-avatar`, `/admin`, `/map`). Recommend (a) byte-for-byte for re-port simplicity in Track L cluesintelligence.
+- **Chat slice carve**: `lib/olivia/chat.ts` may pull in deep cascade dependencies. Scope carefully — the `/api/olivia/chat` route already works in Olivia Brain (built in Sessions 4-6); if `lib/olivia/chat.ts` is just adapter sugar over the cascade, it might already be redundant. Read first, decide whether to port at all.
 
 ---
 
@@ -122,10 +121,13 @@ Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into ev
 
 | Action | When | Why |
 |--------|------|-----|
-| **Apply C1 migration to DB** — Either: (a) `npx prisma migrate dev --name add_calendar_foundation` if Prisma can reach DB; OR (b) **paste contents of `prisma/sql/01-add-calendar-foundation.sql` into Supabase SQL Editor and Run** (recommended fallback when Prisma can't reach DB) | Before C2 engine code starts hitting calendar tables | Schema is in code; tables not yet in dev DB. C2 engine will query them. The SQL file is identical to what `prisma migrate dev` would have applied. |
+| ~~**Apply C1 migration to DB**~~ | DONE 2026-05-03 (Option B — Supabase SQL Editor paste). Calendar tables exist in dev DB. | — |
+| **Apply C3 migration to DB** — when C3 lands, expect a new SQL file `prisma/sql/02-add-voice-olivia-foundation.sql` (or similar) for the 10 voice/olivia models. Same Option A / Option B path as C1. | Before C3 engine code (or C4 routes) hit voice/olivia tables | Schema-in-code → DB tables. |
 | Set `NEXT_PUBLIC_GOOGLE_MAPS_KEY` + `NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel | Whenever you want the `/map` route to actually render | Without keys, map page shows "API key required" message. NEXT_PUBLIC_* uses **All Environments** per `~/CLAUDE.md`. Map clicks 404 to `/directory/{id}` and `/videos/{id}` since Olivia Brain has no such routes — see W-008. |
-| Set `OPENAI_API_KEY` if not already | Before running calendar memory features in C2 | `lib/video/embeddings.ts` uses it for vector embeddings. Marked **Sensitive**, **Production + Preview only**. |
-| Set Google OAuth + Outlook OAuth keys | Before C2's google-sync.ts / outlook-sync.ts wires up | Calendar sync needs OAuth client credentials. Not yet declared in `env.ts`. Add when C2 lands. |
+| Set `OPENAI_API_KEY` if not already | Before running calendar memory features (C5+) | `lib/video/embeddings.ts` uses it for vector embeddings. Marked **Sensitive**, **Production + Preview only**. |
+| Install `match_calendar_memory()` PostgreSQL function in Supabase | When calendar memory becomes a user-facing feature (likely C5/C6) | C2's `searchCalendarMemory()` calls it via raw SQL. Currently degrades to empty array + console warning. **W-014** in README. LTM reference body in `D:\London-Tech-Map\prisma\sql\`. |
+| Set Google OAuth + Outlook OAuth keys (`GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `MICROSOFT_CALENDAR_CLIENT_ID`, `MICROSOFT_CALENDAR_CLIENT_SECRET`, `CALENDAR_ENCRYPTION_KEY`, `NEXT_PUBLIC_APP_URL`) | Before C5's calendar UI tries to OAuth | Calendar sync (`google-sync.ts` / `outlook-sync.ts` already ported in C2) needs these for OAuth flows. Not yet declared in `env.ts`. Add when C5 wires the API routes. **Sensitive, Production + Preview only.** |
+| Set `TAVILY_API_KEY` | Before web_search tool is useful | C2's tools.ts has `web_search` that calls Tavily. Without the key, returns "Web search is not configured" gracefully. **Sensitive, Production + Preview only.** |
 
 ---
 
@@ -148,9 +150,12 @@ These ARE the architectural decisions that took multiple painful conversations t
 
 ---
 
-## RECENT COMMIT TRAIL (last 12)
+## RECENT COMMIT TRAIL (last 14)
 
 ```
+<this docs commit>  docs: close Track Calendar C2 — engine + queries done
+948f6ed feat(calendar): Track Calendar C2 — engine + queries
+58f98f2 docs: HANDOFF.md HEAD reference + SQL migration fold-in
 52b4fad chore(db): add raw SQL migration for Track Calendar C1 foundation
 9689797 docs: rewrite HANDOFF.md for post-Session-8 state — resume at Track Calendar C2
 1986edf docs: close Track Calendar C1 — schema + embeddings + npm done; queries to C2
@@ -162,7 +167,6 @@ c86e24f docs: post-Session-7 audit — data-layer + styling deferrals
 991f411 chore: pre-install recharts + lucide-react for Track N
 faa8ab1 docs: visual manifestation stack + weakness backlog (Track N + O)
 c109d0f feat(test-avatar): wire chat brain end-to-end — Session 6
-009a629 docs: lock brain enrichment engine + cluesintelligence unification
 ```
 
 ---
@@ -171,7 +175,7 @@ c109d0f feat(test-avatar): wire chat brain end-to-end — Session 6
 
 Founder direction: focus on **`clueslondon.com` (priority 1)** and **`cluesintelligence.com` (priority 2 — FLAGSHIP)**. Both ship targets. cluesxscore (priority 3) and white-label Olivia (priority 4) follow. Path 2 from the Sessions-to-Finish accounting was chosen (ship both flagships even if past 2026-06-02). ~60 sessions to finish priorities 1–4.
 
-**Sessions 1–8 done. ~52 remaining.** Track Calendar (currently mid-flight, C1 done, C2 next) does NOT block clueslondon ship — per surface suppression rule, clueslondon-prod tenant hides Olivia's calendar (LTM provides). Track Calendar makes calendar functional for cluesintelligence + standalone + future spokes.
+**Sessions 1–9 done. ~51 remaining.** Track Calendar (currently mid-flight, C1 + C2 done, C3 next) does NOT block clueslondon ship — per surface suppression rule, clueslondon-prod tenant hides Olivia's calendar (LTM provides). Track Calendar makes calendar functional for cluesintelligence + standalone + future spokes.
 
 ---
 
@@ -180,18 +184,15 @@ Founder direction: focus on **`clueslondon.com` (priority 1)** and **`cluesintel
 ```bash
 cd "D:\Olivia Brain"
 git status                                    # should be clean, on main, up to date with origin/main
-git log --oneline -5                          # confirm HEAD is 52b4fad
-# OPERATOR — apply C1 schema to dev DB:
-#   Option A (if Prisma can reach DB): npx prisma migrate dev --name add_calendar_foundation
-#   Option B (recommended if "can't reach database"): paste prisma/sql/01-add-calendar-foundation.sql into Supabase SQL Editor and Run
+git log --oneline -5                          # confirm HEAD is at the post-Session-9 docs commit
 ```
 
 Then in Claude Code:
 1. Read this file (`HANDOFF.md`).
-2. Read `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Part 15 for Session 8 details.
-3. Read `docs/BUILD_SEQUENCE.md` Track Calendar C2 row for the deliverable spec.
-4. Read `STUDIO_PORT_MANIFEST.md` § J + § K for prior-port lessons (the entanglement gotchas).
-5. Pull up the LTM source files in **read-only** mode: `D:\London-Tech-Map\src\lib\queries\calendar.ts` and `D:\London-Tech-Map\src\lib\calendar\*` and the calendar slice of `D:\London-Tech-Map\src\lib\olivia\tools.ts`.
-6. Begin C2 with the adapted queries port. Show the user the proposed adaptation diff before writing.
+2. Read `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Part 16 for Session 9 details (decisions on the 3 deferred LTM modules + the olivia-guardrails / proximity-cluster trimmed-port pattern).
+3. Read `docs/BUILD_SEQUENCE.md` Track Calendar C3 row for the deliverable spec.
+4. Pull up the LTM source files in **read-only** mode: `D:\London-Tech-Map\src\lib\olivia\voice-conversation.ts`, `voice-document.ts`, `voice-memory.ts`, `voice-prompts.ts`, `knowledge-base.ts`, `chat.ts`. Plus the voice-tool slice of `D:\London-Tech-Map\src\lib\olivia\tools.ts` (handler functions for `get_user_memory`, `save_user_memory`, `getUserProfileId`, `hasLearningConsent`).
+5. Read the LTM Prisma schema for the 10 voice/olivia models you're adding to Olivia Brain's schema: `D:\London-Tech-Map\prisma\schema.prisma` (search for `model VoiceConversation`, `model OliviaConversation`, etc.).
+6. Begin C3 with the schema additions. Show the user the proposed model adaptations before writing (same pattern as C1 + C2).
 
-**Standing rule reminder:** stop after C2's deliverable lands. Don't chain into C3 without the user's go-ahead. Update docs alongside the code commit per the doc-discipline rule.
+**Standing rule reminder:** stop after C3's deliverable lands. Don't chain into C4 without the user's go-ahead. Update docs alongside the code commit per the doc-discipline rule.
