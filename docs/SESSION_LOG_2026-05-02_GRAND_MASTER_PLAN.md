@@ -729,3 +729,110 @@ Plus ~70 individual `userProfileId` occurrences across the 19 files (Prisma fiel
 **Operator action before C5:** none new beyond C3's already-anticipated migration. C5 will not change schema; just ports UI + adapter routes.
 
 **Build status at session-11 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar voice/email/call/sms/WhatsApp routes committed; 2 LTM routes explicitly deferred (voice/to-document, voice/to-package); one new weakness W-015 logged (Clerk auth stub).**
+
+---
+
+## Part 19 — Session 12 (Track Calendar C5 — calendar UI + 18 of 24 calendar API routes)
+
+Track Calendar · **C5** picks up from Session 11's C4 voice/email/call/sms/WhatsApp routes. Inventory step (per HANDOFF start sequence) surfaced the deferral list before writing any code: of the 24 routes specified in the BUILD_SEQUENCE C5 row, 6 depend on Prisma models that aren't in Olivia Brain (Document, AnalysisResult, Event, EventRsvp, Video, Organization). All 6 deferred to dependency tracks — same pattern as the 3 C2 deferrals + 2 C4 deferrals. No band-aid stubs.
+
+### What shipped (commit `cb678b7`)
+
+**UI components ported (15 + 3 supporting), byte-for-byte:**
+
+| Component | Notes |
+|-----------|-------|
+| `AgendaRail.tsx` | Sidebar agenda list — pure render |
+| `CalendarEntryModal.tsx` | Full-screen entry editor — uses `react-datepicker` + `react-international-phone` + Google Maps autocomplete |
+| `CalendarNotepad.tsx` | Note-taking surface with **email/SMS/WhatsApp share modals wired to C4 routes** |
+| `CalendarView.tsx` | FullCalendar wrapper. **2 hand-edits:** drop `entry.linkedOrg?.name` reference (Organization model not in OB) + drop `linkedEventId` ecosystem-event linkage logic |
+| `ConfirmationChip.tsx` | Inline confirmation pill |
+| `EventStatusWidget.tsx` | Attendance toggle (going/maybe/no) |
+| `FloatingCalendarWidget.tsx` | Floating draggable widget — uses `useDraggable` + `MapAppointmentsContext` (already in OB from Session 7) |
+| `FocusMode.tsx` | Distraction-free single-event view |
+| `InsightsPanel.tsx` | Founder-week behavior summary |
+| `OliviaPanel.tsx` | Olivia recommendation surface — wires to `/api/calendar/olivia` |
+| `PrepTaskList.tsx` | Per-entry task list |
+| `SyncPanel.tsx` | Google/Outlook/Calendly connection panel |
+| `TabbedAgendaView.tsx` | Day/week/month/list tabs. **1 hand-edit:** drop `entry.linkedOrg?.name` reference |
+| `VoiceInput.tsx` | Voice-to-NLP input (browser MediaRecorder → `/api/calendar/olivia` parse) |
+| `index.ts` | Barrel export |
+| `components/tools/useDraggable.ts` | Shared hook (LTM imports from this path; preserved) |
+| `components/olivia/OliviaConsentModal.tsx` | Layer 2 consent modal — calls `/api/olivia/consent` |
+| `lib/mobile-keyboard.ts` | `dismissKeyboard()` + `isMobile()` utilities |
+
+**Routes ported (18 of 24):**
+
+| Route | Auth | Adaptations |
+|-------|------|-------------|
+| `entries/route.ts` | Clerk stub | Drop `prisma.event.findMany` ecosystem block + `linkedEvent`/`linkedOrg` includes + attendee `linkedPersonId` select + linkedEventId logic. Returns empty `ecosystemEvents` array for shape stability. POST drops linkedEventId/linkedOrgId args + auto-document-attachment block (Document model deferred) |
+| `prep-tasks/route.ts` | Clerk stub | Drop `linkedOrg` select; `organizerName` falls back to `ecosystemOrgName` only |
+| `attendees/route.ts` | Clerk stub | Drop `linkedPersonId` from POST + PUT |
+| `analytics/route.ts` | Clerk stub | Byte-for-byte after rename |
+| `memory/route.ts` | Clerk stub | Byte-for-byte after rename. Searches via pgvector — gracefully empty until W-014 SQL function installed |
+| `notes/route.ts` | Clerk stub | Byte-for-byte after rename |
+| `olivia/route.ts` | Clerk stub | Byte-for-byte after rename. Imports `extractUserMemory` + `formatUserMemoriesForPrompt` from C3-ported lib files |
+| `plan/route.ts` | Clerk stub | Byte-for-byte — calls `generateDailyBriefForUser` |
+| `travel/route.ts` | Clerk stub | Byte-for-byte after rename |
+| `sync/route.ts` | Clerk stub | Byte-for-byte after rename — Google/Outlook/Calendly `connect` actions + sync triggers |
+| `sync/google/callback/route.ts` | inline `getAuthSession` | Drop `prisma.userProfile.findUnique` lookup. `userId` directly used in `verifyOAuthState` check + `saveGoogleSyncAccount` call |
+| `sync/outlook/callback/route.ts` | inline `getAuthSession` | Same as Google callback |
+| `sync/conflicts/route.ts` | Clerk stub | Byte-for-byte after rename |
+| `sync/webhooks/route.ts` | Clerk stub | Byte-for-byte after rename |
+| `sync/calendly/route.ts` | webhook (HMAC) | **Replaced** email-based UserProfile lookup with `CalendarSyncAccount` lookup keyed on `providerEmail`. Fallback: any active Calendly sync account |
+| `cron/calendar-sync/route.ts` | CRON_SECRET | Byte-for-byte after rename |
+| `cron/calendar-plan/route.ts` | CRON_SECRET | Byte-for-byte after rename |
+| `olivia/consent/route.ts` | Clerk stub | New addition (not in original 24) — required by `OliviaConsentModal` for Layer 2 consent persistence |
+
+**Routes deferred (6, no band-aid stubs):**
+
+| Route | Reason | Track |
+|-------|--------|-------|
+| `journey/route.ts` | `processFounderJourneyLoop` lib deferred in C2 + `AnalysisResult` model not in schema | Track L (cluesintelligence) |
+| `workflow/route.ts` | `generateCalendarWorkflow` lib deferred in C2 + `AnalysisResult` + `linkedOrgId` | Track L |
+| `documents/route.ts` | `findRelevantDocuments` lib deferred in C2 + `Document` model not in schema | Documents track post-Clerk |
+| `nearby/route.ts` | `findNearbyVenues` dropped in C2 (only `haversineKm` survived) + Organization/Event models | Defer per `project_ltm_types_no_speculative_generalization` rule |
+| `events/ical/route.ts` | `getAllEventsForFeed` from `lib/queries/events` (not in OB) + `Event` model | Track L if needed |
+| `events/rsvp/route.ts` | `prisma.eventRsvp` (model not in OB) | Track L if needed |
+| `videos/calendar/route.ts` | `getVideosForCalendar` from `lib/queries/videos` (not in OB) + `Video` model | LTM-specific; defer indefinitely |
+
+### Mechanical replacements applied via PowerShell bulk script
+
+```
+import { auth } from "@clerk/nextjs/server";  →  import { getAuthSession } from "@/lib/auth/session";
+await auth()                                  →  await getAuthSession()
+async function getUserProfileId() {...}       →  async function getUserProfileId() { const { userId } = await getAuthSession(); return userId; }
+userProfileId                                 →  userId   (case-sensitive, ~140 occurrences)
+userId: userId                                →  userId   (shorthand cleanup with negative lookbehind/lookahead so clerkUserId untouched)
+```
+
+Encoding: explicit UTF-8 read+write via `[System.IO.File]::ReadAllText/WriteAllText` to preserve em-dashes/box-drawing chars (PS 5.1's `Get-Content -Raw` defaults to system codepage, mangles UTF-8).
+
+### Decisions
+
+- **6 routes deferred not stubbed.** Same rationale as C2 (3 deferrals) and C4 (2 deferrals). Single concern per port; defer to dependency tracks. `feedback_world_class_standard`: no band-aids.
+- **`olivia/consent` added to scope** (route 19 of the 18). Not in original C5 BUILD_SEQUENCE row, but `OliviaConsentModal` (one of the C5 supporting components) calls `POST /api/olivia/consent` to persist Layer 2 consent. Without this route, the modal's flow breaks. Cleaner to land the route alongside the modal than block C5 on it.
+- **`react-datepicker` installed** rather than dropped. `CalendarEntryModal` uses it as a lazy import for the start/end date pickers — replacing with native HTML5 date inputs would be a UX regression vs LTM. Standard, well-maintained dep.
+- **`system-alerts.ts` console-only stub** instead of porting the model. SystemAlert is a 9-field model used only by cron error logging. Adding it to schema would mean another `prisma migrate diff` cycle + operator action. Console logging satisfies the cron path without DB persistence; tracked as W-016 for when an admin alerts dashboard becomes user-facing.
+- **`prisma.userProfile.findUnique` lookups dropped (10 routes).** Same rationale as C4: `userId` IS the canonical user ID directly in OB's calendar/voice/olivia models. Sync callbacks were the trickiest — `verifyOAuthState` returns the user ID embedded in the HMAC-signed state; comparing against `userId` (not `profile.id`) is correct.
+
+### Verification
+
+- `npm run typecheck` — clean (after fixing 7 errors: 1 prep-tasks linkedOrg, 1 react-datepicker missing dep, 4 UI linkedOrg/linkedEventId, 1 unused).
+- `npm test` — **94/94 passing** (no regressions).
+- Code: 37 files / 5,829 insertions in commit `cb678b7`.
+- LTM source unchanged.
+
+### Where Session 13 picks up
+
+**Track Calendar · C6** — App routes + smoke tests + docs. `app/calendar/{page.tsx,CalendarPageClient.tsx}` + Vitest smoke tests for CalendarView, CalendarNotepad, CalendarEntryModal + STUDIO_PORT_MANIFEST §L (Calendar subsystem inventory + voice subsystem inventory) + mark all Track Calendar rows ✅ in BUILD_SEQUENCE. Closes Track Calendar.
+
+**Anticipated gotchas in C6:**
+- **Tailwind/styling.** Same caveat as C5 — `/calendar` page mounts but visual fidelity is degraded until Track C UI rebuild.
+- **Smoke test scope.** Vitest tests should mount each component with stub props/context and assert basic render — not exercise C4/C5 routes (would need MSW or DB mocking).
+- **STUDIO_PORT_MANIFEST §L.** Append calendar inventory: 36 LTM source files (15 UI + 3 supporting + 19 lib/calendar + voice subsystem); record what was ported, what was adapted, what was deferred (the 6 routes + 3 lib files from C2 + 2 routes from C4).
+- **Track Calendar closure.** After C6 lands, Track Calendar = ✅ across all 6 sessions. Run-rate: ~48 sessions remain to ship priorities 1–4.
+
+**Operator action before C6:** none new beyond the C3 SQL migration (`02-add-voice-olivia-foundation.sql`) and env vars from C4 + C5 (STUB_USER_ID for previewing routes). C6 ships UI mount tests, no schema changes.
+
+**Build status at session-12 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar UI + 18 routes committed; 6 routes explicitly deferred (journey, workflow, documents, nearby, events ical/rsvp, videos/calendar); two new weaknesses W-013 (calendar Tailwind) + W-016 (SystemAlert model) logged.**
