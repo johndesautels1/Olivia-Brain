@@ -576,3 +576,65 @@ Track Calendar · **C2 calendar engine + queries**. Picks up from Session 8's C1
 **Operator action before C3:** none new beyond C1's already-applied migration. C3 will add a new migration for the 10 voice/olivia models — operator runs that when C3 lands.
 
 **Build status at session-9 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar engine + queries committed (16 of 19 lib/calendar files + adapted queries.ts + calendar slice of tools.ts); 3 LTM-domain files explicitly deferred to their dependency tracks; one new weakness item W-014 logged.**
+
+---
+
+## Part 17 — Session 10 (Track Calendar C3 — voice + olivia models + engine)
+
+Track Calendar · **C3 voice + olivia models + engine**. Picks up from Session 9's C2 (calendar engine + queries shipped, 16 of 19 lib/calendar files ported). Per the C3 row spec: 9 new Prisma models (LTM has 9, not 10 as the original BUILD_SEQUENCE row said — corrected to 9 in this session) + 4 voice lib files + tools.ts voice extension + olivia-guardrails DB re-port + slim chat.ts slice. Discovery: knowledge-base.ts has no in-scope consumer once `processOliviaMessage` is deferred — defer entirely, single concern per port.
+
+### What shipped (commit 4291a39)
+
+**Schema** — 9 voice/olivia models added to `prisma/schema.prisma` (~280 lines) with same C1/C2 adaptations:
+
+- `OliviaConversation` — top-level chat session. `id` UUID, `userId` UUID nullable. `sessionToken @default(cuid())` preserved (it's a session token, not a UUID FK target — cuid is fine).
+- `OliviaMessage` — chat turns inside a conversation. `id` UUID, `conversationId` UUID FK to OliviaConversation.
+- `OliviaPresentation` — Gamma-generated presentation tied to a chat. `id` UUID, `conversationId` + `userId` UUID nullable.
+- `OliviaConsent` — GDPR consent records. `id` UUID, `userId` UUID. Compound unique `[userId, consentType]`.
+- `OliviaGuardrail` — admin-editable content rules. `id` UUID. Compound unique `[category, value]`. No userId.
+- `OliviaUserMemory` — extracted facts about users. `id` UUID, `userId` UUID (renamed from LTM's `userProfileId`). Compound unique `[userId, category, factKey]` (renamed from `[userProfileId, category, factKey]`). `confidence Float @default(0.7)` preserved (LTM choice — not converted to Decimal).
+- `VoiceConversation` — Twilio call transcripts + extracted data. `id` UUID, `userId` UUID nullable (renamed). **`userProfile UserProfile?` FK relation DROPPED** (no UserProfile model in Olivia Brain). `voiceContact` FK kept (VoiceContact ports too). `calendarEntry` FK kept (CalendarEntry exists in C1). `generatedDocumentId` and `generatedPackageId` preserved as plain strings — Document/Package models don't exist yet, polymorphic IDs forward-compat with cluesintelligence Track L. `memoryIds String[] @default([])` preserved (Postgres native array).
+- `VoiceContact` — CRM contact derived from voice conversations. `id` UUID. **`linkedPersonId` field DROPPED** (LTM-domain Person model not in Olivia Brain).
+- `VoiceActionItem` — task extracted from a call transcript. `id` UUID, `conversationId` UUID FK. `calendarEntryId` polymorphic (no FK relation — matches LTM behavior; LTM also has no `@relation` block here).
+
+**CalendarEntry gains `voiceConversations VoiceConversation[]` reverse relation** — the C1 deferral note at schema line 747-748 is closed and the comment block updated to reflect the wiring.
+
+**SQL migration** generated automatically via `npx prisma migrate diff --from-schema prisma/schema.prisma.pre-c3.bak --to-schema prisma/schema.prisma --script` (after temporarily backing up the pre-C3 schema). 10.5 KB at `prisma/sql/02-add-voice-olivia-foundation.sql`. Operator applies via Supabase SQL Editor (Option B path, same as C1).
+
+**Lib ports:**
+- `src/lib/olivia/voice-conversation.ts` (588 lines) — byte-for-byte. Pure Anthropic API + JSON extraction logic. No DB / no LTM-domain deps.
+- `src/lib/olivia/voice-document.ts` (380 lines) — byte-for-byte. Pure prompt-building + dictation processing.
+- `src/lib/olivia/voice-prompts.ts` (327 lines) — byte-for-byte. Prompt strings + regex helper.
+- `src/lib/olivia/voice-memory.ts` (303 lines) — `userProfileId → userId` rename throughout (incl. compound key `userProfileId_category_factKey → userId_category_factKey`) + import fix (`import { prisma }` → `import prisma`, default vs named — same fix pattern as C2's tools.ts).
+- `src/lib/olivia/tools.ts` extended in place: 2 new tool defs (`get_user_memory`, `save_user_memory`) + 2 dispatcher cases + `hasLearningConsent` helper + `handleGetUserMemory` / `handleSaveUserMemory` handlers. Now 4 tools total. `getUserProfileId` helper from LTM dropped — Olivia Brain uses Clerk userId directly. Header comment updated.
+- `src/lib/calendar/olivia-guardrails.ts` re-ported the DB integration that C2 had to drop (because OliviaGuardrail model didn't exist). Restored: `fetchGuardrails()` + 5-min cache + `clearGuardrailsCache()` + `formatGuardrailsForPrompt()` + the merge logic in `buildGuardrailsPromptSection()`. Hardcoded defaults still always-active.
+- `src/lib/olivia/chat.ts` slim slice — `createConversation` / `getConversationHistory` / `getConversationMessages` only. `CreateConversationInput` and `ConversationSummary` types exported.
+
+### Decisions
+
+- **`processOliviaMessage` NOT ported.** LTM's 280-line orchestrator pulls in `@/lib/code-knowledge/olivia-context` (LTM-only code-knowledge layer), `prisma.userProfile.findUnique({ clerkUserId })` (no UserProfile in Olivia Brain), `linkedOrg` calendar field (dropped in C1), full Preparation Studio context injection (LTM-domain), full CristianoShell pipeline context (LTM-domain), and is GPT-4o-only with its own tool-calling loop. Olivia Brain's `/api/olivia/chat` route (built Sessions 4-6) already provides cascade-routed chat (Anthropic → OpenAI → Google → Grok → Perplexity → Mistral → Groq → Tavily → Opus judge) with conversation persistence — that's the orchestrator layer here, not chat.ts. Future track may re-port a slim equivalent if it becomes useful; no band-aid stub now.
+- **`knowledge-base.ts` NOT ported.** 31 KB file. Two pure exports useful in principle (`OLIVIA_SYSTEM_PROMPT` static string, `PAGE_DESCRIPTIONS` page descriptions) but no in-scope C3 consumer: the slim chat.ts skips the only LTM consumer (processOliviaMessage). Heavy LTM coupling otherwise: `getPlatformStats` queries `prisma.organization.count`, `buildEntityPersonaPrompt` imports from `@/lib/studio/entityModes` (Studio module that doesn't exist in Olivia Brain). Single concern per port — defer until something asks for it. Updated BUILD_SEQUENCE C3 row to reflect this rather than silently lowering the bar.
+- **Schema model count corrected.** BUILD_SEQUENCE C3 row originally said "10 voice/olivia Prisma models" — actual LTM count is 9. Corrected.
+- **`userProfile UserProfile?` relation dropped from VoiceConversation** without a stub. The original LTM relation cascades on UserProfile delete (`onDelete: SetNull`). Olivia Brain has no UserProfile; userId is just a Clerk string column. No FK constraint needed.
+- **`linkedPersonId` dropped from VoiceContact** without a stub. LTM uses it to link CRM contacts to canonical Person entities; Olivia Brain has no Person model. Per `project_ltm_types_no_speculative_generalization`, don't preserve speculatively.
+- **`generatedDocumentId` / `generatedPackageId` preserved as plain strings on VoiceConversation.** No FK relations to Document/Package since neither model exists in Olivia Brain. Polymorphic IDs are forward-compat — when cluesintelligence Track L builds Document/Package models, callers can soft-resolve these IDs.
+- **`calendarEntryId` on VoiceActionItem stays polymorphic (no FK).** LTM also has no `@relation` block here — matches LTM behavior byte-for-byte.
+- **`sessionToken @default(cuid())` preserved** on OliviaConversation. cuid() is a Prisma built-in — works on any DB, generates opaque session tokens. No reason to force UUID for non-id fields.
+- **OliviaUserMemory.confidence stays Float (not Decimal).** LTM choice; consistent across ports.
+
+### Verification
+
+- `npx prisma validate` — clean.
+- `npx prisma generate` — Prisma client v7.7.0 regenerated with 9 new model types.
+- `npm run typecheck` — clean (after fixing voice-memory.ts default-vs-named import of prisma).
+- `npm test` — **94/94 passing** (no regressions; same 76 bridge + 18 chat-route).
+- Code: 9 files / 2,645 insertions in commit `4291a39`.
+- LTM source unchanged (Read + Grep + Copy-Item only on LTM paths during this session).
+
+### Where Session 11 picks up
+
+**Track Calendar · C4** — 21 voice/email/call/sms/WhatsApp API routes. Per BUILD_SEQUENCE.md C4 row: `/olivia/call/*` ×9 (call, audio, extract, gather, inbound, outbound, recording, reminder, status, twiml — Twilio call lifecycle), `/olivia/calls{,/[id]}` ×2, `/olivia/voice/*` ×5 (root, presentation, process, to-document, to-package), `/olivia/{email,sms,whatsapp}`, `/olivia/conversations/[id]/email`. All 21 routes return proper responses on smoke calls. Twilio webhook signature verification matches LTM.
+
+**Operator action before C4:** apply `prisma/sql/02-add-voice-olivia-foundation.sql` to Supabase (Option B path) so the new tables exist when C4 routes start hitting them. Set Twilio env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`) before C4 routes go live.
+
+**Build status at session-10 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar voice + olivia models committed; 2 LTM files explicitly deferred (processOliviaMessage in chat.ts, all of knowledge-base.ts) to dependency-aware future tracks.**
