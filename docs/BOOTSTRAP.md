@@ -1,19 +1,26 @@
 # Olivia Brain — Bootstrap
 
-> **Read this first when starting a new session.** Loads in seconds, costs minimal tokens, sets up everything you need to know.
+> **READ `docs/00_PRODUCT_TRUTH.md` FIRST, BEFORE THIS FILE.** It is the eternal source of truth for the Olivia / CLUES product universe — bicycle-wheel architecture, priority order, and what each product actually is. This BOOTSTRAP file describes the implementation; `00_PRODUCT_TRUTH.md` describes what is being implemented. Any contradiction → `00_PRODUCT_TRUTH.md` wins.
+>
+> **Then read this file** — it loads in seconds, costs minimal tokens, sets up everything you need to know about the implementation.
 
 ---
 
 ## What Olivia Brain is
 
-A standalone Next.js 16 / React 19 / Prisma 7 service that hosts **Olivia** — a real-human-looking video avatar AI executive agent — as a single product that:
+`D:\Olivia Brain` is the **implementation of Olivia herself** — the brain at the hub of the bicycle-wheel architecture defined in `00_PRODUCT_TRUTH.md`. Standalone Next.js 16 / React 19 / Prisma 7 service. Cascade + persona + memory + avatar + voice + calendar + calls + briefs all live here. The user-facing products (clueslondon.com, cluesintelligence.com, cluesxscore.com, etc.) consume this brain over a stable cross-app contract.
 
-1. **Runs as a SaaS** at `olivia.com`.
-2. **Embeds inside the London Tech Map** (`clueslondon.com`) as a Web Component widget.
-3. **Embeds inside Clues Intelligence** (a separate predictive analytics app) as Olivia's main face.
-4. **Carries every worthwhile feature** from three pre-existing Olivia codebases.
+Surfaces this repo serves:
 
-Olivia is positioned as **the world's most advanced agentic vertical agent for relocation, real estate, and the London Tech Map vertical.** Multi-million-dollar deliverable. **2026 world-class production code on every line.** No band-aids. No symptom suppression.
+1. **`clueslondon.com`** (priority 1) — embedded Olivia + Studio. Every clueslondon data event passes through this brain.
+2. **`cluesintelligence.com`** (priority 2, the FLAGSHIP) — relocation predictive analytics. The 6-LLM cascade + Tavily + Opus judge in this repo is what produces the top-3 cities / towns / neighborhoods verdict.
+3. **`cluesxscore.com`** (priority 3) — 23 modular city-comparison mini-apps; `lifescore.com` is one of the 23.
+4. **White-labeled Olivia** (priority 4) — third-party real-estate / relocation deployments via the gateway adapter.
+5. **`clues-property-search`, `Heart-Recovery-Calendar`, London transit app** (priorities 5–7, future builds) — all spokes on the same wheel.
+
+`olivia.com` is Olivia's own SaaS surface for the white-label product. It is NOT a user-facing chat app — the user-facing apps are the products listed above.
+
+**Multi-million-dollar deliverable. 2026 world-class production code on every line. No band-aids. No symptom suppression.**
 
 **Deadline:** 2026-06-02. **Today:** 2026-05-03 (sessions 1–5 complete; ~24 sessions remaining).
 
@@ -49,9 +56,10 @@ Not yet started: Companies House + Kimi providers (scope-cut from Session 5; tra
 
 ## Doc reading order for new agents
 
-**Always read first (every session):**
-1. This file — `BOOTSTRAP.md`.
-2. `BUILD_SEQUENCE.md` — what's done, what's next, what's blocking what.
+**Always read first (every session, in this order):**
+1. **`00_PRODUCT_TRUTH.md`** — eternal source of truth for the product universe. Non-negotiable.
+2. `BOOTSTRAP.md` — this file. Implementation context.
+3. `BUILD_SEQUENCE.md` — what's done, what's next, what's blocking what.
 
 **Read for the specific task:**
 | Task | Doc |
@@ -74,6 +82,7 @@ Not yet started: Companies House + Kimi providers (scope-cut from Session 5; tra
 
 | File | Purpose |
 |------|---------|
+| `docs/00_PRODUCT_TRUTH.md` | **Eternal source of truth.** Bicycle-wheel architecture, product hierarchy, Olivia's role across all surfaces. Read first every session. Non-negotiable. |
 | `docs/BOOTSTRAP.md` | This file. Session startup context. |
 | `docs/BUILD_SEQUENCE.md` | Canonical session-by-session plan. |
 | `docs/STUDIO_PORT_MANIFEST.md` | File-level port inventory across the three Studios. |
