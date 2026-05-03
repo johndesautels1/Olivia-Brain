@@ -82,6 +82,7 @@ Not yet started: cascade extension of chat, Studio engine port, Studio UI rebuil
 | `docs/STUDIO_OLIVIA_DESIGN.md` | UI north star derived from the GrandMaster prototype. |
 | `docs/HEYGEN_LTM_CONFIG.md` | LiveAvatar must-preserve contracts. |
 | `docs/MERGE_INVENTORY.md` | 233-row capability matrix across the three sources. |
+| `docs/API_INTEGRATION_BACKLOG.md` | 25-API integration backlog (UK companies, news, events, geo, AI, enrichment, social, gov data) with env-var status. |
 
 **Never create new session-handoff files, cleanup-summary files, or session-numbered documents.** All progress goes into the existing files. Updates in place.
 
