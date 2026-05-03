@@ -115,6 +115,67 @@ Notes: All three are no-key, public HTTP APIs. One bridge provider with domain `
 
 ---
 
+## 10. Visual Manifestation & Tool Dispatch (Track N + Track O)
+
+Olivia summons visuals on demand alongside her voice. The cascade emits `manifest: { type, payload }` tool calls; the `<OliviaCanvas>` component renders the right surface. **Gamma is the canonical presentation runtime — partner, integral, never an alternative.**
+
+### Tier 1 — Core (every product)
+
+| # | API | Best for | Free tier | Status in `env.ts` | Provider file | Tier |
+|---|-----|----------|-----------|--------------------|---------------|------|
+| 26 | **Gamma** | Decks, docs, webpages, social posts | Free tier + paid | partial — via MCP | `src/lib/reports/gamma.ts` ✅ | data |
+| 27 | **Mapbox GL JS + 3D Tiles** | Maps, 3D city flyovers | 50K loads/month | ❌ not declared | — | enrichment |
+| 28 | **Mermaid.js** (npm) | Diagrams from text | n/a (JS lib) | n/a | — (Track N3) | enrichment |
+| 29 | **Recharts** (npm) | React charts | n/a (JS lib) | n/a | — (Track N3) | enrichment |
+| 30 | **Tremor** (npm) | Dashboard blocks | n/a (JS lib) | n/a | — (Track N3) | enrichment |
+| 31 | **tldraw + tldraw-ai-module** | Whiteboard canvas | Free tier (commercial paid) | ❌ not declared | — | enrichment |
+| 32 | **Vercel v0 API** | Generative React UI | Pro plan | ❌ not declared | — | inference |
+
+### Tier 2 — Domain-specific
+
+| # | API | Best for | Free tier | Status in `env.ts` | Provider file | Tier |
+|---|-----|----------|-----------|--------------------|---------------|------|
+| 33 | **CesiumJS + Cesium ion** | 3D globe, city flyovers | Free tier (5GB assets) | ❌ not declared | — | enrichment |
+| 34 | **Spline** | Embedded 3D scenes | Free tier | ❌ not declared | — | enrichment |
+| 35 | **Sketchfab API** | Embedded 3D models | Free tier | ❌ not declared | — | enrichment |
+| 36 | **BioDigital Human** | 3D anatomy (HEARTBEAT) | Educational/dev tier | ❌ not declared | — | enrichment |
+| 37 | **Google Street View Static** | Property previews | $7/1000 (after free) | ❌ not declared | — | enrichment |
+| 38 | **Mapillary** | Open street imagery | Completely free | ❌ not declared | — | enrichment |
+| 39 | **Plotly.js** (npm) | Financial charts | n/a (JS lib) | n/a | — | enrichment |
+| 40 | **Vis-timeline** (npm) | Timelines | n/a (JS lib) | n/a | — | enrichment |
+| 41 | **Cytoscape.js** (npm) | Knowledge graphs | n/a (JS lib) | n/a | — | enrichment |
+| 42 | **Deck.gl** (npm) | Large-scale geo viz | n/a (JS lib) | n/a | — | enrichment |
+
+### Tier 3 — Generative media (real-time)
+
+| # | API | Best for | Free tier | Status in `env.ts` | Provider file | Tier |
+|---|-----|----------|-----------|--------------------|---------------|------|
+| 43 | **fal.ai** | Fast image/video gen (FLUX, SDXL, Veo) | Pay-as-you-go | ❌ not declared | — | inference |
+| 44 | **Runway Gen-4** | Short video clips | Paid tier | ❌ not declared | — | inference |
+| 45 | **Luma Dream Machine** | Short video clips | Limited free | ❌ not declared | — | inference |
+| 46 | **Cartesia Sonic 2** | Sub-300ms TTS (W-003 fix) | Free tier | ❌ not declared | `src/lib/voice/cartesia.ts` (Track O3) | inference |
+| 47 | **Tavus** | Better lip-sync (W-005 fix) | Pay-as-you-go | ❌ not declared | `src/lib/avatar/tavus.ts` (Track O5) | inference |
+| 48 | **Krea Realtime** | Real-time AI image gen | Paid tier | ❌ not declared | — | inference |
+| 49 | **OpenAI Realtime API** | Voice + tool agent | Uses `OPENAI_API_KEY` | ✅ (existing key) | — | inference |
+
+### Tier 4 — Tool dispatch (W-001 fix)
+
+| # | API | Best for | Free tier | Status in `env.ts` | Provider file | Tier |
+|---|-----|----------|-----------|--------------------|---------------|------|
+| 50 | **Composio** | 200+ tool integrations | Free tier | ✅ `COMPOSIO_API_KEY` (catalog only, not wired) | `src/lib/tools/composio.ts` (Track O1) | inference |
+
+### §10 status summary
+
+| Bucket | Count | Notes |
+|--------|-------|-------|
+| ✅ Already wired or keyed | 3 | Gamma (`src/lib/reports/gamma.ts` + MCP), OpenAI Realtime (uses existing `OPENAI_API_KEY`), Composio (key in `INTEGRATION_CATALOG`, library not wired) |
+| n/a — npm package, no key | 8 | Mermaid, Recharts, Tremor, Plotly, Vis-timeline, Cytoscape, Deck.gl, Mapillary public endpoints |
+| ❌ New env var needed | 14 | Mapbox, tldraw paid, Vercel v0, Cesium ion, Spline, Sketchfab, BioDigital, Google Street View, fal.ai, Runway, Luma, Cartesia, Tavus, Krea |
+
+This block does NOT yet roll into the global Status summary below (kept separate so the original 25-API count stays auditable).
+
+---
+
 ## Status summary
 
 | Bucket | Count | APIs |

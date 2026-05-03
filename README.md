@@ -117,6 +117,75 @@ See `BATTLE_PLAN.md` for the complete 186-item roadmap.
 
 ---
 
+## Visual Manifestation Stack
+
+The interaction model is **split-screen Olivia + Canvas**. User talks → cascade emits a `manifest({ type, payload })` tool call → `<OliviaCanvas>` renders the right surface → Olivia narrates while it animates.
+
+**Gamma is the canonical presentation runtime — partner, integral, never an alternative.** When Olivia needs to ship a deck, doc, webpage, or social post, she calls Gamma. Olivia's value is knowing what to put in the Gamma deck via the 75 archetypes + 12 plan templates + Cristiano™ judge.
+
+### Tier 1 — Core (every CLUES product)
+
+| API | What Olivia summons | Status |
+|---|---|---|
+| **Gamma** | Decks, docs, webpages, social posts | ✅ Wired (`src/lib/reports/gamma.ts` + Gamma MCP) — needs deeper Studio integration (Track N5) |
+| **Mapbox GL JS + Mapbox 3D Tiles** | Maps, 3D city flyovers, transit overlays | ❌ Not in deps — Track N2 |
+| **Mermaid.js** | Architecture diagrams, flowcharts, sequence, gantt | ❌ Not in deps — Track N3 |
+| **Recharts + Tremor** | Data viz, score gauges, comparison radars, sparklines | ❌ Not in deps — Track N3 |
+| **tldraw + tldraw-ai-module** | Live whiteboard Olivia draws on | ❌ Not in deps — Track N4 |
+| **Vercel v0 API** | Generative React component on demand | ❌ Not in deps — Track N4 |
+
+### Tier 2 — Domain-specific
+
+| API | Surfaces it powers |
+|---|---|
+| **CesiumJS** | cluesintelligence 3D globe / city flyovers during relocation reveal |
+| **Spline embed** | Pitch deck hero visuals, brand 3D moments |
+| **Sketchfab API** | Property matterport-style + HEARTBEAT 3D anatomy |
+| **BioDigital Human** | HEARTBEAT cardiac visualization (clinical-grade) |
+| **Google Street View Static** | clues-property-search location previews |
+| **Mapillary** | Open-source street imagery for London transit + budget property views |
+| **Plotly.js** | clueslondon valuation charts (financials need more than Recharts) |
+| **Vis-timeline** | Pitch milestones, HEARTBEAT recovery timeline |
+| **Cytoscape.js** | "See Olivia's brain" — knowledge graph viewer |
+| **Deck.gl** | Large-scale geo overlays (transit ridership, climate) |
+
+### Tier 3 — Generative media
+
+| API | Why |
+|---|---|
+| **fal.ai** | Fast image/video gen (FLUX, SDXL, Veo). Lower latency than Replicate |
+| **Runway Gen-4 / Luma Dream Machine** | Short video clips for pitch B-roll |
+| **Cartesia Sonic 2** | **Sub-300ms TTS** — replaces ElevenLabs in real-time path; ElevenLabs stays for premium async. **Voice-latency fix (W-003).** |
+| **Tavus** | Better lip-sync; evaluation + add as fallback in cascade (W-005) |
+| **Krea Realtime** | Live brainstorming canvas (real-time AI image gen) |
+| **OpenAI Realtime API** | Sub-300ms voice + parallel tool dispatch |
+
+### Tier 4 — Tool dispatch (agentic-credibility fix)
+
+| API | Why |
+|---|---|
+| **Composio** | 200+ pre-built tool integrations. Already in `package.json` (`@composio/core`), not wired. Closes tool-use depth gap vs Claude Computer Use / OpenAI Operator (W-001). |
+
+Full env-var declarations and provider-file targets are tracked in `docs/API_INTEGRATION_BACKLOG.md` §10. Implementation lands in `docs/BUILD_SEQUENCE.md` Track N + Track O.
+
+---
+
+## Weakness Backlog
+
+Append-only. Items resolve only on explicit user say-so. New observations from competitive analysis, code review, or build sessions land here and fold into `docs/BUILD_SEQUENCE.md` as new sessions.
+
+| # | Weakness | Source | Folded into |
+|---|---|---|---|
+| W-001 | Composio dependency present but not wired — tool-use / computer-use depth missing | 2026-05-03 competitive analysis | Track O Session O1 |
+| W-002 | Eval runtime (Braintrust, Patronus, Cleanlab, red-team) is scaffolded, not producing weekly numbers | 2026-05-03 competitive analysis | Track O Session O2 (extends Track K Session 27) |
+| W-003 | Voice latency ~1.2s end-to-end; sub-600ms is 2026 table stakes | 2026-05-03 competitive analysis | Track O Session O3 (extends Track E Session 17) |
+| W-004 | `src/lib/rag/citation-first.ts` (~20 KB) is unwired — no clickable citations on Olivia's claims, parity gap vs Hebbia | 2026-05-03 competitive analysis | Track O Session O4 |
+| W-005 | LiveAvatar lip-sync at parity, not leadership — Tavus / HeyGen Interactive Avatar quality is ahead | 2026-05-03 competitive analysis | Track O Session O5 |
+| W-006 | 250-agent registry is specs not behavior — risk of "library of facades" until Track H lands | OLIVIA_BUILD_STATE audit | Track H Sessions 21–23 (already scoped) |
+| W-007 | UI polish discipline session-over-session is the determinant on whether `01_UI_DESIGN_SYSTEM.md` ceiling actually gets hit | 2026-05-03 competitive analysis | Spread across Tracks C / N (no single fix; gate every session on visual review) |
+
+---
+
 ## Key Documentation
 
 | File | Purpose |

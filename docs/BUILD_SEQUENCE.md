@@ -147,6 +147,32 @@ Brain has the LangGraph + 9-model cascade. LTM has 15 production-tuned cascade p
 
 ---
 
+### Track N — Visual Manifestation Layer (Sessions N1–N5)
+
+> **Slot:** after Track G (Sessions 19–20, cascade orchestrator port). Recommend ~Sessions 27–31 in run-rate. Independent of Tracks H/I/J. The interaction model is **split-screen Olivia + Canvas** — user talks, cascade emits `manifest: { type, payload }` tool call, `<OliviaCanvas>` renders the right surface, Olivia narrates while it animates. **Gamma is the canonical presentation runtime — partner, integral, never an alternative.**
+
+| Session | Deliverable | Exit criterion |
+|---|---|---|
+| **N1** | **Canvas shell + tool-dispatch contract.** New `<OliviaCanvas>` component beside `<OliviaVideoAvatar>`. Cascade returns optional `manifest: { type, payload }` alongside text. Wire **Composio** for the dispatch layer. Prereq: Track O Session O1 must land first. | `/test-avatar` shows split-screen. Asking "show me a flowchart of the cascade" returns a Mermaid diagram inline. Composio tool call traceable in Langfuse. |
+| **N2** | **Map manifestation.** Add `mapbox-gl` + Mapbox 3D Tiles. Manifest types `map.cities`, `map.relocation-pin`, `map.transit-overlay`. | "Show me the top 3 cities" zooms a 3D Mapbox scene to each, with score chips. Works without Mapbox token (gracefully degrades to static image). |
+| **N3** | **Diagram + chart manifestation.** Add `mermaid`, `recharts`, `@tremor/react`. Manifest types `diagram.flow`, `chart.bar`, `chart.radar`, `chart.gauge`, `chart.sparkline`. | Pitch valuation question returns a Tremor gauge + Recharts bar chart, Olivia narrates. Mermaid sequence diagram renders for "explain the cascade." |
+| **N4** | **Generative UI + 3D scene.** Wire **Vercel v0 API** for ad-hoc React component generation. Add **Spline** embed + **CesiumJS** for cluesintelligence relocation flyover. Manifest types `ui.generate`, `scene.3d`, `globe.flyover`. | v0-generated comparison table renders inside Canvas with branded tokens. Cesium globe flies London → user's selected city. |
+| **N5** | **Gamma deck manifestation (deeper integration).** Existing `src/lib/reports/gamma.ts` + Gamma MCP gets a Canvas surface: when cascade emits `manifest: { type: "gamma.deck" }`, Canvas shows live Gamma generation status, then the embedded Gamma viewer. | "Generate the Series A pitch deck" returns a Gamma URL + embedded preview within 90s. User can click to open in Gamma editor for refinement. |
+
+### Track O — Weakness Closure (Sessions O1–O5)
+
+> **Slot:** O1 lands between Sessions 16 and 17 (prerequisite for Track N1). O2 extends Track K Session 27 (Patronus already scoped — broaden to running eval). O3 extends Track E Session 17 (voice). O4 + O5 fold into Track K hardening (Sessions 27–29). Each session closes a numbered weakness from `README.md` § Weakness Backlog.
+
+| Session | Deliverable | Exit criterion |
+|---|---|---|
+| **O1** | **Wire Composio for agentic tool dispatch (W-001).** New `src/lib/tools/composio.ts`. Cascade gets a `tools` array; intent classifier flags tool-eligible turns; tool results re-enter the cascade for narration. Approval gate (`src/lib/tools/approval-gate.ts`) wraps high-risk tools. | "Send a follow-up email to John from yesterday's call" → Composio Gmail tool runs (with approval prompt) → reply + audit log entry. Works alongside the cascade without breaking 94 existing tests. |
+| **O2** | **Eval runtime, running weekly (W-002).** Promote scaffold (`src/lib/evaluation/{patronus,braintrust,cleanlab,red-team}.ts`) into an Inngest weekly cron that scores last week's conversations on hallucination + groundedness + safety. Public scorecard at `/admin/evals`. | Friday cron emits a Slack/email report: "Olivia scored X on hallucination, Y on red-team, Z on QA scorecards. Week-over-week delta: ±N%." Live numbers, not stubbed. |
+| **O3** | **Voice latency under 600ms (W-003).** Add **Cartesia Sonic 2** TTS (`src/lib/voice/cartesia.ts`) as the real-time path; ElevenLabs stays for premium async. Add **Deepgram streaming** STT into the LiveAvatar loop. Measure: chat → TTS first-byte. Target: <600ms p50. | Tracing dashboard shows p50 voice round-trip <600ms over a 100-turn benchmark. |
+| **O4** | **Citation-first RAG, wired (W-004).** `src/lib/rag/citation-first.ts` exits library-only mode. Cascade's "research" intent routes through it. Every assistant turn carries `citations: [{ url, title, snippet }]`. UI renders inline `[1]` superscripts. | "What's the weather in London like for relocation?" returns text + 3+ clickable Tavily-sourced citations. Closes the Hebbia gap. |
+| **O5** | **Avatar lip-sync upgrade (W-005).** Add **Tavus** as a vendor in `src/lib/avatar/tavus.ts`. A/B harness compares Tavus vs Simli vs HeyGen on the same 30-script suite. Best vendor wins primary, others stay as fallback chain. | Side-by-side video evaluation shipped to user; chosen vendor flagged as primary in `src/lib/avatar/index.ts`. |
+
+---
+
 ## Risks & gates
 
 | Risk | Mitigation |
