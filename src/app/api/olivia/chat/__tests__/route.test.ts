@@ -1,65 +1,73 @@
 /**
  * `/api/olivia/chat` — route handler contract & integration tests.
  *
- * Coverage targets:
- * - Validation: malformed JSON, missing/empty/oversized message, bad uuid.
- * - Unconfigured mode: no `ANTHROPIC_API_KEY` returns the structured
- *   fallback reply, still persists the user + assistant turns, status 200.
- * - Configured mode: happy path returns the model's text, persists turns,
- *   returns a valid conversation/message id pair.
- * - Conversation id: reused when provided; generated when omitted.
- * - Resilience: thrown errors from the model fall back to a polite reply
- *   (status 200, mode: "fallback"), turns still persist.
- * - Rate limiting: the per-IP bucket returns 429 once exhausted.
+ * Coverage targets (Session 5 cascade refactor):
  *
- * Tests mock `@/lib/config/env` (so each test controls
- * `ANTHROPIC_API_KEY`) and `ai` (so `generateText` never reaches a real
- * vendor). The conversation store is real but runs in its in-memory mode
- * because the mocked env never sets `SUPABASE_URL` — this exercises the
- * persistence code path end-to-end without standing up Postgres.
+ * - **Validation** — malformed JSON, missing/empty/oversized message,
+ *   bad uuid → 400.
+ * - **Cascade integration** — first-provider success: cascade is called
+ *   with the right intent / message / recalled context shape, the
+ *   assistant turn carries provider+model+attempts metadata, the response
+ *   reflects the cascade's text.
+ * - **Mock-mode short-circuit** — when the cascade returns
+ *   `runtimeMode: "mock"`, the route persists the assistant turn with
+ *   `mode: "mock"` and still returns 200.
+ * - **Forced-fault failover** — cascade reports `attempts: [anthropic
+ *   fail, openai success]` and `providerId: "openai"`; the route
+ *   surfaces openai's text and persists both attempts in metadata.
+ * - **Intent classification** — math-keyword message routes to
+ *   `intent: "math"` in the cascade input.
+ * - **Resilience** — cascade throws → route returns 500 (never silently
+ *   swallows; persistence layer is supposed to be infallible via the
+ *   safe-store wrapper). Cascade returning a `runtimeMode: "mock"` for
+ *   an unconfigured environment is the documented graceful path.
+ * - **Rate limiting** — per-IP bucket returns 429 once exhausted.
+ *
+ * Tests mock `@/lib/services/model-cascade` (so cascade behaviour can be
+ * pinned per test), `@/lib/foundation/status` (so `buildIntegrationSnapshot`
+ * is deterministic), and use the real conversation store in its in-memory
+ * mode (no `SUPABASE_URL` set in the test env, so `getConversationStore`
+ * returns the in-memory implementation — exercises the persistence path
+ * end-to-end without standing up Postgres).
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ProviderAttempt, ProviderId, RuntimeMode } from "@/lib/foundation/types";
+
+/* ─── Local types (mirror model-cascade's internal CascadeResult) ────────── */
+
+interface CascadeResult {
+  text: string;
+  providerId: ProviderId | "mock";
+  modelId: string;
+  attempts: ProviderAttempt[];
+  runtimeMode: RuntimeMode;
+}
+
 /* ─── Module mocks ───────────────────────────────────────────────────────── */
 
-const baseEnv = {
-  NODE_ENV: "test" as const,
-  NEXT_PUBLIC_APP_NAME: "Olivia Brain",
-  APP_AI_MODE: "auto" as const,
-  ANTHROPIC_MODEL_PRIMARY: "claude-sonnet-4-6",
-  ANTHROPIC_MODEL_JUDGE: "claude-opus-4-6",
-  OPENAI_MODEL_PRIMARY: "gpt-5.4-pro",
-  OPENAI_MODEL_REASONING: "gpt-5.4-pro",
-  GOOGLE_MODEL_PRIMARY: "gemini-3.1-pro",
-  XAI_MODEL_PRIMARY: "grok-4",
-  PERPLEXITY_MODEL_PRIMARY: "sonar-reasoning-pro",
-  MISTRAL_MODEL_PRIMARY: "mistral-large-latest",
-  GROQ_MODEL_PRIMARY: "llama-3.3-70b-versatile",
-  ELEVENLABS_OLIVIA_VOICE_ID: "rVk0ZvRulp6xrYJkGztP",
-  ELEVENLABS_VOICE_OLIVIA: "21m00Tcm4TlvDq8ikWAM",
-  ELEVENLABS_VOICE_CRISTIANO: "yoZ06aMxZJJ28mfd3POQ",
-  ELEVENLABS_VOICE_EMELIA: "EXAVITQu4vr4xnSDxMaL",
-  OPENAI_TTS_MODEL: "tts-1-hd",
-  OPENAI_TTS_VOICE: "nova",
-  OPENAI_WHISPER_MODEL: "whisper-1",
-  LANGFUSE_BASE_URL: "https://cloud.langfuse.com",
-} as Record<string, unknown>;
+const runModelCascadeMock = vi.fn();
 
-const envState: { current: Record<string, unknown> } = { current: { ...baseEnv } };
-
-vi.mock("@/lib/config/env", () => ({
-  getServerEnv: () => envState.current,
+vi.mock("@/lib/services/model-cascade", () => ({
+  runModelCascade: (...args: unknown[]) => runModelCascadeMock(...args),
 }));
 
-const generateTextMock = vi.fn();
-
-vi.mock("ai", () => ({
-  generateText: (...args: unknown[]) => generateTextMock(...args),
-}));
-
-vi.mock("@ai-sdk/anthropic", () => ({
-  anthropic: (modelId: string) => ({ id: modelId, kind: "anthropic-model" }),
+vi.mock("@/lib/foundation/status", () => ({
+  getFoundationStatus: () => ({
+    generatedAt: new Date().toISOString(),
+    runtimeMode: "live" as const,
+    appName: "Olivia Brain",
+    providers: [],
+    integrations: [
+      { id: "anthropic", label: "Anthropic", group: "platform" as const, configured: true, status: "configured" as const, purpose: "" },
+      { id: "openai", label: "OpenAI", group: "platform" as const, configured: false, status: "missing" as const, purpose: "" },
+    ],
+    memory: { backend: "in-memory" as const, vectorReady: false, personalizationReady: false },
+    observability: { backend: "local-trace-store" as const, ragasReady: false },
+    recommendedNextActions: [],
+  }),
+  getProviderStatuses: () => [],
 }));
 
 /* ─── Imports under test ─────────────────────────────────────────────────── */
@@ -68,6 +76,34 @@ import { POST } from "../route";
 import { getConversationStore } from "@/lib/memory/store";
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
+
+type CascadeInput = {
+  conversationId: string;
+  message: string;
+  intent: string;
+  recalledContext: string[];
+  integrationSnapshot: Record<string, string>;
+};
+
+function makeCascadeResult(
+  overrides: Partial<CascadeResult> = {},
+): CascadeResult {
+  return {
+    text: "Olivia replies.",
+    providerId: "anthropic",
+    modelId: "claude-sonnet-4-6",
+    attempts: [
+      {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-6",
+        success: true,
+        durationMs: 142,
+      },
+    ],
+    runtimeMode: "live",
+    ...overrides,
+  };
+}
 
 function makeRequest(
   body: unknown,
@@ -90,8 +126,7 @@ async function readJson(res: Response) {
 }
 
 beforeEach(() => {
-  envState.current = { ...baseEnv };
-  generateTextMock.mockReset();
+  runModelCascadeMock.mockReset();
 });
 
 afterEach(() => {
@@ -106,6 +141,7 @@ describe("POST /api/olivia/chat · validation", () => {
     expect(res.status).toBe(400);
     const body = await readJson(res);
     expect(body.error).toBeTruthy();
+    expect(runModelCascadeMock).not.toHaveBeenCalled();
   });
 
   it("returns 400 when message is missing", async () => {
@@ -132,87 +168,53 @@ describe("POST /api/olivia/chat · validation", () => {
   });
 });
 
-/* ─── Unconfigured mode ─────────────────────────────────────────────────── */
+/* ─── Cascade integration (live, first-provider success) ────────────────── */
 
-describe("POST /api/olivia/chat · unconfigured mode", () => {
-  it("returns a structured fallback reply when ANTHROPIC_API_KEY is missing", async () => {
-    envState.current = { ...baseEnv, ANTHROPIC_API_KEY: undefined };
-
-    const res = await POST(makeRequest({ message: "hello" }));
-    expect(res.status).toBe(200);
-
-    const body = await readJson(res);
-    expect(typeof body.reply).toBe("string");
-    expect(body.reply).toMatch(/not yet configured/i);
-    expect(body.conversationId).toBeTypeOf("string");
-    expect(body.messageId).toBeTypeOf("string");
-    expect(generateTextMock).not.toHaveBeenCalled();
-  });
-
-  it("still persists user + assistant turns in unconfigured mode", async () => {
-    envState.current = { ...baseEnv, ANTHROPIC_API_KEY: undefined };
-
-    const res = await POST(makeRequest({ message: "ping" }));
-    const body = await readJson(res);
-    const conversationId = body.conversationId as string;
-
-    const turns = await getConversationStore().getRecentTurns(conversationId, 10);
-    expect(turns).toHaveLength(2);
-    expect(turns[0].role).toBe("user");
-    expect(turns[0].content).toBe("ping");
-    expect(turns[1].role).toBe("assistant");
-    expect(turns[1].content).toMatch(/not yet configured/i);
-    expect((turns[1].metadata as Record<string, unknown>).mode).toBe(
-      "fallback",
+describe("POST /api/olivia/chat · cascade walk", () => {
+  it("invokes runModelCascade with the parsed input shape", async () => {
+    runModelCascadeMock.mockResolvedValueOnce(
+      makeCascadeResult({ text: "from cascade" }),
     );
-  });
-});
 
-/* ─── Configured (live) mode ────────────────────────────────────────────── */
-
-describe("POST /api/olivia/chat · configured mode", () => {
-  beforeEach(() => {
-    envState.current = { ...baseEnv, ANTHROPIC_API_KEY: "test-key" };
-  });
-
-  it("calls generateText with the configured model and returns its text", async () => {
-    generateTextMock.mockResolvedValueOnce({ text: "Hello from Olivia." });
-
-    const res = await POST(makeRequest({ message: "What's up?" }));
-    expect(res.status).toBe(200);
-
-    const body = await readJson(res);
-    expect(body.reply).toBe("Hello from Olivia.");
-    expect(generateTextMock).toHaveBeenCalledTimes(1);
-
-    const callArg = generateTextMock.mock.calls[0][0] as Record<string, unknown>;
-    expect((callArg.model as { id: string }).id).toBe("claude-sonnet-4-6");
-    expect(callArg.prompt).toBe("What's up?");
-    expect(callArg.system).toMatch(/Olivia/);
-    expect(callArg.abortSignal).toBeInstanceOf(AbortSignal);
-  });
-
-  it("appends pageContext / pipelineContext / documentContext to the system prompt", async () => {
-    generateTextMock.mockResolvedValueOnce({ text: "ack" });
-
-    await POST(
+    const res = await POST(
       makeRequest({
-        message: "context check",
+        message: "draft me a roadmap for the system architecture",
         pageContext: "/studio/pitch",
-        pipelineContext: { pipelineStep: "draft" },
-        documentContext: { documentId: "doc_42", documentTitle: "Pitch" },
       }),
     );
+    expect(res.status).toBe(200);
+    expect(runModelCascadeMock).toHaveBeenCalledTimes(1);
 
-    const callArg = generateTextMock.mock.calls[0][0] as Record<string, unknown>;
-    const system = callArg.system as string;
-    expect(system).toMatch(/User is on page: \/studio\/pitch/);
-    expect(system).toMatch(/Pipeline context:/);
-    expect(system).toMatch(/Document context:/);
+    const input = runModelCascadeMock.mock.calls[0][0] as CascadeInput;
+    expect(input.message).toBe(
+      "draft me a roadmap for the system architecture",
+    );
+    expect(input.intent).toBe("planning"); // matches "roadmap" / "architecture" / "system"
+    expect(input.conversationId).toBeTypeOf("string");
+    expect(Array.isArray(input.recalledContext)).toBe(true);
+    expect(input.integrationSnapshot).toEqual(
+      expect.objectContaining({ anthropic: "configured" }),
+    );
   });
 
-  it("persists user + assistant turns with provider metadata", async () => {
-    generateTextMock.mockResolvedValueOnce({ text: "Persisted reply." });
+  it("returns the cascade's text as the reply", async () => {
+    runModelCascadeMock.mockResolvedValueOnce(
+      makeCascadeResult({ text: "Hello from the cascade." }),
+    );
+
+    const res = await POST(makeRequest({ message: "hi" }));
+    const body = await readJson(res);
+    expect(body.reply).toBe("Hello from the cascade.");
+  });
+
+  it("persists user + assistant turns with cascade metadata", async () => {
+    runModelCascadeMock.mockResolvedValueOnce(
+      makeCascadeResult({
+        text: "Persisted reply.",
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-6",
+      }),
+    );
 
     const res = await POST(makeRequest({ message: "store me" }));
     const body = await readJson(res);
@@ -220,18 +222,25 @@ describe("POST /api/olivia/chat · configured mode", () => {
 
     const turns = await getConversationStore().getRecentTurns(conversationId, 10);
     expect(turns).toHaveLength(2);
+
     expect(turns[0].role).toBe("user");
     expect(turns[0].content).toBe("store me");
+    expect((turns[0].metadata as Record<string, unknown>).intent).toBeTypeOf(
+      "string",
+    );
+
     expect(turns[1].role).toBe("assistant");
     expect(turns[1].content).toBe("Persisted reply.");
     const meta = turns[1].metadata as Record<string, unknown>;
     expect(meta.provider).toBe("anthropic");
     expect(meta.model).toBe("claude-sonnet-4-6");
+    expect(meta.runtimeMode).toBe("live");
     expect(meta.mode).toBe("live");
+    expect(Array.isArray(meta.attempts)).toBe(true);
   });
 
   it("generates a new conversationId when none is supplied", async () => {
-    generateTextMock.mockResolvedValueOnce({ text: "new convo" });
+    runModelCascadeMock.mockResolvedValueOnce(makeCascadeResult());
 
     const res = await POST(makeRequest({ message: "hi" }));
     const body = await readJson(res);
@@ -241,7 +250,7 @@ describe("POST /api/olivia/chat · configured mode", () => {
   });
 
   it("reuses the supplied conversationId", async () => {
-    generateTextMock.mockResolvedValueOnce({ text: "echoed" });
+    runModelCascadeMock.mockResolvedValueOnce(makeCascadeResult());
 
     const conversationId = crypto.randomUUID();
     const res = await POST(makeRequest({ message: "hi", conversationId }));
@@ -250,42 +259,153 @@ describe("POST /api/olivia/chat · configured mode", () => {
   });
 });
 
-/* ─── Resilience ────────────────────────────────────────────────────────── */
+/* ─── Intent classification ──────────────────────────────────────────────── */
 
-describe("POST /api/olivia/chat · resilience", () => {
-  beforeEach(() => {
-    envState.current = { ...baseEnv, ANTHROPIC_API_KEY: "test-key" };
+describe("POST /api/olivia/chat · intent classification", () => {
+  it("routes math-keyword messages to intent: 'math'", async () => {
+    runModelCascadeMock.mockResolvedValueOnce(makeCascadeResult());
+
+    await POST(makeRequest({ message: "calculate the average revenue" }));
+    const input = runModelCascadeMock.mock.calls[0][0] as CascadeInput;
+    expect(input.intent).toBe("math");
   });
 
-  it("returns a fallback reply when generateText throws (status stays 200)", async () => {
-    generateTextMock.mockRejectedValueOnce(new Error("vendor blew up"));
+  it("routes judge-keyword messages to intent: 'judge'", async () => {
+    runModelCascadeMock.mockResolvedValueOnce(makeCascadeResult());
+
+    await POST(makeRequest({ message: "give me your final verdict" }));
+    const input = runModelCascadeMock.mock.calls[0][0] as CascadeInput;
+    expect(input.intent).toBe("judge");
+  });
+
+  it("falls through to 'general' when nothing matches", async () => {
+    runModelCascadeMock.mockResolvedValueOnce(makeCascadeResult());
+
+    await POST(makeRequest({ message: "thanks" }));
+    const input = runModelCascadeMock.mock.calls[0][0] as CascadeInput;
+    expect(input.intent).toBe("general");
+  });
+});
+
+/* ─── Forced-fault failover ─────────────────────────────────────────────── */
+
+describe("POST /api/olivia/chat · failover", () => {
+  it("surfaces the second provider's text and persists both attempts", async () => {
+    runModelCascadeMock.mockResolvedValueOnce(
+      makeCascadeResult({
+        text: "OpenAI took over.",
+        providerId: "openai",
+        modelId: "gpt-5.4-pro",
+        attempts: [
+          {
+            providerId: "anthropic",
+            modelId: "claude-sonnet-4-6",
+            success: false,
+            durationMs: 87,
+            error: "forced fault",
+          },
+          {
+            providerId: "openai",
+            modelId: "gpt-5.4-pro",
+            success: true,
+            durationMs: 211,
+          },
+        ],
+        runtimeMode: "live",
+      }),
+    );
+
+    const res = await POST(makeRequest({ message: "hi" }));
+    const body = await readJson(res);
+    expect(body.reply).toBe("OpenAI took over.");
+
+    const turns = await getConversationStore().getRecentTurns(
+      body.conversationId as string,
+      10,
+    );
+    const meta = turns[1].metadata as Record<string, unknown>;
+    expect(meta.provider).toBe("openai");
+    expect(meta.model).toBe("gpt-5.4-pro");
+    const attempts = meta.attempts as Array<Record<string, unknown>>;
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0].providerId).toBe("anthropic");
+    expect(attempts[0].success).toBe(false);
+    expect(attempts[1].providerId).toBe("openai");
+    expect(attempts[1].success).toBe(true);
+  });
+
+  it("strips error text from persisted attempts (no PII leak)", async () => {
+    runModelCascadeMock.mockResolvedValueOnce(
+      makeCascadeResult({
+        attempts: [
+          {
+            providerId: "anthropic",
+            modelId: "claude-sonnet-4-6",
+            success: false,
+            durationMs: 50,
+            error:
+              "401 Unauthorized — Bearer token leaked: sk-ant-api03-XXXXX",
+          },
+        ],
+        providerId: "openai",
+        modelId: "gpt-5.4-pro",
+      }),
+    );
+
+    const res = await POST(makeRequest({ message: "ok" }));
+    const body = await readJson(res);
+    const turns = await getConversationStore().getRecentTurns(
+      body.conversationId as string,
+      10,
+    );
+    const meta = turns[1].metadata as Record<string, unknown>;
+    const attempts = meta.attempts as Array<Record<string, unknown>>;
+    expect(attempts[0]).not.toHaveProperty("error");
+    expect(JSON.stringify(attempts)).not.toContain("sk-ant-api03");
+  });
+});
+
+/* ─── Mock-mode short-circuit ───────────────────────────────────────────── */
+
+describe("POST /api/olivia/chat · mock-mode", () => {
+  it("flags the assistant turn as mode: 'mock' when cascade returns mock", async () => {
+    runModelCascadeMock.mockResolvedValueOnce(
+      makeCascadeResult({
+        text: "Mock-mode reply.",
+        providerId: "mock",
+        modelId: "phase1-local-fallback",
+        attempts: [],
+        runtimeMode: "mock",
+      }),
+    );
 
     const res = await POST(makeRequest({ message: "hi" }));
     expect(res.status).toBe(200);
 
     const body = await readJson(res);
-    expect(body.reply).toMatch(/unexpected error/i);
-  });
+    expect(body.reply).toBe("Mock-mode reply.");
 
-  it("returns a timeout-flavoured fallback when generateText aborts", async () => {
-    const abort = new DOMException("aborted", "AbortError");
-    generateTextMock.mockRejectedValueOnce(abort);
-
-    const res = await POST(makeRequest({ message: "slow" }));
-    const body = await readJson(res);
-    expect(body.reply).toMatch(/longer than expected/i);
-  });
-
-  it("flags fallback turns with mode: 'fallback' in metadata", async () => {
-    generateTextMock.mockRejectedValueOnce(new Error("boom"));
-
-    const res = await POST(makeRequest({ message: "fail" }));
-    const body = await readJson(res);
-    const conversationId = body.conversationId as string;
-
-    const turns = await getConversationStore().getRecentTurns(conversationId, 10);
+    const turns = await getConversationStore().getRecentTurns(
+      body.conversationId as string,
+      10,
+    );
     const meta = turns[1].metadata as Record<string, unknown>;
-    expect(meta.mode).toBe("fallback");
+    expect(meta.runtimeMode).toBe("mock");
+    expect(meta.mode).toBe("mock");
+    expect(meta.provider).toBe("mock");
+  });
+});
+
+/* ─── Resilience ────────────────────────────────────────────────────────── */
+
+describe("POST /api/olivia/chat · resilience", () => {
+  it("returns 500 when the cascade itself throws", async () => {
+    runModelCascadeMock.mockRejectedValueOnce(new Error("cascade exploded"));
+
+    const res = await POST(makeRequest({ message: "hi" }));
+    expect(res.status).toBe(500);
+    const body = await readJson(res);
+    expect(body.error).toBeTruthy();
   });
 });
 
@@ -293,8 +413,7 @@ describe("POST /api/olivia/chat · resilience", () => {
 
 describe("POST /api/olivia/chat · rate limiting", () => {
   it("returns 429 once the per-IP bucket is exhausted", async () => {
-    envState.current = { ...baseEnv, ANTHROPIC_API_KEY: "test-key" };
-    generateTextMock.mockResolvedValue({ text: "ok" });
+    runModelCascadeMock.mockResolvedValue(makeCascadeResult());
 
     const ip = `ratelimit-${crypto.randomUUID()}`;
     let lastStatus = 0;

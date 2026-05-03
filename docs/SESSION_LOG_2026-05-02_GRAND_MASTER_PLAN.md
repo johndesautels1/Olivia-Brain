@@ -304,3 +304,38 @@ No `requireAdminKey` gate at the route layer. Reasoning: `OliviaProvider.sendMes
 Track A · Session 5: extend `/api/olivia/chat` to call `runModelCascade` (`src/lib/services/model-cascade.ts`) instead of `generateText` directly. Intent router lands as a function above the cascade call; LangGraph wrapping is deferred to Track G. Forced-fault test must show failover from `claude-sonnet-4-6` → `gpt-5.4-pro`. Persistence, tracing, validation, rate limiting all stay as-is.
 
 **Build status at session-4 close: green. Test status: 92/92 passing. Typecheck: clean.**
+
+---
+
+## Part 12 — Session 5 (chat brain v2 — cascade-routed)
+
+Track A · Session 5 of `BUILD_SEQUENCE.md`. Goal: replace the direct `generateText` call inside `/api/olivia/chat` with the existing 6-model cascade so chat traffic walks Anthropic → OpenAI → Google → Grok / Perplexity / Mistral as intent dictates, and so the assistant-turn metadata captures the full provider attempts trail.
+
+### What shipped
+
+- **`src/lib/orchestration/intent.ts`** — extracted the regex-based `inferIntent` classifier out of `phase1-graph.ts` into a shared module. `phase1-graph.ts` now imports from there too. One source of truth, no duplicate regex tables.
+- **`src/app/api/olivia/chat/route.ts`** — refactored. Replaces the `anthropic(...)` + `generateText(...)` direct call with `runModelCascade({ conversationId, message, intent, recalledContext, integrationSnapshot })`. Memory recall (4 prior turns via `getConversationStore().recall`) runs before the user turn is persisted, so the cascade gets real grounding instead of an empty context array. Assistant turns now persist `{ intent, runtimeMode, provider, model, attempts: [{providerId, modelId, success, durationMs}] }`. Error text from failed provider attempts is **stripped before persistence** so vendor errors carrying URL fragments / token fragments / payload fragments cannot leak into the turn record. Span attributes gain `olivia.intent`; PII discipline preserved (no message text in attributes).
+- **`src/app/api/olivia/chat/__tests__/route.test.ts`** — rewritten around `vi.mock("@/lib/services/model-cascade")`. 18 tests across seven groups: validation (5), cascade walk (5), intent classification (3), forced-fault failover (2), mock-mode short-circuit (1), resilience (1), rate limiting (1). Failover test pins the cascade to return `attempts: [anthropic fail, openai success]` and asserts the route persists both attempts with provider IDs but no error text. Mock-mode test asserts `mode: "mock"` makes it onto the assistant turn so traces and audits can distinguish degraded responses from live ones.
+
+### Decisions
+
+- **Did not wrap the route in LangGraph.** The Phase 1 graph (`phase1-graph.ts` → `/api/chat`) already does a 5-node graph wrapping the cascade. Adopting it inside `/api/olivia/chat` would duplicate persistence and double-write turns. The two routes converge in Sessions 19–20 (Track G); until then `/api/chat` stays the LangGraph experiment surface and `/api/olivia/chat` is the narrow production endpoint.
+- **Did not impose a route-level `AbortSignal.timeout`.** The cascade's per-provider span already bounds work, so layering another timeout on top would only obscure which provider exceeded budget. Removed from Session 4's route in this commit.
+- **Recall happens before the user turn is appended.** Otherwise the just-arrived user message would dominate its own recall result — useless grounding. Mirrors `phase1-graph.ts` ordering.
+- **Cascade exception → 500, not silent fallback.** The cascade is supposed to convert provider failures into a `runtimeMode: "mock"` outcome internally. If it throws, that's a bug we want surfaced via 500 + the OTel span — silently swallowing it would hide a real defect.
+- **Companies House + Kimi providers explicitly scope-cut.** `BUILD_SEQUENCE.md` listed both alongside the cascade refactor for Session 5. They don't fit:
+  - **Companies House** is a structured UK company-data API — it belongs in `src/lib/bridge/providers/` as a `UniversalKnowledgeProvider` with domain `uk-companies`, not in the LLM cascade. Wiring it into the cascade would force the cascade to do something it isn't built for (structured data answers vs. text generation).
+  - **Kimi** (Moonshot) is a cascade-fit LLM, but it requires `@ai-sdk/kimi` (or equivalent), an env var declaration in `src/lib/config/env.ts`, addition to `ProviderId`, and entries in `getProviderStatuses()` + `buildProviderBindings()` + `providerOrderForIntent()`. That's a multi-touch scope that doesn't belong in a route refactor.
+  - Both are now tracked in `docs/API_INTEGRATION_BACKLOG.md` for dedicated follow-up sessions.
+
+### Verification
+
+- `npm test` — **94 passing** (76 prior + 18 chat-route).
+- `npm run typecheck` — clean.
+- No `package.json` change, no lockfile churn.
+
+### Where Session 6 picks up
+
+Track A · Session 6: wire `OliviaProvider.sendMessage` to actually exercise `/api/olivia/chat` from the browser, so `/test-avatar` demonstrates the full conversation loop in voice + face. The route is ready; the front-end change is a small one-line update to include any required headers (none today; Bearer auth lands Session 18 with Clerk). End-to-end smoke test must show: type a message → cascade walks → reply text comes back → ElevenLabs renders audio → LiveAvatar lip-syncs.
+
+**Build status at session-5 close: green. Test status: 94/94 passing. Typecheck: clean.**
