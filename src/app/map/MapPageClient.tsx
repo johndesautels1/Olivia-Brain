@@ -19,7 +19,7 @@ const GoogleMap3DView = dynamic(
   }
 );
 
-/* ── Standard Google Maps (fallback) ── */
+/* ── Standard Google Maps (fallback #1) ── */
 const GoogleMapView = dynamic(
   () => import("@/components/map/GoogleMapView").then((m) => m.GoogleMapView),
   {
@@ -35,6 +35,22 @@ const GoogleMapView = dynamic(
   }
 );
 
+/* ── Mapbox (fallback #2 — only if no Google key) ── */
+const MapView = dynamic(
+  () => import("@/components/map/MapView").then((m) => m.MapView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <div className="mb-2 h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mx-auto" />
+          <p className="text-sm text-[var(--muted)]">Loading map...</p>
+        </div>
+      </div>
+    ),
+  }
+);
+
 interface MapPageClientProps {
   googleMapsKey: string;
   mapboxToken: string;
@@ -42,6 +58,11 @@ interface MapPageClientProps {
 
 export default function MapPageClient({ googleMapsKey, mapboxToken }: MapPageClientProps) {
   const [use3D, setUse3D] = useState(true);
+
+  // No Google key → Mapbox fallback (requires mapboxToken; parent guarantees one of the two is set)
+  if (!googleMapsKey) {
+    return <MapView accessToken={mapboxToken} googleMapsApiKey={undefined} />;
+  }
 
   return use3D ? (
     <GoogleMap3DView

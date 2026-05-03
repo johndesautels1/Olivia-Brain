@@ -1,19 +1,5 @@
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
 import MapPageClient from "./MapPageClient";
-
-/* ── Mapbox (fallback #2 — only if no Google key) ── */
-const MapView = dynamic(() => import("@/components/map/MapView").then((m) => m.MapView), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full items-center justify-center">
-      <div className="text-center">
-        <div className="mb-2 h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mx-auto" />
-        <p className="text-sm text-[var(--muted)]">Loading map...</p>
-      </div>
-    </div>
-  ),
-});
 
 export const metadata: Metadata = {
   title: "Map — London Tech Map",
@@ -27,10 +13,8 @@ export default function MapPage() {
 
   return (
     <div className="map-immersive relative h-[100dvh] lg:h-[calc(100dvh-56px)]">
-      {googleMapsKey ? (
+      {googleMapsKey || mapboxToken ? (
         <MapPageClient googleMapsKey={googleMapsKey} mapboxToken={mapboxToken} />
-      ) : mapboxToken ? (
-        <MapView accessToken={mapboxToken} googleMapsApiKey={undefined} />
       ) : (
         <div className="flex h-full items-center justify-center">
           <div className="mx-auto max-w-md rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-8 text-center">
