@@ -744,8 +744,8 @@ model tenant_api_keys {
 //     (LTM-domain FKs — Olivia Brain doesn't own Org/Event/Person; see
 //     project_ltm_types_no_speculative_generalization memory)
 //
-//   - voiceConversations VoiceConversation[] reverse relation NOT YET ADDED
-//     (lands in Track Calendar C3 when VoiceConversation model ports)
+//   - voiceConversations VoiceConversation[] reverse relation WIRED in C3
+//     (Session 10, 2026-05-03)
 //
 //   - dealRoomSessions DealRoomSession[] reverse relation DROPPED permanently
 //     (DealRoom moves to real-estate spoke when that vertical builds)
@@ -962,6 +962,7 @@ model CalendarEntry {
   reminders          CalendarReminder[]
   memoryChunks       CalendarMemoryChunk[]
   notes              CalendarNote[]
+  voiceConversations VoiceConversation[]
 
   @@index([userId, startDatetime])
   @@index([userId, isArchived])
@@ -1277,4 +1278,280 @@ model CalendarNote {
   @@index([userId, calendarEntryId])
   @@index([calendarEntryId])
   @@map("calendar_notes")
+}
+
+// ── Voice + Olivia models (added 2026-05-03 — Track Calendar C3) ──────────
+//
+// 9 models ported from LTM with the same adaptations as C1/C2:
+//   - cuid → UUID (id columns: dbgenerated("gen_random_uuid()") @db.Uuid)
+//   - userProfileId → userId (no FK constraint; references Clerk userId
+//     directly post-Clerk integration)
+//   - LTM-domain FK relations dropped: VoiceConversation.userProfile and
+//     VoiceContact.linkedPersonId (Olivia Brain doesn't own UserProfile or
+//     Person; per project_ltm_types_no_speculative_generalization)
+//   - VoiceConversation.calendarEntry kept (CalendarEntry exists in C1)
+//   - VoiceConversation.generatedDocumentId / generatedPackageId preserved
+//     as plain strings (polymorphic IDs; Document/Package don't exist yet)
+//   - VoiceActionItem.calendarEntryId preserved as plain string (LTM also
+//     has no FK relation here — polymorphic by design)
+//   - sessionToken @default(cuid()) preserved (not an FK target; cuid is
+//     a fine session token generator)
+
+// ── OliviaConversation — top-level chat session ──────────────────────────
+model OliviaConversation {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String?  @db.Uuid
+  sessionToken String   @unique @default(cuid())
+  title        String?
+  pageContext  String?
+  mode         String   @default("chat")
+  isArchived   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  messages      OliviaMessage[]
+  presentations OliviaPresentation[]
+
+  @@index([userId, createdAt])
+  @@index([sessionToken])
+  @@map("olivia_conversations")
+}
+
+// ── OliviaMessage — individual chat turns inside a conversation ──────────
+model OliviaMessage {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String   @db.Uuid
+  role           String
+  content        String   @db.Text
+  toolName       String?
+  toolArgs       Json?
+  toolResult     Json?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  conversation OliviaConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("olivia_messages")
+}
+
+// ── OliviaPresentation — Gamma-generated presentation tied to a chat ─────
+model OliviaPresentation {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String?  @db.Uuid
+  userId         String?  @db.Uuid
+  generationId   String?
+  status         String   @default("pending")
+  gammaUrl       String?
+  exportUrl      String?
+  exportFormat   String?
+  title          String?
+  inputSummary   String?  @db.Text
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation OliviaConversation? @relation(fields: [conversationId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([conversationId])
+  @@map("olivia_presentations")
+}
+
+/// Layer 2: GDPR Consent Records — user consent for data storage,
+/// AI processing, and learning. userId references Clerk user ID.
+model OliviaConsent {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @db.Uuid
+  consentType    String
+  consentVersion String    @default("1.0")
+  granted        Boolean   @default(true)
+  grantedAt      DateTime  @default(now())
+  revokedAt      DateTime?
+  ipAddress      String?
+  userAgent      String?
+  metadata       Json?
+
+  @@unique([userId, consentType])
+  @@index([userId])
+  @@index([consentType, granted])
+  @@map("olivia_consents")
+}
+
+/// Layer 2: Admin-Editable Guardrails — content rules, blocked terms,
+/// competitor names. Editable via admin UI. Olivia loads these dynamically
+/// alongside hardcoded defaults in `lib/calendar/olivia-guardrails.ts`.
+model OliviaGuardrail {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category    String
+  value       String
+  replacement String?
+  severity    String   @default("block")
+  isActive    Boolean  @default(true)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  metadata    Json?
+
+  @@unique([category, value])
+  @@index([category, isActive])
+  @@map("olivia_guardrails")
+}
+
+/// Layer 3: User Memory & Fact Learning — stores extracted facts about
+/// users across all sessions. userId references Clerk user ID.
+model OliviaUserMemory {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @db.Uuid
+  category        String
+  factKey         String
+  factValue       String   @db.Text
+  confidence      Float    @default(0.7)
+  source          String   @default("conversation")
+  sourceMessageId String?  @db.Uuid
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  metadata        Json?
+
+  @@unique([userId, category, factKey])
+  @@index([userId, isActive])
+  @@index([userId, category])
+  @@index([sourceMessageId])
+  @@map("olivia_user_memories")
+}
+
+// ── VoiceConversation — Twilio call transcript + extracted data ──────────
+model VoiceConversation {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Call metadata from Twilio
+  callSid         String    @unique
+  direction       String
+  callerPhone     String
+  calledPhone     String
+  startedAt       DateTime
+  endedAt         DateTime?
+  durationSeconds Int?
+  recordingUrl    String?
+  recordingSid    String?
+
+  // Conversation classification
+  conversationType String @default("general")
+
+  // Full transcript - NEVER DELETED OR TRUNCATED
+  fullTranscript String @db.Text
+
+  // Extracted structured data (JSON blob)
+  extractedData Json?
+
+  // Processing status
+  status      String    @default("in_progress")
+  extractedAt DateTime?
+
+  // User/contact links — userProfile relation dropped (no UserProfile in
+  // Olivia Brain); userId references Clerk user ID directly.
+  userId          String?        @db.Uuid
+  voiceContactId  String?        @db.Uuid
+  voiceContact    VoiceContact?  @relation(fields: [voiceContactId], references: [id], onDelete: SetNull)
+  calendarEntryId String?        @db.Uuid
+  calendarEntry   CalendarEntry? @relation(fields: [calendarEntryId], references: [id], onDelete: SetNull)
+
+  // Related action items
+  actionItems VoiceActionItem[]
+
+  // Olivia memory integration (array of memory IDs for context continuity)
+  memoryIds String[] @default([])
+
+  // B2B Package Integration — polymorphic IDs (Document/Package models
+  // don't exist in Olivia Brain; preserved as plain strings for forward-
+  // compat with cluesintelligence Track L)
+  generatedDocumentId String?
+  generatedPackageId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([callSid])
+  @@index([direction])
+  @@index([callerPhone])
+  @@index([status])
+  @@index([conversationType])
+  @@index([userId])
+  @@index([voiceContactId])
+  @@index([startedAt])
+  @@index([generatedDocumentId])
+  @@index([generatedPackageId])
+  @@map("voice_conversations")
+}
+
+// ── VoiceContact — CRM contact derived from voice conversations ──────────
+// linkedPersonId dropped (LTM-domain Person model not in Olivia Brain).
+model VoiceContact {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  firstName String?
+  lastName  String?
+  email     String?
+  phone     String
+  company   String?
+  role      String?
+
+  location    String?
+  industry    String?
+  companySize String?
+
+  needs              String[] @default([])
+  interests          String[] @default([])
+  goals              String[] @default([])
+  painPoints         String[] @default([])
+  communicationStyle String?
+
+  bestContactMethod String?
+  bestContactTime   String?
+  timezone          String?
+
+  status String @default("lead")
+  source String @default("voice_call")
+
+  conversations VoiceConversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phone])
+  @@index([email])
+  @@index([status])
+  @@index([company])
+  @@map("voice_contacts")
+}
+
+// ── VoiceActionItem — task extracted from a call transcript ──────────────
+// calendarEntryId is polymorphic (no FK) — matches LTM behavior.
+model VoiceActionItem {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  conversationId String            @db.Uuid
+  conversation   VoiceConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  action     String
+  assignedTo String
+  dueDate    DateTime?
+  priority   String    @default("medium")
+
+  status         String    @default("pending")
+  completedAt    DateTime?
+  completionNote String?
+
+  calendarEntryId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([conversationId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([dueDate])
+  @@index([priority])
+  @@map("voice_action_items")
 }

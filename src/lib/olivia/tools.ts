@@ -1,21 +1,21 @@
 // src/lib/olivia/tools.ts
 //
-// Calendar slice of LTM's olivia/tools.ts. C2 ports just the two tools the
-// calendar engine needs to function:
-//   - get_user_calendar — read the user's calendar entries (Olivia's primary
-//                         calendar tool)
-//   - web_search       — Tavily fallback for live information
-// The other 22 LTM tools (search_platform, get_organization, get_district,
+// Carved slice of LTM's olivia/tools.ts. Currently exposes 4 tools:
+//   - get_user_calendar — read the user's calendar entries (C2)
+//   - web_search       — Tavily fallback for live information (C2)
+//   - get_user_memory  — retrieve learned facts about the user (C3)
+//   - save_user_memory — store a fact learned during conversation (C3)
+// The other 20 LTM tools (search_platform, get_organization, get_district,
 // get_document, get_user_analysis, get_user_packages, get_events, get_programs,
-// dispatch_agent, get_user_memory, save_user_memory, send_sms, valuation
-// tools, etc.) reference Prisma models or auth surfaces that Olivia Brain
-// doesn't own yet. They re-port in their respective tracks (C3 voice + memory,
-// C4 SMS, Track L cluesintelligence for analysis/packages, etc.).
+// dispatch_agent, send_sms, valuation tools, etc.) reference Prisma models or
+// surfaces that Olivia Brain doesn't own yet. They re-port in their respective
+// tracks (C4 SMS, Track H dispatch_agent, Track L cluesintelligence for
+// analysis/packages/valuation, etc.).
 //
 // `userId` here is the Clerk user ID (passed in by the caller). LTM's original
 // also did a `userProfile.findUnique({ clerkUserId })` lookup to map Clerk → an
-// internal UserProfile.id; Olivia Brain's calendar models use `userId` directly,
-// so the lookup is not needed.
+// internal UserProfile.id; Olivia Brain's models use `userId` directly, so the
+// lookup is not needed.
 
 import prisma from "@/lib/db/client";
 import type { Prisma } from "@prisma/client";
@@ -50,6 +50,57 @@ export const OLIVIA_TOOLS: ChatCompletionTool[] = [
           },
         },
         required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_user_memory",
+      description:
+        "Retrieve facts Olivia has learned about this user from past conversations. Use this to personalize responses with remembered preferences, relationships, company details, and behavioral patterns. Requires user to have granted learning consent.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["all", "personal", "professional", "behavioral", "preferences", "financial", "platform"],
+            description:
+              "Filter by category: personal (family, relationships), professional (company, role, industry), behavioral (communication style), preferences (meeting length, contact method), financial (funding stage, runway), platform (feature usage)",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "save_user_memory",
+      description:
+        "Store a fact learned about the user during this conversation. Only call this when the user explicitly shares personal or professional information worth remembering for future conversations. Requires learning consent.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["personal", "professional", "behavioral", "preferences", "financial", "platform"],
+            description: "Category for the fact",
+          },
+          factKey: {
+            type: "string",
+            description: "Identifier for the fact (e.g., 'spouse_name', 'company_name', 'preferred_meeting_length')",
+          },
+          factValue: {
+            type: "string",
+            description: "The value to remember (e.g., 'Sarah', 'Acme Corp', '30 minutes')",
+          },
+          confidence: {
+            type: "number",
+            description: "Confidence level 0-1 (default 0.8 for explicit statements, 0.5 for inferred)",
+          },
+        },
+        required: ["category", "factKey", "factValue"],
       },
     },
   },
@@ -96,10 +147,167 @@ export async function executeOliviaTool(
         args.endDate as string | undefined,
         args.category as string | undefined
       );
+    case "get_user_memory":
+      return handleGetUserMemory(userId, args.category as string | undefined);
+    case "save_user_memory":
+      return handleSaveUserMemory(
+        userId,
+        args.category as string,
+        args.factKey as string,
+        args.factValue as string,
+        args.confidence as number | undefined
+      );
     case "web_search":
       return handleWebSearch(args.query as string);
     default:
       return { error: `Unknown tool: ${name}` };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Auth helpers
+// ---------------------------------------------------------------------------
+
+/** Check if user has granted learning consent. */
+async function hasLearningConsent(userId: string): Promise<boolean> {
+  const consent = await prisma.oliviaConsent.findUnique({
+    where: {
+      userId_consentType: {
+        userId,
+        consentType: "learning",
+      },
+    },
+    select: { granted: true },
+  });
+  return consent?.granted ?? false;
+}
+
+// ---------------------------------------------------------------------------
+// get_user_memory handler
+// ---------------------------------------------------------------------------
+
+async function handleGetUserMemory(userId: string | null | undefined, category?: string) {
+  if (!userId) {
+    return { error: "User not authenticated. Sign in to access memories." };
+  }
+
+  const hasConsent = await hasLearningConsent(userId);
+  if (!hasConsent) {
+    return {
+      error: "Learning consent not granted. User must enable 'Let Olivia learn about me' in settings.",
+      requiresConsent: true,
+    };
+  }
+
+  const whereClause: Prisma.OliviaUserMemoryWhereInput = {
+    userId,
+    isActive: true,
+  };
+
+  if (category && category !== "all") {
+    whereClause.category = category;
+  }
+
+  const memories = await prisma.oliviaUserMemory.findMany({
+    where: whereClause,
+    orderBy: [{ category: "asc" }, { confidence: "desc" }, { updatedAt: "desc" }],
+    select: {
+      category: true,
+      factKey: true,
+      factValue: true,
+      confidence: true,
+      source: true,
+      updatedAt: true,
+    },
+  });
+
+  if (memories.length === 0) {
+    return {
+      memories: [],
+      message: "No memories stored yet. I'll remember important facts as we chat.",
+    };
+  }
+
+  // Group by category for easier consumption
+  const grouped: Record<string, Array<{ key: string; value: string; confidence: number }>> = {};
+  for (const m of memories) {
+    if (!grouped[m.category]) grouped[m.category] = [];
+    grouped[m.category].push({
+      key: m.factKey,
+      value: m.factValue,
+      confidence: Number(m.confidence),
+    });
+  }
+
+  return {
+    memories: grouped,
+    totalFacts: memories.length,
+    categories: Object.keys(grouped),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// save_user_memory handler
+// ---------------------------------------------------------------------------
+
+async function handleSaveUserMemory(
+  userId: string | null | undefined,
+  category: string,
+  factKey: string,
+  factValue: string,
+  confidence?: number
+) {
+  if (!userId) {
+    return { error: "User not authenticated. Cannot save memory." };
+  }
+
+  const hasConsent = await hasLearningConsent(userId);
+  if (!hasConsent) {
+    return {
+      error: "Learning consent not granted. Cannot save memory.",
+      requiresConsent: true,
+    };
+  }
+
+  try {
+    const result = await prisma.oliviaUserMemory.upsert({
+      where: {
+        userId_category_factKey: {
+          userId,
+          category,
+          factKey,
+        },
+      },
+      create: {
+        userId,
+        category,
+        factKey,
+        factValue,
+        confidence: confidence ?? 0.8,
+        source: "conversation",
+      },
+      update: {
+        factValue,
+        confidence: {
+          increment: Math.min(0.1, 1 - (confidence ?? 0.8)),
+        },
+        source: "conversation",
+        isActive: true,
+      },
+    });
+
+    return {
+      success: true,
+      saved: {
+        category: result.category,
+        key: result.factKey,
+        value: result.factValue,
+        confidence: Number(result.confidence),
+      },
+    };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : "Failed to save memory";
+    return { error: errorMsg };
   }
 }
 
