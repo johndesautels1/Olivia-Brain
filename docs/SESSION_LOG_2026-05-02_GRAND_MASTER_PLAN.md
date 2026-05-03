@@ -467,3 +467,48 @@ Reframed W-008 accordingly: the original "stub `/directory` and `/videos`" readi
 The map UI is now correctly characterized as a **structural shell** ported byte-for-byte, with both data layer and visual fidelity intentionally deferred. This characterization is durable via the new `project_ltm_types_no_speculative_generalization` memory + the existing `project_olivia_surface_suppression` memory. Future agents picking up Olivia Brain should NOT try to "fix" the map by adding Tailwind speculatively or stubbing LTM data routes — those are anti-patterns now caught in memory.
 
 **Build status at session-7 close: green. Test status: 94/94 passing. Typecheck: clean. Map subsystem ported byte-for-byte; documents subsystem deferred to Session 8 with revised plan; map data layer + styling intentionally deferred to Track J + Track C respectively.**
+
+---
+
+## Part 15 — Session 8 (Track Calendar C1 — calendar Prisma foundation)
+
+Track Calendar (new track inserted post-pivot, slot: between Track B's Session 7 map port and Track C's Studio UI rebuild) · **C1 foundation**. The original Session 8 deliverable in Track B was the documents-engine port; that's blocked on a Clerk strategy decision (per `STUDIO_PORT_MANIFEST.md` §K) and was deferred. Pivoted to calendar after user confirmed LTM calendar is "state of the art" (alongside the map) and approved a 6-session Track Calendar (C1–C6) covering calendar + voice + email/call/share infrastructure.
+
+### What shipped (commit 49ed993)
+
+- **Schema** — `prisma/schema.prisma` gained 14 calendar models + 15 enums (~530 lines):
+  - Models: `CalendarEntry`, `CalendarPreferences`, `CalendarPrepTask`, `CalendarReminder`, `CalendarEntryAttendee`, `CalendarInteraction`, `CalendarSyncAccount`, `CalendarSyncConflict`, `CalendarWebhookState`, `CalendarMemoryChunk`, `CalendarNote`, `OliviaCalendarRecommendation`, `VoiceTranscriptionLog`, `FounderWeek`.
+  - Enums: `CalendarCategory` (37 values across core meeting types, events, work blocks, milestones, rituals, personal, ecosystem, signal, external sync), `CalendarEntryType`, `CalendarPriority`, `CalendarSyncProvider`, `CalendarSyncDirection`, `CalendarConflictResolution`, `CalendarInteractionType`, `CalendarPrepTaskStatus`, `CalendarAttendeeRsvp`, `CalendarAttendeeRole`, `AttendanceStatus`, `WebhookSubscriptionStatus`, `OliviaRecommendationType`, `OliviaRecommendationUrgency`, `OliviaRecommendationStatus`.
+  - Adaptations applied per `project_ltm_types_no_speculative_generalization` memory:
+    - `id String @id @default(cuid())` → `id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid` (consistent with rest of Olivia Brain schema).
+    - `userProfileId String` + `userProfile UserProfile @relation(...)` → `userId String @db.Uuid` (no FK constraint until Track F Session 18 wires Clerk; userId then references Clerk user IDs).
+    - `linkedOrgId` / `linkedEventId` / `linkedPersonId` fields + relations dropped (LTM-domain — Olivia doesn't own Org/Event/Person).
+    - `voiceConversations VoiceConversation[]` reverse relation deferred to C3.
+    - `dealRoomSessions DealRoomSession[]` reverse relation dropped permanently (DealRoom moves to real-estate spoke when that vertical builds).
+    - `Event` / `EventParticipant` / `EventRsvp` / `EventSeries` / `PackageEvent` / `CascadeEvent` not ported (LTM tech-event modeling, separate concept from personal calendar).
+    - Field naming: camelCase preserved (matches LTM) so future `lib/queries/calendar.ts` port has only mechanical rename work; diverges from snake_case used in older Olivia Brain models — noted inline in schema.
+- **`src/lib/video/embeddings.ts`** ported byte-for-byte from LTM (read-only, never modified). Provides `generateEmbedding()` (OpenAI text-embedding-3-small, 1536 dims) used by `lib/calendar/calendar-memory.ts` when C2 lands. Also includes `chunkTranscript()` and `semanticSearch()` for video — not used by calendar engine but ported as-is to preserve byte-for-byte fidelity.
+- **npm install** — 8 packages added (9 installed incl. transitive): `@fullcalendar/{react,daygrid,timegrid,interaction,list,core}`, `react-international-phone`, `rrule`. FullCalendar suite for `CalendarView` (C5); rrule for recurrence expansion in `lib/calendar/rrule-expand.ts` (C2); react-international-phone for `CalendarNotepad` SMS/WhatsApp share modals (C5).
+
+### Decisions
+
+- **`lib/queries/calendar.ts` port DEFERRED to C2.** Discovery during C1 surfaced 93 LTM-domain references (the SELECT clauses + `CalendarEntryWithDetails` interface deeply consume `linkedEvent`, `linkedOrg`, `linkedPersonId`). Adapting cleanly requires understanding what the engine (C2) actually consumes from query results — this is engine-aware adaptation, not the "mechanical userProfileId → userId rename" originally scoped. Honest defer per standing rule "no band-aids — root-cause every failure." C2 row in BUILD_SEQUENCE updated to include queries port.
+- **Did not run `prisma migrate dev`.** That requires DB connection + applies migrations to the dev DB. Operator runs it when ready; `prisma generate` (which only needs schema, no DB) succeeded and the Prisma client carries the new types. Tests don't hit calendar tables yet (existing 94 tests cover bridge + chat).
+- **Camel-case preserved across calendar models** despite Olivia Brain's older models using snake_case. Reason: zero-rename byte-for-byte port for the 35 KB queries file (when C2 lands) and the 19 engine files. The mixed convention is documented in the schema header.
+- **Schema additions are append-only** — existing 33 Olivia Brain models untouched. The `tenants`, `tenant_members`, etc. multi-tenant models stay as the source of truth for Olivia user identity until Clerk lands.
+
+### Verification
+
+- `npx prisma validate` — clean (the schema at `prisma/schema.prisma` is valid).
+- `npx prisma generate` — Prisma client v7.7.0 regenerated with new calendar types in `node_modules/@prisma/client`.
+- `npm run typecheck` — clean.
+- `npm test` — **94/94 passing** (no regressions; same 76 prior + 18 chat-route).
+- LTM source unchanged (verified by intent — Read + Grep + Copy-Item only on LTM paths during this session; no Edit / Write / Remove-Item ever touched LTM).
+
+### Where Session 9 picks up
+
+**Track Calendar · C2** — calendar engine + queries. Per BUILD_SEQUENCE.md C2 row: port `lib/queries/calendar.ts` (35 KB, ~93 LTM-domain references — adapt: userProfileId → userId rename + drop linkedEvent/linkedOrg/linkedPerson selects + adjust `CalendarEntryWithDetails` interface). Then port `lib/calendar/*` (19 engine files). Plus the calendar slice of `lib/olivia/tools.ts`. Exit: adapted queries + 19 engine files typecheck against C1's Prisma client.
+
+**Operator action before C2:** run `npx prisma migrate dev --name add_calendar_foundation` against your dev Postgres so the new tables exist when C2 engine code starts hitting them.
+
+**Build status at session-8 close: green. Test status: 94/94 passing. Typecheck: clean. Track Calendar foundation committed (schema + embeddings + 8 npm packages); queries deferred to C2 with engine; migration deferred to operator.**
