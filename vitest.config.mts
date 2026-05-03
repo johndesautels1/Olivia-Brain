@@ -23,6 +23,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     exclude: ["node_modules", ".next", "dist"],
     globals: false,
+    setupFiles: ["./vitest.setup.ts"],
     testTimeout: 15_000,
     hookTimeout: 15_000,
     coverage: {

@@ -1,45 +1,27 @@
-:root {
-  --bg: #07111f;
-  --bg-soft: #0d1b2f;
-  --panel: rgba(12, 24, 43, 0.8);
-  --panel-strong: rgba(10, 20, 37, 0.95);
-  --border: rgba(245, 227, 191, 0.16);
-  --text: #f3ebdc;
-  --muted: #b5b1a4;
-  --gold: #d8aa60;
-  --coral: #f28d7f;
-  --mint: #80d8c3;
-  --danger: #f28d7f;
-  --shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
-  --font-display: "Baskerville", "Palatino Linotype", "Book Antiqua", serif;
-  --font-sans: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
-  --font-mono: "IBM Plex Mono", "Consolas", "Liberation Mono", monospace;
-}
+/**
+ * Olivia Brain global stylesheet.
+ *
+ * Imports the design-system substrate (`tokens.css` + `base.css`) and
+ * exposes the Tailwind v4 utility set via `@import "tailwindcss"`.
+ *
+ * Existing OB Phase-1 selectors (`.shell`, `.hero`, `.bubble`,
+ * `.admin-*`, etc.) live below — they reference the backward-compat
+ * aliases in `tokens.css` (`--bg`, `--text`, `--gold`, etc.) so the
+ * Phase-1 surfaces (`/admin`, `/test-avatar`, `/admin/phase1`) keep
+ * working without rewrite.
+ */
 
-* {
-  box-sizing: border-box;
-}
+@import "../styles/tokens.css";
+@import "../styles/base.css";
+@import "tailwindcss";
 
-html {
-  color-scheme: dark;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  color: var(--text);
-  font-family: var(--font-sans), sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(216, 170, 96, 0.18), transparent 30%),
-    radial-gradient(circle at top right, rgba(128, 216, 195, 0.14), transparent 26%),
-    linear-gradient(180deg, #081221 0%, #050b15 100%);
-}
-
-button,
-input,
-textarea {
-  font: inherit;
-}
+/* ═══════════════════════════════════════════════════════════════════
+   Phase-1 surface selectors (backward-compat).
+   These were the original Phase1Studio styles. They render correctly
+   against the canonical tokens via the aliases declared in
+   `src/styles/tokens.css`. New code should NOT add to this section —
+   build new surfaces with Tailwind utilities + token references.
+   ═══════════════════════════════════════════════════════════════════ */
 
 .shell {
   width: min(1380px, calc(100vw - 32px));
@@ -81,7 +63,7 @@ textarea {
 .conversation-label,
 .trace-meta,
 .status-badge {
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -93,19 +75,18 @@ textarea {
   font-size: 0.78rem;
 }
 
-h1,
-h2 {
-  margin: 0;
-  font-family: var(--font-display), serif;
+.hero h1,
+.hero h2 {
+  font-family: var(--font-display);
   line-height: 0.95;
 }
 
-h1 {
+.hero h1 {
   font-size: clamp(3.6rem, 8vw, 6.4rem);
   margin-bottom: 16px;
 }
 
-h2 {
+.hero h2 {
   font-size: clamp(1.8rem, 3vw, 2.7rem);
 }
 
@@ -309,7 +290,7 @@ h2 {
   margin: 0;
   padding-left: 2px;
   color: var(--gold);
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -447,7 +428,7 @@ h2 {
 }
 
 .key-metrics {
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.77rem;
   color: var(--muted);
 }
@@ -484,7 +465,7 @@ h2 {
 }
 
 .key-name {
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-mono);
   font-size: 0.78rem;
 }
 

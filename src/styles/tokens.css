@@ -1,0 +1,270 @@
+/**
+ * Olivia / CLUES universal design tokens.
+ *
+ * Authoritative reference: `docs/01_UI_DESIGN_SYSTEM.md` §§ 1, 2, 3, 4, 7.
+ *
+ * Three classes of declarations live in this file:
+ *
+ *   1. **Canonical tokens** (`--canvas-base`, `--aurum-primary`, etc.)
+ *      — the design-system spec. Every component reads these.
+ *      Defined in LCH (`oklch()`) on modern browsers with sRGB hex
+ *      fallbacks for older clients via the cascade.
+ *
+ *   2. **Backward-compatibility aliases** (`--bg`, `--text`, `--gold`,
+ *      `--background`, `--foreground`, `--card-bg`, etc.) — preserve
+ *      the existing OB Phase-1 surfaces (`/admin`, `/test-avatar`) and
+ *      the LTM-ported surfaces (`/map`, `/calendar`) without rewrite.
+ *      These are pointers to the canonical tokens; the underlying
+ *      colors are unified.
+ *
+ *   3. **Tailwind v4 `@theme` block** at the bottom — exposes every
+ *      canonical token to Tailwind's utility generator (`bg-aurum`,
+ *      `text-fg-primary`, `border-aurum/20`, etc.).
+ *
+ * Per `01_UI_DESIGN_SYSTEM.md` § 1.6, no component carries a raw hex
+ * code. Every paint references a token from this file.
+ */
+
+:root {
+  /* ───────────────────── 1. Canvas (deep navy, never pure black) ──── */
+  --canvas-base: oklch(13.5% 0.020 250);          /* #050B15 — deepest layer */
+  --canvas-base-srgb: #050B15;
+  --canvas-recess: oklch(15.6% 0.022 250);        /* #08111E — sidebars, footers, ticker rails */
+  --canvas-recess-srgb: #08111E;
+
+  --surface-1: oklch(17.6% 0.024 250);            /* #0A1322 — default raised panel */
+  --surface-1-srgb: #0A1322;
+  --surface-2: oklch(20.9% 0.028 250);            /* #111B2E — modal / drawer body */
+  --surface-2-srgb: #111B2E;
+  --surface-3: oklch(24.4% 0.032 250);            /* #162539 — nested / hover-elevated */
+  --surface-3-srgb: #162539;
+  --surface-translucent: rgba(15, 23, 42, 0.78);  /* Glass-morphism overlay (with backdrop-filter) */
+
+  /* ───────────────────── 2. Foreground (warm off-white) ───────────── */
+  --fg-primary: oklch(94.0% 0.018 88);            /* #F1ECE0 — headlines, primary text, hero metrics */
+  --fg-primary-srgb: #F1ECE0;
+  --fg-secondary: oklch(82.5% 0.014 88);          /* #CBC9BD — body, descriptive text */
+  --fg-secondary-srgb: #CBC9BD;
+  --fg-tertiary: oklch(60.0% 0.012 88);           /* #8B897F — labels, captions, metadata (4.5:1 floor) */
+  --fg-tertiary-srgb: #8B897F;
+  --fg-disabled: oklch(40.0% 0.010 88);           /* #5A584F — disabled controls only */
+  --fg-disabled-srgb: #5A584F;
+  --fg-on-accent: oklch(8.0% 0.018 60);           /* #0E0805 — text on aurum surfaces */
+  --fg-on-accent-srgb: #0E0805;
+
+  /* ───────────────────── 3. Aurum — old-money gold, the brand ─────── */
+  --aurum-primary: oklch(72.0% 0.105 78);         /* #C4A96A — the most-recognized colour */
+  --aurum-primary-srgb: #C4A96A;
+  --aurum-soft: oklch(83.0% 0.090 80);            /* #E2C78B — primary-button gradient stop */
+  --aurum-soft-srgb: #E2C78B;
+  --aurum-mute: rgba(196, 169, 106, 0.14);        /* aurum-tinted backgrounds (selected rows) */
+
+  /* ───────────────────── 4. Aether — indigo-electric, the AI ──────── */
+  --aether-primary: oklch(70.0% 0.140 280);       /* #818CF8 — agent traces, "thinking" pulses */
+  --aether-primary-srgb: #818CF8;
+  --aether-glow: rgba(99, 102, 241, 0.18);        /* inner glow on agent-active panels */
+  --aether-mute: rgba(99, 102, 241, 0.10);        /* tinted hover on aether surfaces */
+
+  /* ───────────────────── 5. Status — trader instinct ──────────────── */
+  --mint-up: oklch(82.5% 0.130 168);              /* #5EE0BE — positive moves, success */
+  --mint-up-srgb: #5EE0BE;
+  --mint-up-mute: rgba(94, 224, 190, 0.12);
+  --mint-up-glow: rgba(94, 224, 190, 0.20);
+
+  --coral-down: oklch(72.0% 0.140 25);            /* #F28D7F — negative, error, danger */
+  --coral-down-srgb: #F28D7F;
+  --coral-down-mute: rgba(242, 141, 127, 0.12);
+  --coral-down-glow: rgba(242, 141, 127, 0.20);
+
+  --sky-info: oklch(82.5% 0.090 230);             /* #7DD3FC — informational, neutral */
+  --sky-info-srgb: #7DD3FC;
+  --sky-info-mute: rgba(125, 211, 252, 0.12);
+  --sky-info-glow: rgba(125, 211, 252, 0.20);
+
+  --amber-warn: oklch(80.0% 0.150 78);            /* #FBBF24 — warnings, attention */
+  --amber-warn-srgb: #FBBF24;
+  --amber-warn-mute: rgba(251, 191, 36, 0.12);
+  --amber-warn-glow: rgba(251, 191, 36, 0.20);
+
+  /* ───────────────────── 6. Borders + dividers ────────────────────── */
+  --border-subtle: rgba(180, 190, 210, 0.08);     /* whisper-thin separation */
+  --border-default: rgba(180, 190, 210, 0.14);    /* card / input borders */
+  --border-strong: rgba(180, 190, 210, 0.22);     /* hover, focused panel */
+  --border-aurum: rgba(196, 169, 106, 0.20);      /* selected/active on aurum surfaces */
+  --border-aether: rgba(129, 140, 248, 0.25);     /* selected/active on aether surfaces */
+
+  /* ───────────────────── 7. Typography ────────────────────────────── */
+  --font-sans:
+    "Geist Sans",
+    "Inter",
+    -apple-system,
+    "Segoe UI",
+    "Helvetica Neue",
+    sans-serif;
+  --font-mono:
+    "Geist Mono",
+    "JetBrains Mono",
+    "IBM Plex Mono",
+    "Consolas",
+    "Liberation Mono",
+    monospace;
+  --font-display:
+    "Source Serif 4",
+    "Newsreader",
+    "Tiempos Headline",
+    "Palatino Linotype",
+    "Book Antiqua",
+    serif;
+
+  --text-2xs: 0.625rem;     /* 10px */
+  --text-xs: 0.6875rem;     /* 11px */
+  --text-sm: 0.75rem;       /* 12px */
+  --text-base: 0.875rem;    /* 14px */
+  --text-md: 0.9375rem;     /* 15px */
+  --text-lg: 1.0625rem;     /* 17px */
+  --text-xl: 1.25rem;       /* 20px */
+  --text-2xl: 1.5rem;       /* 24px */
+  --text-3xl: 1.875rem;     /* 30px */
+  --text-4xl: 2.375rem;     /* 38px */
+  --text-5xl: 3.5rem;       /* 56px (display) */
+  --text-6xl: 6rem;         /* 96px (display) */
+
+  /* ───────────────────── 8. Spacing scale (4-base) ────────────────── */
+  --space-0: 0;
+  --space-2: 0.125rem;      /* 2px */
+  --space-4: 0.25rem;       /* 4px */
+  --space-8: 0.5rem;        /* 8px */
+  --space-12: 0.75rem;      /* 12px */
+  --space-16: 1rem;         /* 16px */
+  --space-24: 1.5rem;       /* 24px */
+  --space-32: 2rem;         /* 32px */
+  --space-48: 3rem;         /* 48px */
+  --space-64: 4rem;         /* 64px */
+  --space-96: 6rem;         /* 96px */
+  --space-128: 8rem;        /* 128px */
+
+  /* ───────────────────── 9. Radius ────────────────────────────────── */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-full: 999px;
+
+  /* ───────────────────── 10. Motion ───────────────────────────────── */
+  --ease-out-quart: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in-out-quart: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-micro: 120ms;
+  --duration-default: 220ms;
+  --duration-slow: 400ms;
+
+  /* ───────────────────── 11. Workspace dimensions (§ 5.1) ─────────── */
+  --header-height: 56px;
+  --rail-collapsed: 56px;
+  --rail-default: 264px;
+  --rail-expanded: 480px;
+  --inspector-default: 320px;
+  --inspector-expanded: 480px;
+
+  /* ═════════════════════════════════════════════════════════════════
+     BACKWARD-COMPATIBILITY ALIASES
+     These keep existing OB + LTM-ported surfaces working without
+     rewrite. New code should reference the canonical tokens above.
+     ═════════════════════════════════════════════════════════════════ */
+
+  /* OB Phase-1 surfaces (`/admin`, `/test-avatar`, Phase1Studio at /admin/phase1) */
+  --bg: var(--canvas-base-srgb);
+  --bg-soft: var(--canvas-recess-srgb);
+  --panel: rgba(12, 24, 43, 0.8);
+  --panel-strong: rgba(10, 20, 37, 0.95);
+  --border: var(--border-default);
+  --text: var(--fg-primary-srgb);
+  --muted: var(--fg-tertiary-srgb);
+  --gold: var(--aurum-primary-srgb);
+  --coral: var(--coral-down-srgb);
+  --mint: var(--mint-up-srgb);
+  --danger: var(--coral-down-srgb);
+  --shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
+
+  /* LTM-ported surfaces (`/map`, `/calendar`) */
+  --background: var(--canvas-base-srgb);
+  --foreground: var(--fg-primary-srgb);
+  --card-bg: var(--surface-1-srgb);
+  --card-border: var(--border-default);
+  --accent: var(--aurum-primary-srgb);
+
+  /* Tailwind brand-color aliases used by LTM ports
+     (e.g. `bg-brand-600`, `text-brand-400`) */
+  --brand-50: oklch(95% 0.020 78);
+  --brand-100: oklch(90% 0.035 78);
+  --brand-200: oklch(85% 0.055 78);
+  --brand-300: oklch(80% 0.075 78);
+  --brand-400: var(--aurum-soft);
+  --brand-500: var(--aurum-primary);
+  --brand-600: oklch(65% 0.115 78);
+  --brand-700: oklch(58% 0.110 78);
+  --brand-800: oklch(48% 0.090 78);
+  --brand-900: oklch(35% 0.070 78);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Tailwind v4 @theme — exposes canonical tokens as utility classes.
+   ═══════════════════════════════════════════════════════════════════
+   With this block, Tailwind generates: `bg-canvas-base`, `text-fg-primary`,
+   `border-aurum`, `bg-aurum/20`, `text-aether`, `bg-mint-up/12`, etc.
+   The `@theme` directive is Tailwind v4's CSS-first configuration —
+   no separate `tailwind.config.ts` needed for tokens.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* Canvas / surface */
+  --color-canvas-base: var(--canvas-base);
+  --color-canvas-recess: var(--canvas-recess);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  /* Foreground */
+  --color-fg-primary: var(--fg-primary);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-tertiary: var(--fg-tertiary);
+  --color-fg-disabled: var(--fg-disabled);
+  --color-fg-on-accent: var(--fg-on-accent);
+
+  /* Brand */
+  --color-aurum: var(--aurum-primary);
+  --color-aurum-soft: var(--aurum-soft);
+  --color-aether: var(--aether-primary);
+
+  /* Status */
+  --color-mint-up: var(--mint-up);
+  --color-coral-down: var(--coral-down);
+  --color-sky-info: var(--sky-info);
+  --color-amber-warn: var(--amber-warn);
+
+  /* LTM brand aliases for ported `text-brand-*` / `bg-brand-*` */
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+
+  /* Typography */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
+
+  /* Radius */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-full: var(--radius-full);
+}
