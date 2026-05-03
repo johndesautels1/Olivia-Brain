@@ -60,8 +60,10 @@ Not yet started: Companies House + Kimi providers (scope-cut from Session 5; tra
 1. **`00_PRODUCT_TRUTH.md`** — eternal source of truth for the product universe. Non-negotiable.
 2. **`01_UI_DESIGN_SYSTEM.md`** — universal dark-mode design language, color tokens, modular workspace architecture, multi-agent visualization, accessibility floor. Every UI conforms. Non-negotiable.
 3. **`02_COMPETITIVE_FEATURE_MATRIX.md`** — synthesized competitive analysis (22 platforms across Gemini/Grok/Claude Desktop sources). What we steal, what we explicitly reject. Action queue smallest → largest.
-4. `BOOTSTRAP.md` — this file. Implementation context.
-5. `BUILD_SEQUENCE.md` — what's done, what's next, what's blocking what.
+4. **`03_BRAIN_ENRICHMENT_ENGINE.md`** — universal architectural primitive: how Olivia auto-enriches when any spoke app updates schema / data / knowledge. Bidirectional event pipeline, Prisma models, signing, idempotency.
+5. **`04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md`** — flagship plan: audit of Clues Main canonical docs + plan to fold the questionnaire-engine into the unified app. Subject to change as the team locks new questions / Bayesian / persona schema.
+6. `BOOTSTRAP.md` — this file. Implementation context.
+7. `BUILD_SEQUENCE.md` — what's done, what's next, what's blocking what.
 
 **Read for the specific task:**
 | Task | Doc |
@@ -85,6 +87,10 @@ Not yet started: Companies House + Kimi providers (scope-cut from Session 5; tra
 | File | Purpose |
 |------|---------|
 | `docs/00_PRODUCT_TRUTH.md` | **Eternal source of truth.** Bicycle-wheel architecture, product hierarchy, Olivia's role across all surfaces. Read first every session. Non-negotiable. |
+| `docs/01_UI_DESIGN_SYSTEM.md` | Universal dark-mode design language for every spoke. Tokens, primitives, modular workspace, accessibility floor. |
+| `docs/02_COMPETITIVE_FEATURE_MATRIX.md` | Competitive analysis synthesis — what to steal, what to reject. |
+| `docs/03_BRAIN_ENRICHMENT_ENGINE.md` | Auto-enrichment primitive — schema/data/knowledge events keep the brain in sync with every spoke. |
+| `docs/04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md` | Flagship audit + unification plan; subject to change as the team locks new questions / math / persona schema. |
 | `docs/BOOTSTRAP.md` | This file. Session startup context. |
 | `docs/BUILD_SEQUENCE.md` | Canonical session-by-session plan. |
 | `docs/STUDIO_PORT_MANIFEST.md` | File-level port inventory across the three Studios. |

@@ -461,7 +461,7 @@ Every product uses these primitives. We do not invent ad-hoc buttons / cards / i
 |-----------|-------|
 | **AvatarOrb** | §6.1. Five sizes, six states. Wraps the LiveAvatar video element when active. |
 | **AgentStrip** | §6.2. Horizontal compact / vertical expanded. |
-| **ScoreChip** | Pill-shaped, three internal slots (label, value, delta). Used in: cluesxscore comparisons, cluesintelligence verdict cards, clueslondon valuation chips. Size scale: sm / md / lg. |
+| **ScoreChip** | Pill-shaped, three internal slots (label, value, delta). Used in: cluesxscore comparisons, cluesintelligence verdict cards, clueslondon valuation chips, HEARTBEAT recovery progression. Size scale: sm / md / lg. **Generic primitive** — each spoke supplies its own score math (the design system is display-only here; see `00_PRODUCT_TRUTH.md` § 3 "Smart Score is per-app, not universal"). |
 | **VerdictBlock** | The "Top 3" reveal component for cluesintelligence. Display font, layered fade-in, Cristiano gold pulse. **The single most heavily-designed moment in the system.** |
 | **TickerRail** | LTM-pattern news + stock marquee. Pause-on-hover, prefers-reduced-motion freezes. Toggle to hide. |
 

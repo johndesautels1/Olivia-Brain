@@ -109,6 +109,8 @@ This is the flagship. When prioritization conflicts arise between Olivia feature
 
 **Repo:** to be created.
 
+> **Smart Score is per-app, not universal.** Each spoke implements its own domain-appropriate score: cluesintelligence = relocation fitness; each cluesxscore module = its own metric-comparison math; clueslondon = pitch readiness / company match; HEARTBEAT = recovery progression; clues-property-search = valuation. Olivia Brain provides only the **display primitives** (`ScoreChip`, `ScoreRadar`, `MetricLadder` per `01_UI_DESIGN_SYSTEM.md` § 8.2). There is no universal "Smart Score formula" across the wheel — each app owns its scoring math. (Established 2026-05-03 per founder direction.)
+
 ---
 
 ### Priority 4 — Olivia herself, white-labeled
