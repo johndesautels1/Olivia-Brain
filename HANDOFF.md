@@ -1,9 +1,9 @@
 # OLIVIA BRAIN — NEXT AGENT HANDOFF
 
 **Updated:** 2026-05-03
-**HEAD:** `1986edf` on `main`
+**HEAD:** `52b4fad` on `main`
 **State:** Track Calendar C1 closed. **Resume at Session 9 = Track Calendar C2 (engine + queries port).**
-**Working tree:** clean. Last 5 commits all pushed to `origin/main`.
+**Working tree:** clean. All commits pushed to `origin/main`.
 
 > The previous version of this file (dated 2026-05-01, Phase 4.5 era) is preserved in git history. This file replaces it with the current post-pivot state. The session series captured here (Sessions 1–8) is documented in detail in `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Parts 10–15.
 
@@ -122,7 +122,7 @@ Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into ev
 
 | Action | When | Why |
 |--------|------|-----|
-| `cd "D:\Olivia Brain" && npx prisma migrate dev --name add_calendar_foundation` | Before C2 engine code starts hitting calendar tables | Schema is in code; tables not yet in dev DB. C2 engine will query them. |
+| **Apply C1 migration to DB** — Either: (a) `npx prisma migrate dev --name add_calendar_foundation` if Prisma can reach DB; OR (b) **paste contents of `prisma/sql/01-add-calendar-foundation.sql` into Supabase SQL Editor and Run** (recommended fallback when Prisma can't reach DB) | Before C2 engine code starts hitting calendar tables | Schema is in code; tables not yet in dev DB. C2 engine will query them. The SQL file is identical to what `prisma migrate dev` would have applied. |
 | Set `NEXT_PUBLIC_GOOGLE_MAPS_KEY` + `NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel | Whenever you want the `/map` route to actually render | Without keys, map page shows "API key required" message. NEXT_PUBLIC_* uses **All Environments** per `~/CLAUDE.md`. Map clicks 404 to `/directory/{id}` and `/videos/{id}` since Olivia Brain has no such routes — see W-008. |
 | Set `OPENAI_API_KEY` if not already | Before running calendar memory features in C2 | `lib/video/embeddings.ts` uses it for vector embeddings. Marked **Sensitive**, **Production + Preview only**. |
 | Set Google OAuth + Outlook OAuth keys | Before C2's google-sync.ts / outlook-sync.ts wires up | Calendar sync needs OAuth client credentials. Not yet declared in `env.ts`. Add when C2 lands. |
@@ -148,9 +148,11 @@ These ARE the architectural decisions that took multiple painful conversations t
 
 ---
 
-## RECENT COMMIT TRAIL (last 10)
+## RECENT COMMIT TRAIL (last 12)
 
 ```
+52b4fad chore(db): add raw SQL migration for Track Calendar C1 foundation
+9689797 docs: rewrite HANDOFF.md for post-Session-8 state — resume at Track Calendar C2
 1986edf docs: close Track Calendar C1 — schema + embeddings + npm done; queries to C2
 49ed993 feat(calendar): Track Calendar C1 foundation — 14 Prisma models + 15 enums + embeddings + npm install
 ecfb38b docs: add Track Calendar (6 sessions C1-C6) — calendar + voice + email/call/share
@@ -178,8 +180,10 @@ Founder direction: focus on **`clueslondon.com` (priority 1)** and **`cluesintel
 ```bash
 cd "D:\Olivia Brain"
 git status                                    # should be clean, on main, up to date with origin/main
-git log --oneline -5                          # confirm HEAD is 1986edf
-npx prisma migrate dev --name add_calendar_foundation   # OPERATOR — apply C1 schema to dev DB
+git log --oneline -5                          # confirm HEAD is 52b4fad
+# OPERATOR — apply C1 schema to dev DB:
+#   Option A (if Prisma can reach DB): npx prisma migrate dev --name add_calendar_foundation
+#   Option B (recommended if "can't reach database"): paste prisma/sql/01-add-calendar-foundation.sql into Supabase SQL Editor and Run
 ```
 
 Then in Claude Code:
