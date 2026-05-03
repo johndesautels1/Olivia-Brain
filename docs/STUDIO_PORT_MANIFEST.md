@@ -293,10 +293,39 @@ LTM map subsystem is **state of the art** (user confirmation 2026-05-03) and por
 | Item | Where | When |
 |------|-------|------|
 | Wrap `ExternalOverlayProvider` in `src/app/layout.tsx` so `ExternalLinkFrame` clicks open the iframe overlay (currently no-op due to default-context fallback) | `src/app/layout.tsx` | Layout integration session (precedes Track C) |
-| Stub `/directory/[slug]/page.tsx` and `/videos/[id]/page.tsx` so map-link clicks don't 404 | `src/app/directory/`, `src/app/videos/` | Track J or earlier — tracked as W-008 in `README.md` |
+| Stub `/directory/[slug]/page.tsx` and `/videos/[id]/page.tsx` so map-link clicks don't 404 | `src/app/directory/`, `src/app/videos/` | **Re-framed (2026-05-03):** these are LTM-specific link targets. Per `project_ltm_types_no_speculative_generalization` memory, don't stub speculatively — wait for per-spoke adapters in Track J/L to define the real link targets. Standalone Olivia map clicks 404 by design until then. |
 | Set `NEXT_PUBLIC_GOOGLE_MAPS_KEY` + `NEXT_PUBLIC_MAPBOX_TOKEN` env vars in Vercel | `.env` / Vercel env | Operator action — `NEXT_PUBLIC_*` vars use **All Environments** per `~/CLAUDE.md` (they're designed to be public) |
 | Update Track N2 in `BUILD_SEQUENCE.md` to reflect Google Maps primary + Mapbox fallback (was Mapbox-only) | `BUILD_SEQUENCE.md` Track N | Track N planning session |
 | Adaptive surface suppression rule: in `clueslondon-prod` tenant, hide Olivia's `/map` route since LTM provides the canonical surface | Tenant config + Studio shell | Track I Session 24 — see `project_olivia_surface_suppression` memory |
+
+### J.5 Data layer is intentionally not ported (added 2026-05-03 — post-port audit)
+
+`useMapData` hook fetches `/api/districts` + `/api/map` — neither exists in Olivia Brain, so the map renders empty until a tenant adapter feeds it. Confirmed correct by user 2026-05-03 + locked in `project_ltm_types_no_speculative_generalization` memory.
+
+| Not ported | Why |
+|------------|-----|
+| `/api/districts` + `/api/map` API routes | LTM-specific data shape. Building them now bakes in district terminology that cluesintelligence (Track L) will need to discard for cities. |
+| 9 LTM Prisma models (Organization, OrganizationCategoryLink, OrganizationRelationship, PersonOrganizationRole, FundingRound, FundingRoundInvestor, DistrictScore, DistrictScoreHistory, DistrictFollow) + `FundingStage` enum | Bicycle-wheel violation — LTM owns the org/district domain. Olivia Brain consumes via `LtmKnowledgeProvider` UKP bridge when needed. |
+| `lib/queries/districts.ts` (12 KB) + `lib/queries/district-detail.ts` (12 KB) + `lib/queries/organizations.ts` (28 KB) | Same — LTM-domain Prisma queries |
+| 8 cron routes for district-score refresh + organization-data sync | Same — LTM-domain scheduled jobs |
+| `app/districts/[slug]/page.tsx` | LTM-specific surface; cluesintelligence will have its own city-detail page |
+| `app/api/v1/{districts,organizations}/route.ts` | These are LTM's public bridge endpoints; Olivia Brain CALLS them via `LtmKnowledgeProvider`, doesn't host them |
+
+The map UI is a **structural shell** ported byte-for-byte. Per-vertical data adapters fill it in Track J. Per-vertical type generalization (e.g., `DistrictWithStats` → some union or generic) gets designed in Track L when cluesintelligence has its full data model in front of it.
+
+### J.6 Visual fidelity gap (added 2026-05-03 — post-port styling audit)
+
+The map UI ports byte-for-byte but renders with **partial visual fidelity** because Olivia Brain's design system differs from LTM's:
+
+- **No Tailwind in Olivia Brain.** LTM uses Tailwind extensively (`@tailwind base/components/utilities` in `globals.css` + `tailwindcss` in deps); the 13 ported map files use **223+ Tailwind classes** (`flex items-center`, `text-brand-400`, `bg-[#0a0e1a]`, `text-[var(--muted)]`, etc.) that are **inert** in Olivia Brain — they render as HTML attributes without styling. Olivia Brain's existing surfaces (`/test-avatar`, `/admin`) use inline styles + the custom CSS classes from `globals.css` — Tailwind has never been part of Olivia Brain's design.
+- **CSS token names diverge.** LTM has `--background`/`--foreground`/`--card-bg`/`--card-border`/`--accent`. Olivia Brain has `--bg`/`--text`/`--panel`/`--border`/`--gold`. Only `--muted` matches across both. `var(--xxx)` references in the ported files mostly resolve to nothing.
+- **Separate `app/design-tokens.css` not ported.** LTM imports it at the top of `globals.css`; Olivia Brain has no such file.
+
+**Decision** (locked 2026-05-03): defer the styling fix entirely. Map UI is a context-dependent shell anyway (per surface suppression rule + no-speculative-generalization memory). Resolution lands in **Track C** (UI rebuild, Sessions 9–14) — adapts ported components to Olivia Brain's design system per `01_UI_DESIGN_SYSTEM.md` (Aurum + Aether tokens, LCH color space, Linear 3-input theming) — OR an explicit "add Tailwind" decision session beforehand.
+
+**Same gap will affect future LTM ports** (calendar Sessions 8–12, possibly documents Session 8+). Track each new gap as it surfaces; track resolution centrally in Track C.
+
+Tracked as **W-011** (Tailwind missing) and **W-012** (token name divergence) in `README.md` Weakness Backlog.
 
 ---
 

@@ -441,4 +441,29 @@ Track B (revised) · Session 7. Original goal: port `lib/studio` (3 files) + `co
 
 **Calendar subsystem** (36 files, ~638 KB, includes full `lib/calendar/` Olivia engine) remains a separate track — to be inserted before Track L per `project_ltm_map_calendar_adaptive` memory.
 
-**Build status at session-7 close: green. Test status: 94/94 passing. Typecheck: clean. Map subsystem ported byte-for-byte; documents subsystem deferred to Session 8 with revised plan.**
+### Post-port audit (added later in session — data-layer + styling)
+
+After commits `991f411` + `55ff466` + `76c3fb0` landed, the user asked to verify no map features were missed before pivoting to calendar. Audit surfaced two categories of findings:
+
+**Data layer (intentionally not ported, no action):**
+- `useMapData` hook fetches `/api/districts` + `/api/map` — neither exists in Olivia Brain. **Map renders empty.**
+- 9 LTM Prisma models (Organization, OrganizationCategoryLink, OrganizationRelationship, PersonOrganizationRole, FundingRound, FundingRoundInvestor, DistrictScore, DistrictScoreHistory, DistrictFollow) + `FundingStage` enum — not ported.
+- `lib/queries/{districts, district-detail, organizations}.ts` (~52 KB of Prisma queries) — not ported.
+- 8 cron routes for district-score / org-data refresh — not ported.
+- `app/districts/[slug]/page.tsx` and `/api/v1/{districts,organizations}` — not ported.
+
+All correctly deferred per **bicycle-wheel architecture**: LTM owns the org/district domain; Olivia Brain consumes via `LtmKnowledgeProvider` UKP bridge in clueslondon context. Standalone Olivia's map is a UI shell with empty data by design until per-spoke adapters (Track J) or per-spoke unification (Track L) feeds it. Locked in new `project_ltm_types_no_speculative_generalization` memory: don't stub LTM-specific routes, don't add LTM Prisma models, don't generalize types speculatively — wait for cluesintelligence (Track L) to design the abstraction with two real consumers in mind.
+
+Reframed W-008 accordingly: the original "stub `/directory` and `/videos`" reading was wrong. Real action: per-spoke adapters define the real link targets when each spoke comes online.
+
+**Styling gap (deferred to Track C, tracked as weaknesses):**
+- Olivia Brain has **no Tailwind** installed; LTM map files use **223+ Tailwind classes** that are inert. Map renders structurally (3D Google Maps + Mapbox SDK do their own styling) but the React control panels / overlays / search bar lack visual fidelity.
+- LTM `globals.css` uses different CSS token names (`--background`, `--foreground`, `--card-bg`, `--card-border`) than Olivia Brain's (`--bg`, `--text`, `--panel`, `--border`). Only `--muted` matches.
+- LTM imports a separate `app/design-tokens.css` not ported.
+- Decision: defer styling alignment entirely to **Track C UI rebuild** (Sessions 9–14) or an earlier "add Tailwind" decision session. Tracked as **W-011** (Tailwind missing) and **W-012** (token name divergence) in `README.md` Weakness Backlog. Track C deliverable expanded in `BUILD_SEQUENCE.md` to explicitly include map + calendar styling alignment.
+
+**Same styling gap will recur for upcoming ports** (calendar Sessions 8–12, possibly documents Session 8+) — capture each as a new weakness as it surfaces; central resolution stays in Track C.
+
+The map UI is now correctly characterized as a **structural shell** ported byte-for-byte, with both data layer and visual fidelity intentionally deferred. This characterization is durable via the new `project_ltm_types_no_speculative_generalization` memory + the existing `project_olivia_surface_suppression` memory. Future agents picking up Olivia Brain should NOT try to "fix" the map by adding Tailwind speculatively or stubbing LTM data routes — those are anti-patterns now caught in memory.
+
+**Build status at session-7 close: green. Test status: 94/94 passing. Typecheck: clean. Map subsystem ported byte-for-byte; documents subsystem deferred to Session 8 with revised plan; map data layer + styling intentionally deferred to Track J + Track C respectively.**
