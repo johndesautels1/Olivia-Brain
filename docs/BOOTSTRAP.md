@@ -59,8 +59,9 @@ Not yet started: Companies House + Kimi providers (scope-cut from Session 5; tra
 **Always read first (every session, in this order):**
 1. **`00_PRODUCT_TRUTH.md`** — eternal source of truth for the product universe. Non-negotiable.
 2. **`01_UI_DESIGN_SYSTEM.md`** — universal dark-mode design language, color tokens, modular workspace architecture, multi-agent visualization, accessibility floor. Every UI conforms. Non-negotiable.
-3. `BOOTSTRAP.md` — this file. Implementation context.
-4. `BUILD_SEQUENCE.md` — what's done, what's next, what's blocking what.
+3. **`02_COMPETITIVE_FEATURE_MATRIX.md`** — synthesized competitive analysis (22 platforms across Gemini/Grok/Claude Desktop sources). What we steal, what we explicitly reject. Action queue smallest → largest.
+4. `BOOTSTRAP.md` — this file. Implementation context.
+5. `BUILD_SEQUENCE.md` — what's done, what's next, what's blocking what.
 
 **Read for the specific task:**
 | Task | Doc |
