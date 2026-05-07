@@ -31,6 +31,7 @@ import {
   type QuantaraValues,
   type QuantaraFieldId,
 } from "@/lib/quantara";
+import type { QuantaraSuggestion } from "@/lib/quantara/auto-fill";
 import { Badge, CompletionRing } from "@/components/primitives";
 import { sectionCompleteness } from "./completeness";
 import { IntakeField } from "./IntakeField";
@@ -40,12 +41,19 @@ export interface IntakeSectionBlockProps {
   sectionId: QuantaraSectionId;
   values: QuantaraValues;
   onChange: (fieldId: QuantaraFieldId, value: unknown) => void;
+  /** Per-field auto-fill suggestions (Q3). */
+  suggestions?: ReadonlyMap<QuantaraFieldId, QuantaraSuggestion>;
+  onAcceptSuggestion?: (fieldId: QuantaraFieldId) => void;
+  onRejectSuggestion?: (fieldId: QuantaraFieldId) => void;
 }
 
 export function IntakeSectionBlock({
   sectionId,
   values,
   onChange,
+  suggestions,
+  onAcceptSuggestion,
+  onRejectSuggestion,
 }: IntakeSectionBlockProps) {
   const titleId = useId();
   const section = QUANTARA_SECTIONS_BY_ID[sectionId];
@@ -177,6 +185,13 @@ export function IntakeSectionBlock({
             fieldId={f.id}
             value={values[f.id]}
             onChange={(next) => onChange(f.id, next)}
+            suggestion={suggestions?.get(f.id)}
+            onAcceptSuggestion={
+              onAcceptSuggestion ? () => onAcceptSuggestion(f.id) : undefined
+            }
+            onRejectSuggestion={
+              onRejectSuggestion ? () => onRejectSuggestion(f.id) : undefined
+            }
           />
         ))}
       </div>

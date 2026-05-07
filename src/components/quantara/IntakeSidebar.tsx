@@ -31,12 +31,23 @@ import {
 } from "./completeness";
 import { QUANTARA_SECTION_UI_META } from "./section-meta";
 
+export type AutoFillState =
+  | { kind: "idle" }
+  | { kind: "running" }
+  | { kind: "ready"; pendingCount: number }
+  | { kind: "error"; message: string };
+
 export interface IntakeSidebarProps {
   values: QuantaraValues;
   overall: CompletenessSummary;
   activeSection?: QuantaraSectionId;
   onSelectSection: (id: QuantaraSectionId) => void;
   onTriggerOliviaAutofill?: () => void;
+  /** Q3 auto-fill state — drives the CTA copy + enabled state. */
+  autoFillState?: AutoFillState;
+  /** Number of suggestions Q3 produced that the founder hasn't yet
+   *  accepted/rejected. Surfaces in the auto-fill card when > 0. */
+  suggestionCount?: number;
 }
 
 export function IntakeSidebar({
@@ -45,6 +56,8 @@ export function IntakeSidebar({
   activeSection,
   onSelectSection,
   onTriggerOliviaAutofill,
+  autoFillState = { kind: "idle" },
+  suggestionCount = 0,
 }: IntakeSidebarProps) {
   const perSection = allSectionCompleteness(values);
   const fieldsRemaining = overall.fieldsTotal - overall.fieldsFilled;
@@ -346,7 +359,7 @@ export function IntakeSidebar({
         </div>
       </div>
 
-      {/* ── Olivia gap analysis CTA (Q3 stub) ──────────────────────── */}
+      {/* ── Olivia gap analysis CTA (Q3 — live) ────────────────────── */}
       <div
         style={{
           padding: 20,
@@ -394,31 +407,50 @@ export function IntakeSidebar({
             color: "var(--fg-secondary)",
           }}
         >
-          Olivia can auto-fill many of these fields from connected APIs (Stripe,
-          GitHub, Companies House) once the Q3 integration ships.
+          {autoFillState.kind === "ready" && suggestionCount > 0
+            ? `Olivia surfaced ${suggestionCount} suggestion${
+                suggestionCount === 1 ? "" : "s"
+              }. Review each and accept or reject before saving.`
+            : autoFillState.kind === "error"
+              ? autoFillState.message
+              : "Olivia auto-fills these fields from your connected APIs (Stripe, GitHub, Companies House, QuickBooks, Xero, LinkedIn, Supabase) plus industry benchmarks."}
         </div>
         <button
           type="button"
           onClick={onTriggerOliviaAutofill}
-          disabled
-          aria-disabled="true"
+          disabled={autoFillState.kind === "running" || !onTriggerOliviaAutofill}
+          aria-disabled={autoFillState.kind === "running" || undefined}
+          aria-busy={autoFillState.kind === "running" || undefined}
           style={{
             marginTop: 12,
             width: "100%",
             padding: "10px 12px",
-            background: "var(--aurum-mute)",
-            border: "1px solid var(--border-aurum)",
+            background:
+              autoFillState.kind === "running"
+                ? "var(--aurum-mute)"
+                : "var(--aurum-primary)",
+            border: "1px solid var(--aurum-primary)",
             borderRadius: "var(--radius-lg)",
-            color: "var(--aurum-primary)",
+            color:
+              autoFillState.kind === "running"
+                ? "var(--aurum-primary)"
+                : "var(--fg-on-accent)",
             fontFamily: "var(--font-sans)",
             fontSize: "var(--text-xs)",
             fontWeight: 600,
-            cursor: "not-allowed",
-            opacity: 0.6,
+            cursor:
+              autoFillState.kind === "running" ? "wait" : "pointer",
+            opacity: autoFillState.kind === "running" ? 0.7 : 1,
             touchAction: "manipulation",
+            transition:
+              "background var(--duration-default) var(--ease-out-quart), color var(--duration-default) var(--ease-out-quart)",
           }}
         >
-          Let Olivia complete the rest (Q3)
+          {autoFillState.kind === "running"
+            ? "Olivia is filling…"
+            : autoFillState.kind === "ready" && suggestionCount > 0
+              ? `${suggestionCount} pending — accept or reject above`
+              : "Let Olivia complete the rest"}
         </button>
       </div>
     </div>

@@ -62,11 +62,15 @@ import {
   type QuantaraSectionId,
   type QuantaraValues,
 } from "@/lib/quantara";
+import type {
+  AutoFillSummary,
+  QuantaraSuggestion,
+} from "@/lib/quantara/auto-fill";
 
 import { overallCompleteness } from "./completeness";
 import { IntakeOliviaPanel } from "./IntakeOliviaPanel";
 import { IntakeSectionBlock } from "./IntakeSectionBlock";
-import { IntakeSidebar } from "./IntakeSidebar";
+import { IntakeSidebar, type AutoFillState } from "./IntakeSidebar";
 import { IntakeVerdictPanel } from "./IntakeVerdictPanel";
 
 export interface IntakeFormProps {
@@ -94,6 +98,7 @@ interface SaveResponse {
 }
 
 const SAVE_API_PATH = "/api/founder-intake";
+const AUTO_FILL_API_PATH = "/api/founder-intake/auto-fill";
 
 export function IntakeForm({
   initialValues,
@@ -112,8 +117,23 @@ export function IntakeForm({
   );
   const [inspectorTab, setInspectorTab] = useState<string>("olivia");
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
+  const [suggestions, setSuggestions] = useState<
+    ReadonlyMap<QuantaraFieldId, QuantaraSuggestion>
+  >(new Map());
+  const [autoFillState, setAutoFillState] = useState<AutoFillState>({
+    kind: "idle",
+  });
 
   const overall = useMemo(() => overallCompleteness(values), [values]);
+
+  const dismissSuggestion = useCallback((fieldId: QuantaraFieldId) => {
+    setSuggestions((prev) => {
+      if (!prev.has(fieldId)) return prev;
+      const next = new Map(prev);
+      next.delete(fieldId);
+      return next;
+    });
+  }, []);
 
   const handleChangeField = useCallback(
     (fieldId: QuantaraFieldId, next: unknown) => {
@@ -126,9 +146,68 @@ export function IntakeForm({
         }
         return { ...prev, [fieldId]: next };
       });
+      /* Manual edit dismisses any pending suggestion for the field —
+         the founder's typed value wins. */
+      dismissSuggestion(fieldId);
     },
-    [],
+    [dismissSuggestion],
   );
+
+  const handleAcceptSuggestion = useCallback(
+    (fieldId: QuantaraFieldId) => {
+      const suggestion = suggestions.get(fieldId);
+      if (!suggestion) return;
+      setValues((prev) => ({ ...prev, [fieldId]: suggestion.value }));
+      dismissSuggestion(fieldId);
+    },
+    [suggestions, dismissSuggestion],
+  );
+
+  const handleRejectSuggestion = useCallback(
+    (fieldId: QuantaraFieldId) => {
+      dismissSuggestion(fieldId);
+    },
+    [dismissSuggestion],
+  );
+
+  const handleTriggerAutoFill = useCallback(async () => {
+    setAutoFillState({ kind: "running" });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    try {
+      const res = await fetch(AUTO_FILL_API_PATH, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          context: {
+            companyName: companyName.trim() || undefined,
+            includeDefaults: true,
+          },
+        }),
+        signal: controller.signal,
+      });
+      const data = (await res.json().catch(() => ({}))) as Partial<
+        AutoFillSummary & { ok: boolean; error?: string }
+      >;
+      if (!res.ok || !data.ok || !Array.isArray(data.suggestions)) {
+        const msg = (data.error as string) || `Auto-fill failed (HTTP ${res.status}).`;
+        setAutoFillState({ kind: "error", message: msg });
+        return;
+      }
+      const map = new Map<QuantaraFieldId, QuantaraSuggestion>();
+      for (const s of data.suggestions) {
+        map.set(s.fieldId, s);
+      }
+      setSuggestions(map);
+      setAutoFillState({ kind: "ready", pendingCount: map.size });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Network error during auto-fill.";
+      setAutoFillState({ kind: "error", message });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }, [companyName]);
 
   const handleSelectSection = useCallback((id: QuantaraSectionId) => {
     setActiveSection(id);
@@ -228,6 +307,17 @@ export function IntakeForm({
     }, 4000);
     return () => clearTimeout(t);
   }, [saveState]);
+
+  /* Keep autoFillState's pending count in sync as the founder
+     accepts/rejects suggestions. Drop back to idle when zero remain. */
+  useEffect(() => {
+    if (autoFillState.kind !== "ready") return;
+    if (suggestions.size === 0) {
+      setAutoFillState({ kind: "idle" });
+    } else if (autoFillState.pendingCount !== suggestions.size) {
+      setAutoFillState({ kind: "ready", pendingCount: suggestions.size });
+    }
+  }, [autoFillState, suggestions.size]);
 
   const inspectorTabs: InspectorTab[] = useMemo(
     () => [
@@ -340,6 +430,9 @@ export function IntakeForm({
             overall={overall}
             activeSection={activeSection}
             onSelectSection={handleSelectSection}
+            onTriggerOliviaAutofill={handleTriggerAutoFill}
+            autoFillState={autoFillState}
+            suggestionCount={suggestions.size}
           />
         </RailLeft>
       }
@@ -356,6 +449,9 @@ export function IntakeForm({
                 sectionId={s.id}
                 values={values}
                 onChange={handleChangeField}
+                suggestions={suggestions}
+                onAcceptSuggestion={handleAcceptSuggestion}
+                onRejectSuggestion={handleRejectSuggestion}
               />
             </div>
           ))}

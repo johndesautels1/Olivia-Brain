@@ -35,6 +35,8 @@ import {
   type QuantaraFieldDefinition,
   type QuantaraFieldId,
 } from "@/lib/quantara";
+import type { QuantaraSuggestion } from "@/lib/quantara/auto-fill";
+
 import { isFilled } from "./completeness";
 import {
   QUANTARA_FIELD_UI_META,
@@ -48,6 +50,18 @@ export interface IntakeFieldProps {
   value: unknown;
   /** Called with the new value when the user edits the input. */
   onChange: (value: unknown) => void;
+  /**
+   * Optional Q3 auto-fill suggestion for this field. When set,
+   * `IntakeField` renders a source chip + accept (✓) / reject (✗)
+   * affordance below the control. Manual edits via `onChange`
+   * implicitly dismiss the suggestion (the consumer wires that
+   * behaviour by clearing the suggestion in its state).
+   */
+  suggestion?: QuantaraSuggestion;
+  /** Called when the founder accepts the suggestion. */
+  onAcceptSuggestion?: () => void;
+  /** Called when the founder rejects (dismisses) the suggestion. */
+  onRejectSuggestion?: () => void;
 }
 
 const LAST_ROUND_OPTIONS: ReadonlyArray<string> = [
@@ -84,22 +98,33 @@ function coerceText(raw: string): string | undefined {
   return raw === "" ? undefined : raw;
 }
 
-export function IntakeField({ fieldId, value, onChange }: IntakeFieldProps) {
+export function IntakeField({
+  fieldId,
+  value,
+  onChange,
+  suggestion,
+  onAcceptSuggestion,
+  onRejectSuggestion,
+}: IntakeFieldProps) {
   const inputId = useId();
   const hintId = useId();
   const field: QuantaraFieldDefinition = QUANTARA_FIELDS_BY_ID[fieldId];
   const ui: QuantaraFieldUiMeta = QUANTARA_FIELD_UI_META[fieldId];
   const isCritical = field.weight === 3;
   const filled = isFilled(value);
+  const showSuggestion = suggestion !== undefined && !filled;
 
   return (
     <div
       data-field-id={fieldId}
       data-filled={filled || undefined}
+      data-has-suggestion={showSuggestion || undefined}
       style={{
         gridColumn: ui.fullWidth ? "1 / -1" : undefined,
         background: "var(--surface-translucent)",
-        border: "1px solid var(--border-default)",
+        border: showSuggestion
+          ? "1px solid var(--border-aether)"
+          : "1px solid var(--border-default)",
         borderRadius: "var(--radius-xl)",
         padding: 20,
         backdropFilter: "blur(16px) saturate(1.4)",
@@ -152,8 +177,171 @@ export function IntakeField({ fieldId, value, onChange }: IntakeFieldProps) {
           {field.hint ?? ""}
         </div>
       )}
+
+      {showSuggestion && suggestion && (
+        <SuggestionRow
+          suggestion={suggestion}
+          onAccept={onAcceptSuggestion}
+          onReject={onRejectSuggestion}
+        />
+      )}
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Suggestion row — Q3 auto-fill chip + accept/reject controls.
+// ─────────────────────────────────────────────────────────────────────
+
+interface SuggestionRowProps {
+  suggestion: QuantaraSuggestion;
+  onAccept?: () => void;
+  onReject?: () => void;
+}
+
+function SuggestionRow({ suggestion, onAccept, onReject }: SuggestionRowProps) {
+  return (
+    <div
+      role="group"
+      aria-label="Olivia auto-fill suggestion"
+      style={{
+        marginTop: 12,
+        padding: "10px 12px",
+        background: "var(--aether-mute)",
+        border: "1px solid var(--border-aether)",
+        borderRadius: "var(--radius-md)",
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: 12,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            data-suggestion-source={suggestion.source.integration}
+            style={{
+              padding: "2px 8px",
+              background: "var(--canvas-recess)",
+              border: "1px solid var(--border-aether)",
+              borderRadius: "var(--radius-full)",
+              color: "var(--aether-primary)",
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-2xs)",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {suggestion.source.label}
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-xs)",
+              color: "var(--fg-secondary)",
+              fontWeight: 600,
+              fontFeatureSettings: '"tnum" 1, "lnum" 1',
+            }}
+          >
+            {formatSuggestionValue(suggestion.value)}
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-2xs)",
+              color: "var(--fg-tertiary)",
+              fontFeatureSettings: '"tnum" 1, "lnum" 1',
+            }}
+          >
+            {Math.round(suggestion.confidence * 100)}% conf
+          </span>
+        </div>
+        {suggestion.source.note && (
+          <div
+            style={{
+              marginTop: 4,
+              fontFamily: "var(--font-sans)",
+              fontSize: "var(--text-2xs)",
+              color: "var(--fg-tertiary)",
+              lineHeight: 1.4,
+            }}
+          >
+            {suggestion.source.note}
+            {suggestion.source.mockMode && " · mock-mode"}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={onAccept}
+          aria-label="Accept Olivia's suggestion"
+          style={{
+            padding: "4px 10px",
+            background: "var(--mint-up-mute)",
+            border: "1px solid var(--mint-up)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--mint-up)",
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-xs)",
+            fontWeight: 600,
+            cursor: "pointer",
+            touchAction: "manipulation",
+          }}
+        >
+          ✓ Accept
+        </button>
+        <button
+          type="button"
+          onClick={onReject}
+          aria-label="Reject Olivia's suggestion"
+          style={{
+            padding: "4px 10px",
+            background: "transparent",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--fg-tertiary)",
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-xs)",
+            fontWeight: 600,
+            cursor: "pointer",
+            touchAction: "manipulation",
+          }}
+        >
+          ✗ Reject
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function formatSuggestionValue(value: unknown): string {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return String(value);
+    if (Math.abs(value) >= 1_000) {
+      return new Intl.NumberFormat("en-GB", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(value);
+    }
+    return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 }).format(
+      value,
+    );
+  }
+  if (typeof value === "string") {
+    return value.length > 48 ? `${value.slice(0, 45)}…` : value;
+  }
+  return JSON.stringify(value);
 }
 
 interface RenderControlArgs {

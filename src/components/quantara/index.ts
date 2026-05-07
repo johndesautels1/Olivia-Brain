@@ -30,7 +30,11 @@ export {
   IntakeSectionBlock,
   type IntakeSectionBlockProps,
 } from "./IntakeSectionBlock";
-export { IntakeSidebar, type IntakeSidebarProps } from "./IntakeSidebar";
+export {
+  IntakeSidebar,
+  type IntakeSidebarProps,
+  type AutoFillState,
+} from "./IntakeSidebar";
 export {
   IntakeOliviaPanel,
   type IntakeOliviaPanelProps,
