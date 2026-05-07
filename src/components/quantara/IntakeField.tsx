@@ -36,6 +36,7 @@ import {
   type QuantaraFieldId,
 } from "@/lib/quantara";
 import type { QuantaraSuggestion } from "@/lib/quantara/auto-fill";
+import type { QuantaraDiscrepancyGap } from "@/lib/quantara/discrepancy";
 
 import { isFilled } from "./completeness";
 import {
@@ -62,6 +63,19 @@ export interface IntakeFieldProps {
   onAcceptSuggestion?: () => void;
   /** Called when the founder rejects (dismisses) the suggestion. */
   onRejectSuggestion?: () => void;
+  /**
+   * Optional Q4 discrepancy gap. Surfaces when the founder's typed
+   * value disagrees with a stored API reference (kept persistently
+   * in IntakeForm separately from the dismissable suggestion inbox)
+   * by more than the V5 truth-score-agent's 5% match threshold.
+   * Distinct from `suggestion`: a discrepancy is only ever shown
+   * AFTER the founder has typed a value.
+   */
+  discrepancy?: QuantaraDiscrepancyGap;
+  /** Called when the founder reconciles by trusting the API value. */
+  onTrustReference?: () => void;
+  /** Called when the founder dismisses the discrepancy ("Keep mine"). */
+  onDismissDiscrepancy?: () => void;
 }
 
 const LAST_ROUND_OPTIONS: ReadonlyArray<string> = [
@@ -105,6 +119,9 @@ export function IntakeField({
   suggestion,
   onAcceptSuggestion,
   onRejectSuggestion,
+  discrepancy,
+  onTrustReference,
+  onDismissDiscrepancy,
 }: IntakeFieldProps) {
   const inputId = useId();
   const hintId = useId();
@@ -113,18 +130,29 @@ export function IntakeField({
   const isCritical = field.weight === 3;
   const filled = isFilled(value);
   const showSuggestion = suggestion !== undefined && !filled;
+  /* Discrepancy only surfaces AFTER the founder has typed something —
+     `filled` gates this so the chip never competes with a Q3 suggestion. */
+  const showDiscrepancy = discrepancy !== undefined && filled;
+
+  /* Border colour priority: discrepancy (coral) → suggestion (aether) →
+     default. Discrepancy wins because it's a data-quality signal that
+     blocks confidence in the saved value. */
+  const borderColour = showDiscrepancy
+    ? "1px solid var(--coral-down)"
+    : showSuggestion
+      ? "1px solid var(--border-aether)"
+      : "1px solid var(--border-default)";
 
   return (
     <div
       data-field-id={fieldId}
       data-filled={filled || undefined}
       data-has-suggestion={showSuggestion || undefined}
+      data-has-discrepancy={showDiscrepancy || undefined}
       style={{
         gridColumn: ui.fullWidth ? "1 / -1" : undefined,
         background: "var(--surface-translucent)",
-        border: showSuggestion
-          ? "1px solid var(--border-aether)"
-          : "1px solid var(--border-default)",
+        border: borderColour,
         borderRadius: "var(--radius-xl)",
         padding: 20,
         backdropFilter: "blur(16px) saturate(1.4)",
@@ -183,6 +211,14 @@ export function IntakeField({
           suggestion={suggestion}
           onAccept={onAcceptSuggestion}
           onReject={onRejectSuggestion}
+        />
+      )}
+
+      {showDiscrepancy && discrepancy && (
+        <DiscrepancyRow
+          discrepancy={discrepancy}
+          onTrustReference={onTrustReference}
+          onDismiss={onDismissDiscrepancy}
         />
       )}
     </div>
@@ -342,6 +378,149 @@ function formatSuggestionValue(value: unknown): string {
     return value.length > 48 ? `${value.slice(0, 45)}…` : value;
   }
   return JSON.stringify(value);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Discrepancy row — Q4 truth-score chip + reconcile controls.
+// ─────────────────────────────────────────────────────────────────────
+
+interface DiscrepancyRowProps {
+  discrepancy: QuantaraDiscrepancyGap;
+  onTrustReference?: () => void;
+  onDismiss?: () => void;
+}
+
+function DiscrepancyRow({
+  discrepancy,
+  onTrustReference,
+  onDismiss,
+}: DiscrepancyRowProps) {
+  const directionCopy =
+    discrepancy.direction === "optimistic"
+      ? "Your value is rosier than the API"
+      : "Your value is harsher than the API";
+
+  return (
+    <div
+      role="alert"
+      aria-label={`Discrepancy with ${discrepancy.sourceLabel}`}
+      style={{
+        marginTop: 12,
+        padding: "10px 12px",
+        background: "var(--coral-down-mute)",
+        border: "1px solid var(--coral-down)",
+        borderRadius: "var(--radius-md)",
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: 12,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            data-discrepancy-source={discrepancy.source}
+            style={{
+              padding: "2px 8px",
+              background: "var(--canvas-recess)",
+              border: "1px solid var(--coral-down)",
+              borderRadius: "var(--radius-full)",
+              color: "var(--coral-down)",
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-2xs)",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ⚠ {discrepancy.sourceLabel} disagrees
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-xs)",
+              color: "var(--coral-down)",
+              fontWeight: 600,
+              fontFeatureSettings: '"tnum" 1, "lnum" 1',
+            }}
+          >
+            {Math.round(discrepancy.gapPct)}% gap
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-2xs)",
+              color: "var(--fg-tertiary)",
+              fontFeatureSettings: '"tnum" 1, "lnum" 1',
+            }}
+          >
+            you: {formatSuggestionValue(discrepancy.manualValue)} ·{" "}
+            api: {formatSuggestionValue(discrepancy.referenceValue)}
+          </span>
+        </div>
+        <div
+          style={{
+            marginTop: 4,
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-2xs)",
+            color: "var(--fg-tertiary)",
+            lineHeight: 1.4,
+          }}
+        >
+          {directionCopy}. Reconcile to keep your truth score high.
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={onTrustReference}
+          aria-label="Trust the API value"
+          style={{
+            padding: "4px 10px",
+            background: "var(--aether-mute)",
+            border: "1px solid var(--aether-primary)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--aether-primary)",
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-xs)",
+            fontWeight: 600,
+            cursor: "pointer",
+            touchAction: "manipulation",
+          }}
+        >
+          Trust API
+        </button>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Keep my value (dismiss discrepancy)"
+          style={{
+            padding: "4px 10px",
+            background: "transparent",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--fg-tertiary)",
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-xs)",
+            fontWeight: 600,
+            cursor: "pointer",
+            touchAction: "manipulation",
+          }}
+        >
+          Keep mine
+        </button>
+      </div>
+    </div>
+  );
 }
 
 interface RenderControlArgs {

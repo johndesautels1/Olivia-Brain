@@ -66,6 +66,10 @@ import type {
   AutoFillSummary,
   QuantaraSuggestion,
 } from "@/lib/quantara/auto-fill";
+import {
+  detectDiscrepancies,
+  type QuantaraDiscrepancyGap,
+} from "@/lib/quantara/discrepancy";
 
 import { overallCompleteness } from "./completeness";
 import { IntakeOliviaPanel } from "./IntakeOliviaPanel";
@@ -120,11 +124,46 @@ export function IntakeForm({
   const [suggestions, setSuggestions] = useState<
     ReadonlyMap<QuantaraFieldId, QuantaraSuggestion>
   >(new Map());
+  /**
+   * Q4 — persistent API references. Populated once when auto-fill
+   * runs; never dismissed by accept/edit. Drives the discrepancy
+   * cascade via `detectDiscrepancies`.
+   */
+  const [apiReferenceValues, setApiReferenceValues] = useState<
+    ReadonlyMap<QuantaraFieldId, QuantaraSuggestion>
+  >(new Map());
+  /**
+   * Q4 — fields where the founder explicitly clicked "Keep mine" on
+   * the discrepancy chip. Filtered out of the displayed gap map so
+   * the chip stays dismissed for the rest of the session.
+   */
+  const [dismissedDiscrepancies, setDismissedDiscrepancies] = useState<
+    ReadonlySet<QuantaraFieldId>
+  >(new Set());
   const [autoFillState, setAutoFillState] = useState<AutoFillState>({
     kind: "idle",
   });
 
   const overall = useMemo(() => overallCompleteness(values), [values]);
+
+  /**
+   * Q4 — discrepancy detection. Runs the V5 truth-score-agent (5%
+   * match threshold + per-field optimistic/pessimistic directionality)
+   * and filters out fields the founder has explicitly dismissed.
+   * Pure derived state — no side-effects.
+   */
+  const discrepancies = useMemo<
+    ReadonlyMap<QuantaraFieldId, QuantaraDiscrepancyGap>
+  >(() => {
+    if (apiReferenceValues.size === 0) return new Map();
+    const result = detectDiscrepancies(values, apiReferenceValues);
+    if (dismissedDiscrepancies.size === 0) return result.gaps;
+    const filtered = new Map<QuantaraFieldId, QuantaraDiscrepancyGap>();
+    for (const [id, gap] of result.gaps) {
+      if (!dismissedDiscrepancies.has(id)) filtered.set(id, gap);
+    }
+    return filtered;
+  }, [values, apiReferenceValues, dismissedDiscrepancies]);
 
   const dismissSuggestion = useCallback((fieldId: QuantaraFieldId) => {
     setSuggestions((prev) => {
@@ -170,6 +209,41 @@ export function IntakeForm({
     [dismissSuggestion],
   );
 
+  /**
+   * Q4 — "Trust API" reconcile. Snap the founder's value to the
+   * stored API reference. Discrepancy disappears because gap → 0.
+   * Also clears the dismissedDiscrepancies entry in case the founder
+   * had previously clicked "Keep mine" on the same field.
+   */
+  const handleTrustReference = useCallback(
+    (fieldId: QuantaraFieldId) => {
+      const ref = apiReferenceValues.get(fieldId);
+      if (!ref) return;
+      setValues((prev) => ({ ...prev, [fieldId]: ref.value }));
+      setDismissedDiscrepancies((prev) => {
+        if (!prev.has(fieldId)) return prev;
+        const next = new Set(prev);
+        next.delete(fieldId);
+        return next;
+      });
+    },
+    [apiReferenceValues],
+  );
+
+  /** Q4 — "Keep mine" — dismiss the discrepancy chip without changing
+   *  the value. The chip stays gone for the rest of the session. */
+  const handleDismissDiscrepancy = useCallback(
+    (fieldId: QuantaraFieldId) => {
+      setDismissedDiscrepancies((prev) => {
+        if (prev.has(fieldId)) return prev;
+        const next = new Set(prev);
+        next.add(fieldId);
+        return next;
+      });
+    },
+    [],
+  );
+
   const handleTriggerAutoFill = useCallback(async () => {
     setAutoFillState({ kind: "running" });
     const controller = new AbortController();
@@ -199,6 +273,14 @@ export function IntakeForm({
         map.set(s.fieldId, s);
       }
       setSuggestions(map);
+      /* Q4: mirror the suggestion set into the persistent API
+         reference map. Stays after accept/reject so the truth-score
+         cascade has data to compare against. Re-running auto-fill
+         overwrites previous references with fresher numbers. */
+      setApiReferenceValues(new Map(map));
+      /* New auto-fill clears prior dismissals so the chip can
+         reappear if the new API data still disagrees. */
+      setDismissedDiscrepancies(new Set());
       setAutoFillState({ kind: "ready", pendingCount: map.size });
     } catch (err) {
       const message =
@@ -452,6 +534,9 @@ export function IntakeForm({
                 suggestions={suggestions}
                 onAcceptSuggestion={handleAcceptSuggestion}
                 onRejectSuggestion={handleRejectSuggestion}
+                discrepancies={discrepancies}
+                onTrustReference={handleTrustReference}
+                onDismissDiscrepancy={handleDismissDiscrepancy}
               />
             </div>
           ))}

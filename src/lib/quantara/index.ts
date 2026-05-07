@@ -45,3 +45,12 @@ export {
   valuationSubjectToQuantara,
   mergeQuantaraIntoSubject,
 } from './field-mapping';
+
+export {
+  type QuantaraDiscrepancyGap,
+  type QuantaraDiscrepancyResult,
+  QUANTARA_TO_TRUTH_FIELD,
+  TRUTH_FIELD_TO_QUANTARA,
+  isComparableField,
+  detectDiscrepancies,
+} from './discrepancy';

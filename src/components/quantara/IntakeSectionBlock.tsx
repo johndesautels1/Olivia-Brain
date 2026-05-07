@@ -32,6 +32,7 @@ import {
   type QuantaraFieldId,
 } from "@/lib/quantara";
 import type { QuantaraSuggestion } from "@/lib/quantara/auto-fill";
+import type { QuantaraDiscrepancyGap } from "@/lib/quantara/discrepancy";
 import { Badge, CompletionRing } from "@/components/primitives";
 import { sectionCompleteness } from "./completeness";
 import { IntakeField } from "./IntakeField";
@@ -45,6 +46,10 @@ export interface IntakeSectionBlockProps {
   suggestions?: ReadonlyMap<QuantaraFieldId, QuantaraSuggestion>;
   onAcceptSuggestion?: (fieldId: QuantaraFieldId) => void;
   onRejectSuggestion?: (fieldId: QuantaraFieldId) => void;
+  /** Per-field discrepancy gaps (Q4 — already filtered for dismissals). */
+  discrepancies?: ReadonlyMap<QuantaraFieldId, QuantaraDiscrepancyGap>;
+  onTrustReference?: (fieldId: QuantaraFieldId) => void;
+  onDismissDiscrepancy?: (fieldId: QuantaraFieldId) => void;
 }
 
 export function IntakeSectionBlock({
@@ -54,6 +59,9 @@ export function IntakeSectionBlock({
   suggestions,
   onAcceptSuggestion,
   onRejectSuggestion,
+  discrepancies,
+  onTrustReference,
+  onDismissDiscrepancy,
 }: IntakeSectionBlockProps) {
   const titleId = useId();
   const section = QUANTARA_SECTIONS_BY_ID[sectionId];
@@ -191,6 +199,15 @@ export function IntakeSectionBlock({
             }
             onRejectSuggestion={
               onRejectSuggestion ? () => onRejectSuggestion(f.id) : undefined
+            }
+            discrepancy={discrepancies?.get(f.id)}
+            onTrustReference={
+              onTrustReference ? () => onTrustReference(f.id) : undefined
+            }
+            onDismissDiscrepancy={
+              onDismissDiscrepancy
+                ? () => onDismissDiscrepancy(f.id)
+                : undefined
             }
           />
         ))}
