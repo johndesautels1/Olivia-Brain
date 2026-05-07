@@ -1611,6 +1611,26 @@ model ValuationSubject {
   /// Shape: { capitalRaisedToDate, lastRoundPreMoney, lastRoundPostMoney }
   fundingDataJson   Json?
 
+  /// Quantara intake-form extension column (Track Q Session Q1).
+  /// Holds the ~36 fields from the 56-field founder valuation intake that
+  /// don't map to one of the engine-canonical JSON columns above. Subkeys
+  /// (camelCase) are owned by `src/lib/quantara/field-mapping.ts`:
+  ///   mrr, growthMoMPct, netMarginPct, cacAmount, ltvAmount,
+  ///   grossRevenueRetentionPct, lastRoundType, targetRaiseAmount,
+  ///   targetRoundType, payingCustomers, pipelineValue,
+  ///   monthlyActiveUsers, enterpriseContracts, averageContractValue,
+  ///   patentsFiled, proprietaryDatasetDescription,
+  ///   openSourceDependencyPct, keyRegulatoryApprovalsText,
+  ///   networkEffectsScore, teamSize, technicalStaffPct,
+  ///   founderDomainExperienceYears, previousExitsText,
+  ///   keyPersonDependencyRisk, revenueConcentrationTopClientPct,
+  ///   geographicConcentrationText, regulatoryRiskLevel,
+  ///   expansionRevenuePct, viralCoefficient, salesCycleDays,
+  ///   rdSpendPctOfRevenue, projectedRevenueY1, projectedRevenueY2,
+  ///   projectedRevenueY3, pathToProfitabilityMonths,
+  ///   targetExitTimelineYears.
+  quantaraJson      Json?
+
   /// Plain String — AnalysisResult model not in OB; bridge V2 routes through
   /// UKP bridge if needed.
   analysisResultId String? @db.Uuid

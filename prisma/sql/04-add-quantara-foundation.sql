@@ -1,0 +1,35 @@
+-- Track Q Session Q1 — Quantara Foundation (2026-05-07)
+--
+-- Adds the `quantaraJson` extension column to `valuation_subjects` to
+-- hold the ~36 fields from the 56-field founder valuation intake that
+-- don't map to the existing engine-canonical JSON columns:
+--   - financialDataJson, qualitativeJson, ipDataJson,
+--     marketDataJson, capitalDataJson, fundingDataJson
+--   (these stay bound to lib/valuation/bridge.ts; Quantara writes
+--   through them via metric-evidence wrapping for engine-consumed
+--   subkeys).
+--
+-- Why a single extension column rather than extending each existing
+-- JSON column shape: keeps the engine bridge contract unchanged
+-- (Track V V2 port, lib/valuation/bridge.ts). Quantara is the intake-
+-- form layer; the engine input contract (CompanyValuationInputSchema
+-- in lib/valuation/types.ts) is its own concern and stays bound to
+-- the Track V V2 ports.
+--
+-- Source of truth for subkeys: src/lib/quantara/field-mapping.ts
+-- (camelCase keys matching the LTM founder-valuation-form.html field
+-- labels). The Quantara field set itself mirrors the LTM mockup at
+-- public/assets/founder-valuation-form.html (1762 LOC) and
+-- docs/TIER_SYSTEM.md § "56-FIELD VALUATION INTAKE FORM".
+--
+-- Hand-written rather than `prisma migrate diff`-generated because the
+-- change is a single additive ALTER TABLE — no risk of column-order
+-- drift or implicit constraints.
+--
+-- Apply: paste into Supabase SQL Editor and Run (Option B path,
+-- identical workflow to 01-add-calendar-foundation.sql /
+-- 02-add-voice-olivia-foundation.sql /
+-- 03-add-valuation-foundation.sql).
+
+-- AlterTable
+ALTER TABLE "valuation_subjects" ADD COLUMN "quantaraJson" JSONB;
