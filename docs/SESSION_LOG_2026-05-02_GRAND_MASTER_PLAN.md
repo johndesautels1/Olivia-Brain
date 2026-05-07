@@ -1669,3 +1669,72 @@ That's the bicycle-wheel rule. The first attempt skipped it. Reverted both commi
 | Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase | Before any Q1+ code reads/writes `ValuationSubject.quantaraJson` | Adds the `quantaraJson JSONB` column to `valuation_subjects`. |
 
 **Next session:** **Track Q Session Q2 — Form UI (non-metamorphic baseline).** Port the Quantara HTML wireframe layout to React + Aurum/Aether tokens (replacing the cyan branding). Build form rendering all 56 fields. Live data-completeness % bar. "Field N of 56" progress chip. Per BUILD_SEQUENCE Track Q row Q2.
+
+---
+
+## Part 38 — Session 31 (Track Q Session Q2 — Form UI baseline)
+
+**466/466 tests across 33 suites. Typecheck clean.** `/founder-intake` route renders the full 56-field form inside the canonical `WorkspaceShell` (S14) using Aurum/Aether tokens — no cyan, no raw hex. Save flow round-trips through `mergeQuantaraIntoSubject` (Q1) onto `ValuationSubject`. Live weight-aware data-completeness bar + per-section completion rings + "FIELD N/56" header chip. **Track Q 2/7 ✅.**
+
+### LTM-first audit (per HANDOFF gotcha §3.10)
+
+| Capability | LTM has? | Decision |
+|---|---|---|
+| 3-pane founder intake layout | YES — `D:\London-Tech-Map\public\assets\founder-valuation-form.html` (1762 LOC HTML mockup, never built into LTM React) | OB builds NEW React mirroring layout structure byte-for-byte; cyan-400 brand replaced with Aurum gold per `01_UI_DESIGN_SYSTEM.md` § 1.3. **LTM has the design, OB builds the implementation.** |
+| 56-field schema + round-trip helpers | YES (Q1 — `src/lib/quantara/`) | REUSE — Q2 imports `QUANTARA_FIELDS`, `QuantaraValuesSchema`, `mergeQuantaraIntoSubject`, `valuationSubjectToQuantara`. No re-define. |
+| `WorkspaceShell` + `Header` + `RailLeft` + `Center` + `Inspector` | YES (S14 — `src/components/workspace/`) | REUSE — Q2 mounts inside the canonical shell. Header `scoreChips` slot carries the FIELD/COMPLETE chips; `Inspector` carries Olivia + Verdict tabs. |
+| `AvatarOrb` + `Badge` + `CompletionRing` primitives | YES (S15 — `src/components/primitives/`) | REUSE — `Badge` for tier-coloured completeness chips, `CompletionRing` for per-section progress, `AvatarOrb` in inspector Olivia panel. |
+| Aurum/Aether tokens | YES (S14 — `src/styles/tokens.css`) | REUSE — every paint references a CSS custom property. No raw hex per § 1.6 (CI lint pending Track O). |
+| Lucide icons | YES (`lucide-react` ^1.14) | REUSE — 12 section icons (TrendingUp, Building2, Handshake, Rocket, Users, Globe, ShieldCheck, UserCircle2, AlertTriangle, Zap, BarChart3, Crown). |
+| Composio auto-fill | NO LTM → YES OB (O1) | OUT OF Q2 SCOPE — sidebar CTA stub disabled with "Q3" label. Q3 wires the integrations. |
+| `ValuationSubject` Prisma model | YES (V1) — including `quantaraJson` column added in Q1 | REUSE — `/api/founder-intake` upserts via this model. |
+| Auth (`getAuthSession`) + rate limit | YES (`src/lib/auth/session.ts` pre-Clerk stub + `src/lib/rate-limit.ts`) | REUSE — same gating pattern as `/api/valuation/subject`. |
+| Live valuation engine | YES (V1-V9) | OUT OF Q2 SCOPE — Verdict tab shows directionally-correct mock math (ARR × growth-bumped multiple, mirrors LTM mockup formula). Real engine runs through `/api/valuation/run` from the Workbench. |
+
+### Files
+
+| File | Action | Notes |
+|---|---|---|
+| `src/components/quantara/section-meta.ts` | NEW | 12 section icon + 3-letter code (FIN/CAP/FND/CRR/TRC/MKT/IPM/TEM/RSK/GRW/PRJ/STR). Aurum-only per § 1.3 ("Aurum and Aether never appear together in the same component"). |
+| `src/components/quantara/field-ui-meta.ts` | NEW | Per-field UI control + unit suffix (currency-gbp/percent/integer/number/score-1-10/text/select-last-round-type/select-target-round-type). Mechanical map from Q1's 56 schemas to LTM mockup's input chrome. |
+| `src/components/quantara/completeness.ts` | NEW | Weight-aware completeness math: `overallCompleteness`, `sectionCompleteness`, `allSectionCompleteness`. Counts `0` and negatives as filled (founders may legitimately enter 0 / negative). Critical fields (weight 3) count 3× helpful (weight 1). |
+| `src/components/quantara/IntakeField.tsx` | NEW | Single field card with control dispatch on `QuantaraFieldUiMeta.control`. Currency `£` prefix, percent `%` suffix, score-1-10 slider with badge, text, selects. ARIA-correct labels + critical-weight `*` indicator + describedby on hint. Touch targets ≥ 44 × 44 (Vercel guideline). |
+| `src/components/quantara/IntakeSectionBlock.tsx` | NEW | Section header (lucide icon + title + field count badge + per-section `CompletionRing` + `Badge`) + responsive grid of fields (`grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))`). |
+| `src/components/quantara/IntakeSidebar.tsx` | NEW | Left rail content: 12-row section nav (with per-section `CompletionRing` + filled/total chip + active `aria-current`), data-completeness card (overall % + filled/auto split + remaining-fields warning), Olivia Gap Analysis CTA (disabled stub for Q3). |
+| `src/components/quantara/IntakeOliviaPanel.tsx` | NEW | Inspector "Olivia" tab body: `AvatarOrb` + status row + contextual nudge (lowest-completion section), Q3-coming-next placeholder. |
+| `src/components/quantara/IntakeVerdictPanel.tsx` | NEW | Inspector "Verdict" tab body: live valuation preview (ARR × growth-bumped multiple matching LTM mockup formula), `Intl.NumberFormat` GBP compact notation, confidence ramps with completeness %. Mock-only banner. |
+| `src/components/quantara/IntakeForm.tsx` | NEW | Top-level orchestrator. Mounts `WorkspaceShell` with Header (AvatarOrb + QUANTARA wordmark + crumb + score chips + Save button) + RailLeft (sidebar) + Center (hero + 12 sections + final CTA) + Inspector (Olivia/Verdict tabs). State machine for save: `idle | saving | saved | error`. `IntersectionObserver` keeps `activeSection` in sync with manual scroll. AbortSignal + 15s timeout on the fetch. |
+| `src/components/quantara/index.ts` | NEW | Barrel. |
+| `src/components/quantara/__tests__/completeness.test.ts` | NEW | 11 cases — `isFilled` edge cases (0, negatives, null, whitespace strings); weight-aware percent math; per-section scoping; 12-row sum invariant. |
+| `src/components/quantara/__tests__/field-ui-meta.test.ts` | NEW | 6 cases — every field has a meta entry, control kinds are documented, currency-gbp always carries `GBP` unit, score-1-10 always full-width, 12 section meta entries with 3-letter uppercase codes. |
+| `src/components/quantara/__tests__/IntakeField.test.tsx` | NEW | 12 cases — currency `£` prefix + number coercion, percent/number/integer with truncation, score slider value badge, text passes through + clears to undefined, both selects render documented option lists, critical-weight `*` only on weight-3 fields. |
+| `src/components/quantara/__tests__/IntakeForm.test.tsx` | NEW | 6 cases — workspace shell mounts (banner / nav / main / inspector), hero renders title + name input, starts at 0/56, blocks save without company name (no fetch fired), POSTs values + companyName to `/api/founder-intake`, Verdict tab surfaces preview math. |
+| `src/app/api/founder-intake/route.ts` | NEW | POST (create-or-update by `(userId, companyName)` or by `subjectId`) + GET (resume by subjectId or latest). Validates body via `QuantaraValuesSchema`. Writes via `mergeQuantaraIntoSubject` so partial saves preserve engine-only subkeys. `getAuthSession()` stub auth. Rate limits 12/min POST, 30/min GET. AbortSignal + 15s timeout on caller side. Persists weighted `completenessScore`. |
+| `src/app/api/founder-intake/__tests__/route.test.ts` | NEW | 4 cases — module surface (POST + GET exports), POST rejects empty body / missing companyName / type-mismatched values via Q1 Zod schema. Pre-Prisma branches; full integration runs land alongside Track F Session 18. |
+| `src/app/founder-intake/page.tsx` | NEW | Server-component page that mounts `<IntakeForm />`. Resume flow is client-side via GET `/api/founder-intake` (page itself is no-auth so unauth visitors still see the form). |
+
+### Decisions / judgment-call trail
+
+1. **Aurum-only section icons.** LTM mockup has 12 distinct accent colours per section (emerald, violet, amber, sky, teal, orange, indigo, rose, red, lime, fuchsia, purple). UI design system § 1.3 forbids Aurum + Aether mixing inside a single component and reserves Aurum for finance/decision surfaces. Standardised every section icon on Aurum gold; per-section state colour comes from the existing tier-coloured `Badge` / `CompletionRing` primitives instead. Brand reads cohesive; tier-coloured chips do the per-state work.
+2. **Q2-side `field-ui-meta.ts` rather than extending Q1's `QuantaraFieldDefinition`.** Q1 schema is the domain contract (label, weight, Zod schema). Render chrome (control kind, unit suffix, full-width flag) is Q2 surface concern. Splitting keeps the schema portable for Q3 (Composio source chips), Q4 (validation cascade), Q7 (voice capture) without dragging UI metadata across them.
+3. **`isFilled` counts 0 and negatives.** LTM mockup's `updateProgress()` JS excluded `0`, which silently undercounted "no patents granted yet" type fields. OB rule: `null | undefined | empty-string` → empty; everything else → filled. Founders may legitimately enter 0 (gross debt, EBITDA losses) and we want their progress to count.
+4. **Weight-aware completeness math, not field-count percent.** Q1 ships weights 1/2/3. The header chip + sidebar bar show weighted percent so completing the 13 critical fields contributes more than completing 13 helper fields — matches "data quality score" intuition founders expect.
+5. **`IntersectionObserver` for scroll-driven active-section sync** with `rootMargin: "-80px 0px -60% 0px"` — top sticky header offset, viewport upper-third triggers. Keeps the rail's `aria-current` in sync without polling.
+6. **`AbortController` + 15s timeout on the save fetch.** Per `~/CLAUDE.md` standing rule "Every network call carries an `AbortSignal` + timeout. No exceptions."
+7. **Save button gates on `companyName`, not on values.** Partial completion is a first-class state per Q1. Empty values are a valid save (resume from anywhere). Empty company name is not — `ValuationSubject.companyName` is `String` (non-null) and the find-or-create flow needs it as a key.
+8. **Inspector "Verdict" tab ships mock math, not a real engine call.** Q2's exit criterion is "save to `ValuationSubject` works" — full engine runs through the existing Track V `/api/valuation/run` route from the Workbench. Mock math (ARR × growth-bumped multiple) mirrors the LTM mockup formula exactly so the inputs map to a plausible-looking number while the founder fills the form.
+9. **`asJson(v)` helper drops null on Prisma writes.** `mergeQuantaraIntoSubject` returns `Record<string, unknown> | null | undefined` per JSON column. Prisma's JSON write type is `InputJsonValue | undefined`. Mapping `null → undefined` keeps existing engine-only subkeys (`ebitdaMarginPct`, `cacPaybackMonths`) safe — partial saves never clobber them.
+10. **Page is a server component, IntakeForm is a client component.** `/founder-intake/page.tsx` does no auth, no DB fetch — just `<IntakeForm />`. Server-side resume flow would require `getAuthSession()` (which throws without `STUB_USER_ID`), gating the page on auth. Q2 ships fresh-start for everyone; resume flow can be a later enhancement.
+11. **`<header>` → `<div>` in FormHero.** Initial render had two banner-role elements (the canonical `Header` + the FormHero `<header>` element), failing the workspace-shell smoke test. FormHero is a hero block, not a page banner — `<div>` is the right semantic.
+
+### Build status at session-31 close
+
+**Green.** Tests: **466/466** passing across **33 suites** (was 427/28 at Q1 close — +39 new Q2 tests across 5 new test suites, no regressions). Typecheck: clean. **Track Q 2/7 ✅.** ~54 sessions remain to ship priorities 1–4.
+
+### Operator action surfaced
+
+| Action | When | Why |
+|---|---|---|
+| Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase (still owed from Q1) | Before any Q2+ save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Adds the `quantaraJson JSONB` column. Q2 writes will fail with "column does not exist" until applied. |
+
+**Next session:** **Track Q Session Q3 — Olivia auto-fill via Composio.** Wire the disabled "Let Olivia complete the rest" sidebar button to the O1 Composio integrations. Each integration returns confidence-weighted values; UI shows source chips ("Stripe-derived", "GitHub-derived", "Companies-House-derived"). Founders can accept / reject / edit each suggestion. Per BUILD_SEQUENCE Track Q row Q3.
