@@ -1738,3 +1738,74 @@ That's the bicycle-wheel rule. The first attempt skipped it. Reverted both commi
 | Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase (still owed from Q1) | Before any Q2+ save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Adds the `quantaraJson JSONB` column. Q2 writes will fail with "column does not exist" until applied. |
 
 **Next session:** **Track Q Session Q3 — Olivia auto-fill via Composio.** Wire the disabled "Let Olivia complete the rest" sidebar button to the O1 Composio integrations. Each integration returns confidence-weighted values; UI shows source chips ("Stripe-derived", "GitHub-derived", "Companies-House-derived"). Founders can accept / reject / edit each suggestion. Per BUILD_SEQUENCE Track Q row Q3.
+
+---
+
+## Part 39 — Session 32 (Track Q Session Q3 — Olivia auto-fill via Composio)
+
+**494/494 tests across 37 suites. Typecheck clean.** "Let Olivia complete the rest" goes live: parallel fan-out across the 7 O1 read-only Composio integrations + a conservative founder-defaults extractor; founder accepts (✓) / rejects (✗) each suggestion inline; manual edits implicitly dismiss. **Track Q 3/7 ✅.**
+
+### LTM-first audit (per HANDOFF gotcha §3.10)
+
+| Capability | LTM has? | Decision |
+|---|---|---|
+| 7 read-only Composio integrations (Stripe, GitHub, LinkedIn, QuickBooks, Xero, Companies House, Supabase) | YES (O1 — `src/lib/tools/integrations/`) | REUSE — Q3 extractors call existing `fetchStripeMetrics()`, `fetchGitHubRepoStats(repo)`, etc. No duplication of auth, fetch, mock-fallback logic. |
+| Founder-intake auto-fill orchestrator | NO LTM | OB-original. Q3 builds `src/lib/quantara/auto-fill/` from scratch. Documented per §3.10. |
+| Companies House client (rate-limit retry, full surface) | YES (O1 ported byte-for-byte from LTM `lib/companies-house/client.ts`) | REUSE — Q3's `extractCompaniesHouseSuggestions` calls the integration wrapper, which routes through the ported client. |
+| Q1 56-field schema + types | YES (Q1 — `src/lib/quantara/`) | REUSE — `QuantaraFieldId`, `QuantaraSuggestion` consumes the schema's stable id pattern. |
+| Q2 form components (IntakeField, IntakeSectionBlock, IntakeSidebar, IntakeForm) | YES (Q2 — `src/components/quantara/`) | EXTEND — IntakeField gets a `suggestion` prop + accept/reject/edit affordance; IntakeSidebar's CTA goes live; IntakeForm holds the suggestions Map + dispatch. No re-architecture. |
+| `/api/founder-intake` POST | YES (Q2) | REUSE for persistence. Q3's `/api/founder-intake/auto-fill` is stateless — it returns suggestions but never writes. The founder accepts → form values mutate → existing Q2 POST persists. |
+
+### Files
+
+| File | Action | Notes |
+|---|---|---|
+| `src/lib/quantara/auto-fill/types.ts` | NEW | `QuantaraSuggestion`, `QuantaraSuggestionSource`, `QuantaraSuggestionSourceId`, `AutoFillContext`, `AutoFillSummary`, `SUGGESTION_SOURCE_LABEL` map. Source ids = O1 `Q3IntegrationId` ∪ `olivia_defaults`. |
+| `src/lib/quantara/auto-fill/extractors/stripe.ts` | NEW | Stripe → ARR / MRR / paying customers / monthly churn / GRR (5 fields). ARR = MRR×12 ships at slightly lower confidence than MRR (which is read direct). |
+| `src/lib/quantara/auto-fill/extractors/github.ts` | NEW | GitHub → team-size proxy (contributorsCount) + technical-staff heuristic (2 fields). Confidence floor low — repo contributors over-count externals. |
+| `src/lib/quantara/auto-fill/extractors/companies-house.ts` | NEW | CH → founder-experience floor (years since incorporation) + active-officers team-size floor (2 fields). |
+| `src/lib/quantara/auto-fill/extractors/linkedin.ts` | NEW | LinkedIn → headcount estimate from `staffCountRange` (1 field). |
+| `src/lib/quantara/auto-fill/extractors/quickbooks.ts` | NEW | QB → ARR + gross margin heuristic + net margin + EBITDA + monthly burn + cash on hand + cash runway (7 fields). |
+| `src/lib/quantara/auto-fill/extractors/xero.ts` | NEW | Xero → 4 fields (no cash on hand — Xero exposes it via separate Balance Sheet endpoint we don't pull in O1's narrow client). Confidence ≤ QB for shared fields so QB wins on tie-break. |
+| `src/lib/quantara/auto-fill/extractors/supabase.ts` | NEW | Supabase → MAU = DAU × 4 (1 field). |
+| `src/lib/quantara/auto-fill/extractors/founder-defaults.ts` | NEW | 38 conservative industry-benchmark starting values at confidence 0.40 across every section. The "industry benchmarks" half of the LTM mockup's modal copy. |
+| `src/lib/quantara/auto-fill/orchestrator.ts` | NEW | `runAutoFill(context)` runs all 8 extractors in parallel via `Promise.all`. Tie-break: higher confidence → real-mode wins ties → `INTEGRATION_PRIORITY` (Stripe > QB > Xero > CH > GitHub > LinkedIn > Supabase > defaults) breaks remaining ties. Returns `AutoFillSummary` with per-source counts + integrationsLive/MockMode tally. |
+| `src/lib/quantara/auto-fill/index.ts` | NEW | Barrel. |
+| `src/lib/quantara/auto-fill/__tests__/orchestrator.test.ts` | NEW | 9 cases — covers ≥30 fields in mock-mode (Q3 exit criterion), Stripe-wins-tie on f1, perSource counts, includeDefaults toggle, every winner has label + confidence ∈ [0,1]. |
+| `src/lib/quantara/auto-fill/__tests__/extractors.test.ts` | NEW | 11 cases — per-extractor field coverage, Stripe ARR = MRR×12 invariant, Xero excludes cash-on-hand, defaults excludes f1, defaults size ≥30 + confidence == 0.40. |
+| `src/app/api/founder-intake/auto-fill/route.ts` | NEW | POST runs orchestrator. Auth via `getAuthSession()` stub. Rate limits 6/min/client (stricter than Q2's 12/min — this dispatch hits 7 external APIs each call). 15s timeout via `Promise.race`. Returns `AutoFillSummary` payload directly. |
+| `src/app/api/founder-intake/auto-fill/__tests__/route.test.ts` | NEW | 3 cases — module surface, default body returns ≥30 fields, missing `STUB_USER_ID` returns 401/503. |
+| `src/components/quantara/IntakeField.tsx` | MODIFY | Adds optional `suggestion`, `onAcceptSuggestion`, `onRejectSuggestion` props. When set AND field empty, renders aether-tinted suggestion row with source chip, formatted value, confidence badge, optional note, ✓ Accept / ✗ Reject buttons. Aether border on the card itself when a suggestion is pending. |
+| `src/components/quantara/IntakeSectionBlock.tsx` | MODIFY | Passes `suggestions` Map + handlers through to each `IntakeField`. |
+| `src/components/quantara/IntakeSidebar.tsx` | MODIFY | Olivia gap-analysis CTA goes live. State machine `idle | running | ready | error` drives copy + disabled state ("Let Olivia complete the rest" → "Olivia is filling…" → "N pending — accept or reject above" → error message). |
+| `src/components/quantara/IntakeForm.tsx` | MODIFY | Holds `suggestions: Map<QuantaraFieldId, QuantaraSuggestion>` + `autoFillState`. `handleTriggerAutoFill` POSTs to `/api/founder-intake/auto-fill` (AbortSignal + 20s timeout). Manual edits to a field with a pending suggestion implicitly dismiss it. Accepting writes the suggested value into form state; rejecting just dismisses. Auto-derived effect drops `autoFillState` back to `idle` once all suggestions are processed. |
+| `src/components/quantara/index.ts` | MODIFY | Export `AutoFillState` type. |
+| `src/components/quantara/__tests__/IntakeField.suggestion.test.tsx` | NEW | 5 cases — source label + value + confidence render, accept/reject handlers fire, manual override hides the row, mock-mode shows in note. |
+
+### Decisions / judgment-call trail
+
+1. **Orchestrator-only design — no Prisma writes from `/api/founder-intake/auto-fill`.** The Q3 dispatch is stateless: it returns suggestions, the founder accepts inline, then the existing Q2 `POST /api/founder-intake` persists. Keeps the persistence API surface narrow; the auto-fill route is a pure read.
+2. **Tie-break rule: `pickWinner(a, b)`.** Higher `confidence` wins; on tie real-mode beats mock-mode; on tie integration priority (Stripe > QB > Xero > CH > GitHub > LinkedIn > Supabase > defaults) breaks. Encodes "Stripe is the canonical SaaS revenue source; QuickBooks beats Xero when both are connected; founder-defaults always last."
+3. **Per-extractor confidence stepdown for derived values.** Stripe MRR ships at full real/mock confidence; Stripe ARR ships at -0.05 (it's MRR×12 — a derived value). QB net margin ships at -0.10 (derived from net income / revenue); QB cash runway ships at -0.25 (compound derived). Encodes confidence-as-data-quality at the extractor layer rather than offloading to Q4's truth-score-agent.
+4. **Confidence step-down between QB and Xero on overlapping fields.** Xero's overlapping fields (f1, f6, f7, f8) ship at -0.05 to -0.10 below QB so QB wins on tie-break when both are connected. Encodes "QB is the canonical accounting source for OB" without enforcing a hard ordering — Xero still wins if the user is Xero-only.
+5. **Founder-defaults extractor at confidence 0.40, never targets f1.** Q3 user direction implicit: defaults are "industry medians the founder reviews"; they should never override real-API-derived values. Confidence 0.40 keeps them strictly below every real API (mock-mode floor 0.50). Excluding f1 ARR explicitly keeps the canonical revenue source unambiguous.
+6. **Manual edit implicitly dismisses a pending suggestion.** If the founder types into a field with a pending suggestion, the suggestion goes away — their typed value wins. Avoids the bug-class of a stale suggestion lingering after the founder has visibly entered something different.
+7. **Suggestions hide once the field has a value.** `IntakeField`'s `showSuggestion` is `suggestion !== undefined && !filled`. Avoids the bug-class of a suggestion row competing with a value the founder has already accepted (or typed).
+8. **`AutoFillState` lives in IntakeForm, not IntakeSidebar.** IntakeSidebar receives `autoFillState` + `suggestionCount` as props. Centralises state; avoids prop-drilling; keeps the sidebar pure-presentational.
+9. **Auto-fill API rate limit = 6/min/client (stricter than save's 12/min).** The dispatch fans out to 7 external APIs each call. 6/min keeps Stripe / GitHub / Companies House rate-limit headroom comfortable in dev when keys are real.
+10. **15s server-side timeout via `Promise.race` on the orchestrator.** Each underlying integration enforces its own 8s `AbortSignal.timeout` (O1 contract). Orchestrator parallelises via `Promise.all` so realistic upper bound is ~9s; 15s gives a 60% margin.
+11. **20s client-side timeout in IntakeForm's fetch.** 5s buffer above the server-side ceiling; covers network latency and JSON serialization.
+12. **Pence-to-pound conversion at the extractor layer.** Stripe / QB / Xero return amounts in pence (smallest currency unit). Q1 schemas (`f1` ARR, `f15` cash on hand, etc.) expect GBP whole-pound. Each extractor calls a local `penceToGbp(pence)` helper. Keeps the schema layer currency-unit-agnostic; extractors own the conversion.
+
+### Build status at session-32 close
+
+**Green.** Tests: **494/494** passing across **37 suites** (was 466/33 at Q2 close — +28 new Q3 tests across 4 new test suites, no regressions). Typecheck: clean. **Track Q 3/7 ✅.** ~53 sessions remain to ship priorities 1–4.
+
+### Operator actions surfaced
+
+| Action | When | Why |
+|---|---|---|
+| Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase (still owed from Q1) | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Q2 saves and Q3 auto-fill writes (via Q2's POST after accept) BOTH need the column. |
+| **OPTIONAL** — set `STRIPE_API_KEY`, `GITHUB_TOKEN`, `LINKEDIN_API_KEY`, `QUICKBOOKS_API_KEY`, `XERO_API_KEY`, `COMPANIES_HOUSE_API_KEY`, `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (Sensitive, Production + Preview only — never "All Environments" per `~/CLAUDE.md`) | When live-mode auto-fill is desired | Without keys, every integration short-circuits to its mock payload at confidence 0.5. The form still works end-to-end — mock-mode auto-fill produces ≥30 fields covered. Live keys upgrade to confidence 0.9 and surface real founder data. |
+
+**Next session:** **Track Q Session Q4 — Field-validation cascade.** When the founder enters a value that disagrees with an API-derived value (e.g. user types ARR=£245k, Stripe says £198k), Olivia surfaces the discrepancy with a chip and asks to reconcile. Reuses LTM's `truth-score-agent` ported in V5. Per BUILD_SEQUENCE Track Q row Q4.
