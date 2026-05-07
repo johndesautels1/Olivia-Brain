@@ -1555,3 +1555,213 @@ model VoiceActionItem {
   @@index([priority])
   @@map("voice_action_items")
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VALUATION ENGINE — Track V Session V1 (2026-05-07)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Cloned from D:\London-Tech-Map\prisma\schema.prisma (LTM Step 2 valuation
+// merge) with OB-side adaptations:
+//
+//   - cuid → @db.Uuid (per OB UUID convention from C1 calendar foundation)
+//   - userProfileId → userId (Clerk userId direct, no UserProfile relation
+//     since OB does not own UserProfile; same pattern as C2/C3/C4 calendar)
+//   - LTM-domain FKs (UserProfile, AnalysisResult, Organization, Document)
+//     dropped to plain String fields. The bridge port (V2) decides whether
+//     these read via UKP bridge or stub models. See
+//     `project_track_v_ltm_valuation_port` memory.
+//   - Sales-domain DealRoomSession was DROPPED in C1; the valuation-context
+//     DealRoomSession ported here is a DIFFERENT table with a coincidentally
+//     identical name. Memory clarification at
+//     `project_ltm_types_no_speculative_generalization`.
+//
+// Track V exception to "do not add LTM Prisma models to OB" rule — valuation-
+// domain models are explicitly in scope per founder direction 2026-05-07
+// (clone advanced LTM tools into OB; LTM stays untouched).
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// User company being valued — JSON columns hold financial/qualitative/IP/
+/// market/capital/funding evidence with provenance refs. The bridge layer
+/// (V2) reads these to build CompanyValuationInput.
+model ValuationSubject {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+
+  companyName   String
+  sector        String?
+  subsector     String?
+  stage         String? // "idea" | "pre_revenue" | "mvp" | "early_revenue" | "growth" | "scaleup" | "mature"
+  businessModel String? // "saas" | "marketplace" | "services" | "deeptech" | "fintech" | "ecommerce" | "media" | "hardware" | "other"
+
+  /// Shape: { annualRevenue, arr, grossMarginPct, ebitda, burnMonthly, runwayMonths, growthYoYPct, churnPct, ... } — each MetricEvidence { value, refs[], confidence, asOfDate }
+  financialDataJson Json?
+
+  /// Shape: { founderDependencyRisk, legalRisk, ipStrength, productMaturity, goToMarketMaturity, londonStrategicFit, scorecardFactors{team,opportunity,product,...} }
+  qualitativeJson   Json?
+
+  /// Shape: { capitalizedBuildCost, replacementCost, patentsCount, proprietaryDataScore, trademarksCount, regulatoryApprovals }
+  ipDataJson        Json?
+
+  /// Shape: { tam, sam, som, marketGrowthPct } — each MetricEvidence
+  marketDataJson    Json?
+
+  /// Shape: { cashOnHand, debt, fullyDilutedShares, optionPoolPct }
+  capitalDataJson   Json?
+
+  /// Shape: { capitalRaisedToDate, lastRoundPreMoney, lastRoundPostMoney }
+  fundingDataJson   Json?
+
+  /// Plain String — AnalysisResult model not in OB; bridge V2 routes through
+  /// UKP bridge if needed.
+  analysisResultId String? @db.Uuid
+
+  /// 0-100 weighted completeness score derived from the JSON columns.
+  completenessScore Decimal? @db.Decimal(5, 2)
+
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  valuationRuns      ValuationRun[]
+  financialSnapshots FinancialSnapshot[]
+
+  @@index([userId, createdAt])
+  @@index([analysisResultId])
+  @@map("valuation_subjects")
+}
+
+/// Single execution of the 10-method valuation engine against a subject.
+/// inputSnapshotJson freezes the merged input at run time; resultJson stores
+/// the full ReconciledValuationResult; methodWeightsJson stores the
+/// stage-aware method weights used.
+model ValuationRun {
+  id                 String @id @default(uuid()) @db.Uuid
+  valuationSubjectId String @db.Uuid
+
+  buyerType        String? // "angel" | "vc" | "private_equity" | "strategic_partner" | "acquirer"
+  /// Plain String — Organization model not in OB; bridge V2 reads strategic-
+  /// synergy data via UKP if a target match is provided.
+  targetMatchOrgId String? @db.Uuid
+
+  inputSnapshotJson Json
+  resultJson        Json
+  methodWeightsJson Json?
+
+  confidenceScore Decimal? @db.Decimal(5, 2)
+  status          String   @default("completed") // "queued" | "processing" | "completed" | "failed"
+  runDurationMs   Int?
+
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  valuationSubject ValuationSubject       @relation(fields: [valuationSubjectId], references: [id], onDelete: Cascade)
+  sensitivities    ValuationSensitivity[]
+  dealRoomSessions DealRoomSession[]
+
+  @@index([valuationSubjectId, createdAt])
+  @@index([targetMatchOrgId])
+  @@map("valuation_runs")
+}
+
+/// Sensitivity analysis output — one row per varied variable, used to render
+/// tornado charts in the dashboard.
+model ValuationSensitivity {
+  id             String @id @default(uuid()) @db.Uuid
+  valuationRunId String @db.Uuid
+
+  variableName  String
+  baseValue     Decimal @db.Decimal(18, 2)
+  lowValue      Decimal @db.Decimal(18, 2)
+  highValue     Decimal @db.Decimal(18, 2)
+  lowValuation  Decimal @db.Decimal(18, 2)
+  highValuation Decimal @db.Decimal(18, 2)
+
+  valuationRun ValuationRun @relation(fields: [valuationRunId], references: [id], onDelete: Cascade)
+
+  @@unique([valuationRunId, variableName])
+  @@index([valuationRunId])
+  @@map("valuation_sensitivities")
+}
+
+/// Point-in-time financial snapshot — used to track changes over time and
+/// to source the FinancialSnapshot fields the engine needs.
+model FinancialSnapshot {
+  id                 String @id @default(uuid()) @db.Uuid
+  valuationSubjectId String @db.Uuid
+
+  snapshotDate   DateTime
+  annualRevenue  Decimal? @db.Decimal(18, 2)
+  arr            Decimal? @db.Decimal(18, 2)
+  grossMarginPct Decimal? @db.Decimal(5, 2)
+  ebitda         Decimal? @db.Decimal(18, 2)
+  burnMonthly    Decimal? @db.Decimal(18, 2)
+  growthYoYPct   Decimal? @db.Decimal(5, 2)
+  cashOnHand     Decimal? @db.Decimal(18, 2)
+  runwayMonths   Int?
+  customerCount  Int?
+
+  /// Plain String[] — Document model not in OB until Track B Session 8;
+  /// IDs are stored as strings until then.
+  sourceDocumentIds String[] @db.Uuid
+
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  valuationSubject ValuationSubject @relation(fields: [valuationSubjectId], references: [id], onDelete: Cascade)
+
+  @@index([valuationSubjectId, snapshotDate])
+  @@map("financial_snapshots")
+}
+
+/// Negotiation-simulator session attached to a valuation run. THIS IS NOT
+/// the sales-domain DealRoomSession dropped in C1 (which lived in the calendar
+/// + real-estate context). This is the valuation-context backing store for
+/// WarRoom + DealRoomSimulator UI ported in V9.
+model DealRoomSession {
+  id             String @id @default(uuid()) @db.Uuid
+  valuationRunId String @db.Uuid
+  userId         String @db.Uuid
+
+  buyerType String // "angel" | "vc" | "private_equity" | "strategic_partner" | "acquirer"
+  status    String @default("active") // "active" | "completed" | "archived"
+
+  /// Overall readiness score 0-100. Per-dimension breakdown in rubricScoresJson.
+  overallScore     Decimal? @db.Decimal(5, 2)
+  /// { evidence: number, valuation: number, risk: number, ... } — readiness rubric.
+  rubricScoresJson Json?
+
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  durationSeconds Int?
+
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  valuationRun ValuationRun      @relation(fields: [valuationRunId], references: [id], onDelete: Cascade)
+  messages     DealRoomMessage[]
+
+  @@index([userId, createdAt])
+  @@index([valuationRunId])
+  @@map("deal_room_sessions")
+}
+
+/// Message exchanged in a valuation-context DealRoomSession.
+model DealRoomMessage {
+  id                String @id @default(uuid()) @db.Uuid
+  dealRoomSessionId String @db.Uuid
+
+  role    String // "user" | "founder" | "buyer" | "opus_judge" | "system"
+  content String @db.Text
+
+  /// Optional references to documents tabled during the negotiation turn.
+  /// Plain string[] of document IDs until the Document model lands.
+  exhibitsJson Json?
+
+  createdAt DateTime @default(now())
+
+  dealRoomSession DealRoomSession @relation(fields: [dealRoomSessionId], references: [id], onDelete: Cascade)
+
+  @@index([dealRoomSessionId, createdAt])
+  @@map("deal_room_messages")
+}
