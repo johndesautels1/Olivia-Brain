@@ -1494,3 +1494,57 @@ Per `BUILD_SEQUENCE.md` Track C row 13: Olivia tab uses the chat brain from Trac
 **Green.** Test: **368/368** passing across 24 test files (was 223/223 across 17 at S22 close). Typecheck: clean. **Track V 8/9 ✅** (V1–V8). ~58 sessions remain to ship priorities 1–4 (was ~63 before this batch).
 
 **Vercel:** post-S26 build failed on Next 16 async-params strictness in `[runId]/route.ts`; fixed in S27. Verify on the next deploy after `edb195a` lands.
+
+---
+
+## Part 35 — Session 28 (Track V V9 — TRACK V CLOSED)
+
+**HEAD `24781da`. 368/368 tests. Typecheck clean. Vercel green on V8 (`edb195a`) confirmed before V9 started.** War Room family + Deal Room + Acquisition Mirror + Equity Waterfall ported byte-for-byte. Track V is closed: 9/9 ✅.
+
+**Vercel pre-V9 verification:** `dpl_6CVj4xoQKxCjx7JeHsJApEeXpvXz` READY in production for the V8 commit message — Next 16 async-params fix from V8 confirmed working before V9 started.
+
+**Files (14 changed, 4682 insertions, 111 deletions):**
+
+- 5 new files: `components/valuation/{WarRoomBriefing, WarRoomDocumentBridge, WarRoomSession, WarRoomTranscript}.tsx` + `war-room-utils.ts` (the rest of the War Room family that V8 didn't ship at all).
+- 5 replaced shims (V8 wrote tiny re-export stubs; V9 overwrites with the real LTM ports): `WarRoom.tsx`, `DealRoomSimulator.tsx`, `AcquisitionMirror.tsx`, `NegotiationAnchorCard.tsx`, `EquityWaterfall.tsx`.
+- 1 deleted: `components/valuation/_v9-placeholders.tsx`. No remaining consumers.
+- `docs/STUDIO_PORT_MANIFEST.md` § M appended (12 sub-sections — schema, lib, agents, routes, workbench, war room, bidirectional link, smoke tests, weakness backlog, deferred LTM tests, operator actions, closure summary table).
+- `src/app/api/valuation/__tests__/routes.test.ts` + `src/components/valuation/__tests__/workbench.test.ts` — per-test timeout bumps on the two heaviest dynamic-import smoke tests (60_000ms each). See judgment-call trail #4 below.
+
+**Adaptations: zero.** All 10 War Room family files are pure client UI — no Clerk auth, no direct prisma access, no Next 16 dynamic-segment route handlers. The V8 adaptation categories (Clerk → `getAuthSession()` stub, prisma model swaps, async-params shape) don't apply. Every shared dep already existed in OB:
+
+| Dep needed | Where in OB |
+|---|---|
+| `useOliviaOptional` (echo-suppress + speakText) | `src/components/olivia/OliviaProvider.tsx` line 163 |
+| `BuyerType`, `ValuationBand`, `AcquisitionMirrorResult` | `src/lib/valuation/types.ts` |
+| `formatCurrency`, `NegotiationSummary` type | `src/lib/valuation/dashboard-types.ts` |
+| `GlossaryTooltip`, `ChartCard` | `src/components/valuation/` (V8) |
+| `/api/valuation/deal-room/{session,score-rubric}` routes | V7 (commit `56c735e`) |
+| `/api/olivia/{memory,voice,email}` + `/api/calendar/notes` | Track C (calendar) |
+
+**Bidirectional `negotiationSummary` link:** the V9 spec line "Wire `negotiationSummary` bidirectional link" was already satisfied before V9 started. The wiring layers:
+
+1. **Type contract** — `DashboardData.negotiationSummary: NegotiationSummary | null` (V2, `dashboard-types.ts:124`).
+2. **Read side** — `GET /api/valuation/[runId]` builds `negotiationSummary` from latest completed `DealRoomSession` (V7, `[runId]/route.ts:493-520`). Prefers completed → most recent active. `exhibitsTabled` + `negotiationAnchors` returned `null` (LTM-only fields not in OB schema).
+3. **Write side** — V9 components POST/PUT to `/api/valuation/deal-room/session`. Route accepts both LTM-shaped (`rubricScores`, `duration`) and OB-shaped (`rubricScoresJson`, `durationSeconds`) bodies (V7 already wrote it that way), so the components plug in without any route-layer change.
+
+V9 ships the UI that exercises the write path; nothing new in the API layer.
+
+**Decisions (V9-specific):**
+
+1. Per-test timeout bump (60_000ms) applied surgically to `ValuationWorkbench imports without error` and `POST /api/valuation/run` — the only two tests where V9's larger module graph + V7's cascade-orchestrator transitive imports legitimately push past the 15s global. Other 366 tests stay on the strict 15s budget. **Not a band-aid:** test goal is "imports without throwing"; goal unchanged; only the timeout (sized for V8's lighter graph) was bumped to match the new graph size.
+2. No top-level `/api/valuation/deal-room/route.ts` ported — LTM doesn't host this route either; the keyword-matched canned-challenge fallback in `DealRoomSimulator.tsx` IS the production behavior in both repos. Verified by listing LTM's `app/api/valuation/deal-room/` (only `score-rubric` + `session` subdirs exist).
+3. No new test files added. V9 spec doesn't require them; the existing 32-case workbench smoke + 11-case routes smoke + 325 other tests provide adequate coverage. Future structural-render tests for War Room family are a Track K hardening concern.
+
+**Judgment-call trail (V9-only):**
+
+1. (V9) Verified Vercel `dpl_6CVj4xoQKxCjx7JeHsJApEeXpvXz` READY in production for V8 commit `edb195a` BEFORE starting V9 — handoff flagged this as worth confirming.
+2. (V9) All 10 War Room family files copied byte-for-byte via single PowerShell `Copy-Item -LiteralPath` batch. Zero per-file Edit calls. Rule: minimize tool calls.
+3. (V9) `_v9-placeholders.tsx` deleted in the same commit as the real ports — no orphan references, no dead-code period.
+4. (V9) Test timeouts bumped per-test, not globally, with inline comments explaining why each test is heavy. Surgical, signal-preserving.
+
+### Build status at session-28 close (end of single-session V9 batch)
+
+**Green.** Tests: **368/368** passing across 24 suites (held flat from V8 close). Typecheck: clean. **Track V 9/9 ✅.** ~57 sessions remain to ship priorities 1–4 (was ~58 before V9).
+
+**Next session:** **Track O Session O1 — Composio dispatch layer.** Pulled forward from original Track O floating slot per `BUILD_SEQUENCE.md` line 134, so Quantara Q3's "Let Olivia complete the rest" auto-fill ships day 1 instead of as a stub. New `src/lib/tools/composio.ts` + `src/lib/tools/approval-gate.ts` + 7 read-only integrations (Stripe, Supabase, GitHub, Companies House, LinkedIn, QuickBooks, Xero). Closes **W-001**.
