@@ -1548,3 +1548,67 @@ V9 ships the UI that exercises the write path; nothing new in the API layer.
 **Green.** Tests: **368/368** passing across 24 suites (held flat from V8 close). Typecheck: clean. **Track V 9/9 ✅.** ~57 sessions remain to ship priorities 1–4 (was ~58 before V9).
 
 **Next session:** **Track O Session O1 — Composio dispatch layer.** Pulled forward from original Track O floating slot per `BUILD_SEQUENCE.md` line 134, so Quantara Q3's "Let Olivia complete the rest" auto-fill ships day 1 instead of as a stub. New `src/lib/tools/composio.ts` + `src/lib/tools/approval-gate.ts` + 7 read-only integrations (Stripe, Supabase, GitHub, Companies House, LinkedIn, QuickBooks, Xero). Closes **W-001**.
+
+---
+
+## Part 36 — Session 29 (Track O Session O1 — first attempt + rebuild — W-001 CLOSED)
+
+**HEAD `7e4d356` (rebuild). 385/385 tests across 26 suites. Typecheck clean.** Composio dispatch + LTM-ported Companies House client + 6 OB-original Q3 integrations + cascade tool-call wiring. **W-001 closed.**
+
+### Why this session has two commits + two reverts
+
+The first attempt (commit `db2f0cf` + docs `462aa34`) shipped without auditing LTM first. User caught it: *"why are we doing wrappers — the entire app build purpose is to copy over from our other sister apps presently london tech map being the big one all their key technologies and then integrate them into olivia brain. When their tech is better we replace that part of olivia brain that is inferior and when their tech is inferior we use ours."*
+
+That's the bicycle-wheel rule. The first attempt skipped it. Reverted both commits (`dba6d1e`, `96975e4`), did a thorough LTM audit, rebuilt with LTM-first discipline (`7e4d356`).
+
+### LTM-first audit table (post-revert, locked 2026-05-07)
+
+| Capability | LTM has? | Decision |
+|---|---|---|
+| **Composio** (vendor SDK + dispatch) | NO (zero hits in `D:\London-Tech-Map\src` for "composio") | OB-original. Dispatch wrapper sits on top of `services/composio.ts`. |
+| **Approval-gate / HITL gate** | NO (zero hits) | OB-original. Pre-existing in OB before O1. |
+| **Confidence-gate** | NO (zero hits) | OB-original. Pre-existing in OB before O1. |
+| **Companies House client** | **YES — 358-line `lib/companies-house/client.ts`** with rate-limit retry (CH 600/5min), HTTP Basic auth, full surface (search / advanced search / profile / officers / filing history / documents / `TECH_SIC_CODES`). | **PORTED byte-for-byte** to `src/lib/companies-house/client.ts`. Q3 wrapper delegates to it. |
+| **Stripe billing/subscription sync** | YES — `lib/stripe.ts` (uses `prisma.userProfile.stripeCustomerId` + `PricingTier` table). DIFFERENT concern from Q3 read-only metrics. | NOT ported in O1. Future port post-Track F (Clerk + paid plans). Q3 metrics file is OB-original. |
+| **GitHub / LinkedIn / QuickBooks / Xero clients** | NO (zero hits) | OB-original. |
+| **Supabase as Q3-metrics surface** | NO (LTM uses Supabase as DB client only) | OB-original. |
+| **Cascade orchestrator** (`lib/cascade/`) | YES — full orchestrator + 8 providers (anthropic, companies-house, google, kimi, openai, perplexity, tavily, xai). | **NOT ported in O1.** Track G S19-S20 ports it. O1's tool wiring is INTERIM on OB's `services/model-cascade.ts`; flagged in code comments + handoff. |
+| **94 named agents** (`lib/agents/impl/g1-001-startup-office-negotiator.ts`, ...) | YES | NOT ported in O1. Track H S21-S23 ports them. Composio dispatch is **complementary** to agent runtime, not replacing. |
+
+### Files in the rebuild (18 files, 1899 insertions)
+
+- `src/lib/companies-house/client.ts` (PORTED byte-for-byte from LTM via PowerShell `Copy-Item -LiteralPath`, V9 pattern). 9941 bytes — exact LTM size. Production surface intact.
+- `src/lib/tools/integrations/companies-house.ts` (NEW Q3 wrapper, delegates to ported LTM client; profile + officers fetched in parallel via `Promise.all` with independent failure tolerance).
+- `src/lib/tools/integrations/{stripe,github,linkedin,quickbooks,xero,supabase}.ts` + `_types.ts` + `index.ts` (6 OB-original Q3 integrations per LTM audit).
+- `src/lib/tools/composio.ts` (NEW dispatch wrapper). TOOL_CATALOG with 3 starters (gmail.send / gmail.reply / calendar.read). Reuses pre-existing OB scaffolding (`services/composio.ts` + `tools/approval-gate.ts` + `tools/confidence-gate.ts`) — no duplication. AI SDK 6.x `inputSchema` shape (not `parameters` — gotcha §3.9 in HANDOFF).
+- `src/lib/foundation/types.ts` (`ToolCallTrace` + optional `toolCalls?` on `FoundationTrace`).
+- `src/lib/foundation/catalog.ts` (6 INTEGRATION_CATALOG entries; the `companies_house` entry calls out "uses ported LTM client" in its purpose).
+- `src/lib/config/env.ts` (6 optional secrets).
+- `src/lib/services/model-cascade.ts` (optional `tools` param threaded into `generateText`; INTERIM comment flags Track G).
+- `src/lib/orchestration/phase1-graph.ts` (`userId` graph state, `toolCalls` state field, generateResponse builds cascade tools when `intent === "operations"`, persistTurn copies traces into `FoundationTrace.toolCalls`).
+- `src/lib/tools/__tests__/{composio-dispatch,integrations}.test.ts` — 17 cases including a **contract test that verifies the LTM-ported Companies House client surface** (`searchCompanies`, `advancedSearch`, `getCompanyProfile`, `getOfficers`, `searchOfficers`, `getFilingHistory`, `getFilingDocument`, `TECH_SIC_CODES`).
+
+### Decisions (locked 2026-05-07)
+
+1. **LTM-first audit is mandatory** before any "build new infrastructure" session. Failure to audit = the session gets reverted. Codified in HANDOFF gotcha §3.10.
+2. **Audit log** uses existing `recordTrace` infrastructure (no new Prisma model). Cheaper, no migration.
+3. **Mock-mode** integrations return realistic deterministic payloads with `mockMode: true` flag (so Q3 ships day 1).
+4. **LLM tool-calling** uses native Vercel AI SDK 6.x `tool({description, inputSchema, execute})` (not 5.x's `parameters`).
+5. **Track G + Track H + Stripe-billing** are flagged as known-future-port items in inline code comments + the handoff. Not silently absent.
+
+### Judgment-call trail (O1-only, post-revert)
+
+1. (O1.A) First attempt skipped LTM audit → built Companies House from scratch when LTM had a 358-line production client. **REVERTED.**
+2. (O1.B) Read OLIVIA_NORTH_STAR.md + 00_PRODUCT_TRUTH.md + BOOTSTRAP.md (which I'd skipped earlier in the session despite HANDOFF §0). Then full LTM audit via parallel `ls`/`grep` of `src/lib/{tools,services,agents,integrations,companies-house,stripe,emilia}` and content-grepped for `composio` / `approval` / API hostnames.
+3. (O1.B) Used PowerShell `Copy-Item -LiteralPath` for the LTM client port — V9 pattern, byte-for-byte, single tool call.
+4. (O1.B) Q3 wrapper for Companies House is THIN (delegates to ported client) rather than re-implementing auth + retry. Right separation of concerns.
+5. (O1.B) Did not port LTM's Stripe `lib/stripe.ts` — it's billing/subscription sync, different concern from Q3 read-only metrics. Flagged for future port.
+6. (O1.B) Added a contract test for the LTM-ported Companies House client surface so future agents can detect drift if anyone strips functions from the port.
+
+### Build status at session-29 close
+
+**Green.** Tests: **385/385** passing across 26 suites (was 368 at V9 close, was 384 in failed first attempt — +1 from the LTM-port surface contract test). Typecheck: clean. **Track O Session O1 ✅. W-001 closed.** ~56 sessions remain to ship priorities 1–4.
+
+**Vercel:** post-`7e4d356` deploy will pick up the new env-var schema (6 added optional secrets). Operator can wire the 7 Q3 integration keys at any point; each integration mock-degrades when its key is absent.
+
+**Next session:** **Track Q Session Q1 — 56-field schema design + form scaffold.** Define canonical Zod schemas in `src/lib/quantara/schema.ts` (sectioned: Core Financials, Ownership/Cap Table, Market, Team/Founder, IP, Vertical-Specific). Per BUILD_SEQUENCE Track Q row Q1.
