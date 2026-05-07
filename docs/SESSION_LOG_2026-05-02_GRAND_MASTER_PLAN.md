@@ -1548,3 +1548,58 @@ V9 ships the UI that exercises the write path; nothing new in the API layer.
 **Green.** Tests: **368/368** passing across 24 suites (held flat from V8 close). Typecheck: clean. **Track V 9/9 ✅.** ~57 sessions remain to ship priorities 1–4 (was ~58 before V9).
 
 **Next session:** **Track O Session O1 — Composio dispatch layer.** Pulled forward from original Track O floating slot per `BUILD_SEQUENCE.md` line 134, so Quantara Q3's "Let Olivia complete the rest" auto-fill ships day 1 instead of as a stub. New `src/lib/tools/composio.ts` + `src/lib/tools/approval-gate.ts` + 7 read-only integrations (Stripe, Supabase, GitHub, Companies House, LinkedIn, QuickBooks, Xero). Closes **W-001**.
+
+---
+
+## Part 36 — Session 29 (Track O Session O1 — Composio dispatch / W-001 CLOSED)
+
+**HEAD `db2f0cf`. 384/384 tests across 26 suites. Typecheck clean.** Composio dispatch wrapper + 7 Q3 read-only integrations + cascade tool-call wiring shipped. **W-001 closed.**
+
+**Surprise discovery on session-open inventory:** substantial scaffolding already existed in OB and the BUILD_SEQUENCE row's "New `src/lib/tools/composio.ts`" wording understated the available substrate. What was already built:
+
+- `src/lib/services/composio.ts` — full Composio SDK wrapper (`ComposioServiceImpl` + `NoOpComposioService` factory keyed on `COMPOSIO_API_KEY`).
+- `src/lib/tools/approval-gate.ts` — risk-tiered approval gate (`DEFAULT_APPROVAL_GATES` for email / calendar / CRM / finance / documents) with both Supabase + InMemory backends.
+- `src/lib/tools/confidence-gate.ts` — `evaluateHITLGate()` orchestrating confidence + approval + pending-approval creation.
+- `src/lib/orchestration/intent.ts` — regex classifier already includes `"operations"` matching CRM / email / calendar / lead / pipeline / outreach / inbox.
+- `src/lib/orchestration/phase1-graph.ts` — LangGraph nodes (`hydrateRuntime → recallContext → chooseIntent → generateResponse → persistTurn`) but **no tool-dispatch node**.
+- `src/lib/services/model-cascade.ts` — 9-model cascade calling Vercel AI SDK `generateText`, **without** a `tools:` array.
+
+**The actual O1 gap was therefore narrower than the row implied:** wire a dispatch wrapper that composes the existing scaffolding, expose tools to the cascade via the AI SDK shape, build the 7 Q3 integrations, capture per-call traces in the FoundationTrace.
+
+**Files (17 changed, 1548 insertions, 1 deletion):**
+
+- `src/lib/tools/composio.ts` (NEW) — dispatch wrapper. `TOOL_CATALOG` with 3 starters (`gmail.send`, `gmail.reply`, `calendar.read`), `dispatchTool({toolName, params}, context)` orchestrator, `buildCascadeTools(context)` adapter producing `Record<string, Tool>` shaped for AI SDK 6.x `generateText({tools, toolChoice: "auto", maxSteps: 3})` plus a `getTraces()` side-channel collector (the SDK's `result.toolResults` doesn't surface internal dispatch metadata).
+- `src/lib/tools/integrations/{_types,stripe,github,linkedin,quickbooks,xero,companies-house,supabase}.ts` + `index.ts` (8 NEW) — 7 Q3 read-only integrations + shared `withMockFallback()` helper. Each: `AbortSignal.timeout(8s)` on the real fetch, deterministic plausible mock-mode payload on any failure or missing key, sanitized error names (no PII per rule #8). Confidence floor of 0.5 in mock-mode, 0.9 with real API.
+- `src/lib/tools/__tests__/{composio-dispatch,integrations}.test.ts` (2 NEW, 16 cases total) — TOOL_CATALOG shape, gmail.send presence (O1 exit criterion), unknown-tool rejection, not_configured fallback when `COMPOSIO_API_KEY` absent, side-channel trace capture, mock-mode behavior + parameter preservation across all 7 integrations.
+- `src/lib/foundation/types.ts` (MODIFIED) — new `ToolCallTrace` interface + optional `toolCalls?: ToolCallTrace[]` on `FoundationTrace`. Logs decision / risk / confidence / duration only; never tool argument values (rule #8).
+- `src/lib/foundation/catalog.ts` (MODIFIED) — 6 new `INTEGRATION_CATALOG` entries (stripe / github / linkedin / quickbooks / xero / companies_house) so the foundation status surface reports configured/missing for each.
+- `src/lib/config/env.ts` (MODIFIED) — 6 new optional secrets (`STRIPE_API_KEY`, `GITHUB_TOKEN`, `LINKEDIN_API_KEY`, `QUICKBOOKS_API_KEY`, `XERO_API_KEY`, `COMPANIES_HOUSE_API_KEY`). Supabase keys already present.
+- `src/lib/services/model-cascade.ts` (MODIFIED) — `tools?: Record<string, Tool>` added to `CascadeInput`. When present, threaded into `generateText({tools, toolChoice: "auto", maxSteps: 3})`. No behavior change when omitted.
+- `src/lib/orchestration/phase1-graph.ts` (MODIFIED) — new `userId` graph state (defaults to `conversationId` when caller omits — Track F Clerk swap will pass the real user id), new `toolCalls` state field, `generateResponse` builds cascade tools when `intent === "operations"`, `persistTurn` copies traces into `FoundationTrace.toolCalls` so Langfuse + the local trace bucket both capture them.
+
+**Audit log decision (locked 2026-05-07):** reuse existing `recordTrace` infrastructure rather than create a `ToolAuditLog` Prisma model. Cheaper, no migration, no new operator action. The optional `toolCalls?` field on `FoundationTrace` keeps backward compatibility.
+
+**Mock-mode decision (locked 2026-05-07):** realistic shape with deterministic fake values + `mockMode: true` flag on every response. Q3's auto-fill UI can validate end-to-end without API keys; per-field confidence (0.5 mock vs 0.9 real) lets Q4's `truth-score-agent` reconcile against user-entered values.
+
+**LLM tool-calling decision (locked 2026-05-07):** native Vercel AI SDK `tools:` (not manual JSON-fence parsing). The SDK's `tool({description, inputSchema, execute})` shape (AI SDK 6.x — `inputSchema` not `parameters`, fixed in this session) wraps each catalog entry. Closure-captured trace collector exposes per-call metadata to the graph after `generateText` resolves.
+
+**Decisions (V9-style — none needed for V9, two for O1):**
+
+1. (O1) Dispatched tools when `intent === "operations"` only. The existing regex classifier already captures CRM / email / calendar — that's exactly the tool-eligible intent. Future O2-O5 may broaden eligibility; not in O1 scope.
+2. (O1) Three starter tools (`gmail.send`, `gmail.reply`, `calendar.read`) — smallest viable surface for the O1 exit criterion (Gmail follow-up reply with approval prompt). Each entry must come paired with a matching `DEFAULT_APPROVAL_GATES` row; the existing email + calendar entries cover them.
+
+**Judgment-call trail (O1-only):**
+
+1. (O1) Asked the user three architectural questions before launching the build (audit log location, mock-mode aggressiveness, LLM tool-calling shape) because the BUILD_SEQUENCE row's framing implied a ground-up build that the inventory revealed to be a wiring exercise. The 30-second alignment check prevented wrong-direction work.
+2. (O1) AI SDK 6.x `inputSchema` (not `parameters`) discovered via typecheck failure → fixed via Edit, no test impact. Documented in commit message + this log so future agents don't repeat the mistake.
+3. (O1) Side-channel trace collector (closed-over array + `getTraces()`) chosen over re-deriving traces from `result.toolResults` — the SDK only carries `execute()`'s return value, not internal dispatch metadata. Cleaner contract, simpler graph.
+4. (O1) Did NOT add a graph-level e2e test (`tool-dispatch.test.ts`). The cascade short-circuits to mock mode without provider keys, so an e2e test would exercise the mock path only (already covered by 368 prior tests). Real e2e with Composio + Gmail OAuth + LLM round-trip is a manual operator-test post-key-provisioning.
+5. (O1) Did NOT pre-port any `getCascadeTools` for non-operations intents. Per "don't add features beyond the task requires" rule + the BUILD_SEQUENCE Q3 spec (which only references the 7 integrations, not extra LLM tools).
+
+### Build status at session-29 close (end of single-session O1 batch)
+
+**Green.** Tests: **384/384** passing across 26 suites (was 368/368 across 24 at V9 close — 16 new from O1: 7 dispatch + 9 integrations). Typecheck: clean. **Track O Session O1 ✅. W-001 closed.** ~56 sessions remain to ship priorities 1–4 (was ~57 before O1).
+
+**Vercel:** post-`db2f0cf` deploy will pick up the new env-var schema (the 6 added optional secrets) without a database change. Operator can wire the 7 Q3 integration keys at any point; each integration mock-degrades when its key is absent so Q3 can ship without gating on key provisioning.
+
+**Next session:** **Track Q Session Q1 — 56-field schema design + form scaffold.** Define canonical Zod schemas in `src/lib/quantara/schema.ts` (sectioned: Core Financials, Ownership/Cap Table, Market, Team/Founder, IP, Vertical-Specific). Each field: type / validation / weight / section / description / investor-class relevance. Map every field to its destination JSON column on `ValuationSubject`; net-new fields land in a new `quantaraJson` extension column. Per `BUILD_SEQUENCE.md` Track Q row Q1.
