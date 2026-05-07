@@ -1118,3 +1118,58 @@ The S15 `DeckDetailModal` exports the canonical surface contract — S16 wires t
 ### Build status at session-15 close
 
 **Green.** Test: **180/180** passing. Typecheck: clean. Track C: **2 of 6 sessions ✅** (S14 + S15 done; S16-S19 remain). ~45 sessions remain to ship priorities 1–4.
+
+---
+
+## Part 23 — Session 16 (Track C internal session 3)
+
+**Locked 2026-05-07.** Library tab + scoring + Apply flow shipped. HEAD `519d4f5`. **197/197 tests passing**, typecheck clean.
+
+### What shipped (9 files, +1453 / -49 LOC)
+
+| File | LOC | Role |
+|---|---|---|
+| `src/lib/studio/types.ts` | 175 | Strict types: `DeckArchetype`, `PlanTemplate`, `Scored<T>`, `DeckConfig`, `CategoryKey`, `Slide`, `SlideType`, `LibraryFilter`, `ScoringPrefs`, `PersonaKey` + `toDeck()` adapter from raw archetype to `DeckDetailModal`'s `Deck` shape. |
+| `src/lib/studio/category-colors.ts` | 78 | `CAT_LIB` equivalent — 9 categories mapped to canonical Aurum/Aether/sky-info/mint-up/coral-down/amber-warn tokens. **Zero raw hex** per `01_UI_DESIGN_SYSTEM.md` § 1.6. |
+| `src/lib/studio/archetypes.ts` | 80 | `DECK_ARCHETYPES` — 75 entries: 1–53 prototype-curated set + 54–75 "Real Verified Decks" (historical raises with `raised`/`year`/`slideCount`). Lifted byte-for-byte from `D:\Studio-Olivia\StudioOliviaGrandMaster (2).jsx` lines 17 + 19. |
+| `src/lib/studio/templates.ts` | 24 | `PLAN_TEMPLATES` — 12 entries: Sequoia BP, Lean Canvas, UK BP, AI BP, Fintech BP, One-Page Pitch, SaaS BP, Proptech BP, Healthtech BP, London Ecosystem BP, Buyout/PE BP, Grant/Visa BP. Lifted from line 22. |
+| `src/lib/studio/scoring.ts` | 178 | Pure functions: `scoreDecks`, `scoreTemplates`, `applyLibraryFilter`, `industryToCategory`. Math byte-for-byte from prototype: `+30` stage, `+22` cat, `×7` consensus, `+15` pre-traction (traction=0 + Pre-seed), `+12` traction-deck, `+20`/`+25` London, `+15`/`+18` AI, `+4`/`+8` `olivia_action`. |
+| `src/lib/studio/slides.ts` | 75 | `generateSlidesForArchetype`, `buildSlideSequence`. Local generation (no LLM call) — fixed 10-slide sequence (COVER → HOOK → PROBLEM → SOLUTION → MARKET → PRODUCT → TRACTION → MOAT → TEAM → ASK), extends with WHY_NOW / ROADMAP / COMPETITION / ECOSYSTEM / DEMO / REGULATORY / DETAIL when `slideCount > 10`. |
+| `src/components/studio/LibraryTab.tsx` | 318 | Search input, Decks/Plans toggle (live counts), relevance line ("X archetypes · Stage/Industry relevance"), scrollable card list (3-px category bar, name, category pill, stage chip, ConsensusDots, optional `raised` chip, 2-line clamped insight, big mono `Aurum` score number on the right), DeckDetailModal interaction. |
+| `src/lib/studio/__tests__/scoring.test.ts` | 198 | **17 deterministic tests**: stage match, category match, consensus weighting, pre-traction bonus, traction-deck bonus, London + AI prefs, `Any` wildcard, sort descending, no-mutation; templates' heavier London (`+25`) + AI (`+18`) + `olivia_action` (`+8`); filter by cat / stage / search; `industryToCategory` mapping + fallback. |
+| `src/app/page.tsx` (modified) | net +60 | Inspector library tab now mounts `<LibraryTab onApplyArchetype={...} />`; minimal `slides` state holds Apply output; aether-toned `appliedSummary` confirmation breadcrumb in center pane lists the slide-type sequence. |
+
+### Decisions
+
+- **Default deckConfig** is `{ stage: "Seed", industry: "AI", goal: "Pre-seed Round", tone: "Confident & Optimistic" }`. Defensible Track-C-Session-16 baseline; left-rail controls (project name, persona pills, deck-config 2×2 grid) land in S17.
+- **Slides state lives in `page.tsx` for now**, not in a Studio context provider. Trivial to lift into a context when S17 builds the slide editor; deferring premature abstraction (`feedback_world_class_standard`).
+- **Category-color mapping pragmatic, not rigid.** Some pairs share a token (`ai_modern` + `ai_template` both → `--aether-primary`; `london_uk` + `consumer` both → `--coral-down`) because the **label** and **mute background** disambiguate visually. Distinct tokens were assigned where the difference is semantically load-bearing (saas → mint-up, fintech → amber-warn).
+- **Apply flow generates slide types only.** Slide bodies (`text` / `fields`) intentionally left empty — S17 builds the per-slide editor (guided + freeform modes) per § 2.4. The breadcrumb shows the slide-type sequence so the user has a confirmation tail.
+- **Default active inspector tab switched from `olivia` → `library`** to give the new surface its 30 seconds of fame. S18 wires the Olivia chat brain; until then Library has the most working UX.
+- **`onApplyArchetype` callback receives the *scored* archetype**, not the `Deck` adapter shape. Necessary because the slide generator needs `slideCount`/`sections` which `toDeck()` collapses into a single `slideCount` field. `LibraryTab` keeps both around.
+
+### Verification
+
+- `npm run typecheck` — clean.
+- `npm test` — **197/197 passing** (180 baseline + 17 new scoring tests). No regressions.
+- Self-test on the failing math: two test expectations had to be corrected (forgot the `+15` Pre-traction bonus + `+4` `olivia_action`). Code was right; tests were wrong. Fixed in the same commit, no band-aid.
+- LTM source unchanged.
+- All commits pushed to `origin/main`.
+
+### Where Session 17 picks up
+
+**Track C — Session 17 (Track C internal session 4):** Section nav + document tree + frameworks panel.
+
+Per `BUILD_SEQUENCE.md` Track C row 12: four-button section nav (Pitch / Plan / Documents / General with counts), 10-category collapsible Documents tree (~65 docs total), 14-framework toggleable Frameworks panel, 16-section Plan nav. All wired to the engine ported in Track B (when Track B Session 8 documents-engine port lands). For S17 the wiring targets are stub data + correct structure; engine wiring lands when Documents track + Track V close.
+
+**Anticipated S17 gotchas:**
+
+- **Section nav drives `navSection` state** which gates which left-aside content + which center-main view renders. Five-way state machine (`pitch` / `plan` / `documents` / `general` + nothing-selected default).
+- **Documents tree depends on a `DOC_CATEGORIES` static const** — same shape as `DECK_ARCHETYPES`, lift it from the prototype line 8 (per the design doc § 3 inventory).
+- **Frameworks panel reuses `FRAMEWORKS` from prototype line 13** (already known from the SESSION 16 source-pull). 14 entries with `id`, `name`, `tag`, `cat`, `conf`, `color`. Same color-token migration pattern as category-colors.
+- **Plan section nav** uses `PLAN_SECTIONS` from prototype line 11 (TBD — not yet read; lift in S17). 16 entries with `key`, `title`, `icon`.
+- **Documents view's per-doc editor** is a thin stub in S17 — actual editing depth lands when Track B Session 8 (Documents engine port) closes. Per the BUILD_SEQUENCE Track B note, Documents engine is Clerk-blocked (W-009) and needs Track F first OR a Clerk-stub strategy.
+
+### Build status at session-16 close
+
+**Green.** Test: **197/197** passing. Typecheck: clean. Track C: **3 of 6 sessions ✅** (S14 + S15 + S16 done; S17–S19 remain). ~69 sessions remain to ship priorities 1–4 (was ~70 before S16).
