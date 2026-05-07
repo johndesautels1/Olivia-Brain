@@ -1,16 +1,20 @@
 # OLIVIA BRAIN — NEXT AGENT HANDOFF
 
-**Updated:** 2026-05-07
-**HEAD:** `75c39a5` on `main` (will advance one commit when this docs update lands)
-**State:** **Track C — Session 17 ✅.** Section nav + Documents tree + Frameworks panel + Plan section nav shipped. 4 new typed data modules (`DOC_CATEGORIES` 10 cats / ~65 docs, `PLAN_SECTIONS` 16, `FRAMEWORKS` 14, `SLIDE_META` 17) + 4 new UI components (`SectionNav`, `DocumentTree`, `FrameworksPanel`, `PlanSectionNav`) + `NavSection`/`ActiveDoc` types + 5 new `useState` slots in `page.tsx` driving conditional left-rail content per section + preserved "Other surfaces" quick-links list at bottom. Olivia now switches Pitch/Plan/Documents/General contexts cleanly — the navigational backbone the bicycle-wheel architecture needs. **207/207 tests passing**, typecheck clean.
+**Updated:** 2026-05-07 (end of batch S18-S22)
+**GitHub:** https://github.com/johndesautels1/Olivia-Brain
+**Local:** `D:\Olivia Brain`
+**HEAD:** `f40fb1b` on `main` (will advance one commit when this handoff commit lands)
+**State:** **Track C CLOSED (6/6 ✅) + Track V 3/9 ✅.** Studio Olivia workbench is feature-complete (workspace shell + 5 primitives + Library scoring + Section nav + Right-pane tabs + Polish). Track V (LTM Valuation Engine Port) opened: V1 schema (6 valuation models + SQL migration) + V2 types/bridge (`CompanyValuationInput` 60+ fields + `buildValuationInput`) + V3 engine math (10 methods + 3 V4 stochastic deps pulled forward). **223/223 tests passing**, typecheck clean. Vercel deploy queued.
 
 **OLIVIA NORTH STAR locked 2026-05-07** at `docs/OLIVIA_NORTH_STAR.md` — the single question every commit must answer yes to ("are we making her the world's most advanced agentic CIO across Florida real estate / international relocation / London tech / two-city comparison mini-apps / heart-health recovery / London transit?"). **Read first every session before any other doc.**
 
-**Plan locked 2026-05-07** — Track V (LTM Valuation Engine Port, 9 sessions, ~93 files cloning LTM's full valuation surface), Track Q (Quantara 56-field paragraphical intake, 7 sessions), Track P (Deal Protection gap-closures, 7 sessions). Track O Session O1 (Composio) pulls forward ahead of Q. June 8 reframed as DEMO target, not full ship. ~70 remaining sessions at ~4 sessions/day ≈ 3 weeks. Memory: `project_june_8_demo_strategy`, `project_track_v_ltm_valuation_port`, `feedback_4_sessions_per_day_pace`, `reference_olivia_north_star`. Full session-by-session breakdown in `docs/BUILD_SEQUENCE.md`.
+**Plan locked 2026-05-07** — Track V (~9 sessions, 3 done), Track Q (Quantara 56-field paragraphical intake, 7 sessions), Track P (Deal Protection gap-closures, 7 sessions). Track O Session O1 (Composio) pulls forward ahead of Q. June 8 reframed as DEMO target, not full ship. ~63 remaining sessions at ~4 sessions/day ≈ 3 weeks. Memory: `project_june_8_demo_strategy`, `project_track_v_ltm_valuation_port`, `feedback_4_sessions_per_day_pace`, `reference_olivia_north_star`, `feedback_olivia_brain_batch_session_pattern`, `feedback_olivia_brain_end_of_batch_handoff_protocol`. Full session-by-session breakdown in `docs/BUILD_SEQUENCE.md`.
 
-**Resume at Session 18 = Track C, Session 13 in original numbering: Right-pane tabs (Olivia / Preview / Themes / Audit) wired to backends + audit log mechanism + center-pane views.** Per BUILD_SEQUENCE Track C row 13.
+**Resume at Session 23 = Track V row V4 — stochastic + sensitivity port:** sensitivity.ts, hybrid.ts, kde.ts, market-comps-seed.ts, war-room-calendar.ts + LTM `__tests__/` port (engine, edge-cases, performance, security-rng, market-comps-seed, valuation-clock, e2e-pipeline). Per BUILD_SEQUENCE Track V row V4. Note: 3 of the originally-V4-scoped files (real-options, real-options-compound, monte-carlo) already landed in V3 because engine.ts depends on them — V4 has less to do than originally scoped.
 
-**Working tree:** clean post-docs-commit. All commits pushed to `origin/main`. **Vercel build green.**
+**Batch authorization status:** No batch is currently authorized. Per `feedback_olivia_brain_batch_session_pattern` memory, the next agent batches only when the user explicitly says (e.g. *"build S23-S27, your judgment on minor decisions, stop on blockers"*). Default is one-task-at-a-time.
+
+**Working tree:** clean post-handoff-commit. All commits pushed to `origin/main`. **Vercel build green.**
 
 > The previous version of this file (post-Session-11 era) is preserved in git history. This file replaces it with the current post-Session-12 state. The session series captured here (Sessions 1–12) is documented in detail in `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Parts 10–19.
 
@@ -137,6 +141,7 @@ Per BUILD_SEQUENCE Track C row 11:
 |--------|------|-----|
 | ~~**Apply C1 migration to DB**~~ | DONE 2026-05-03 (Option B — Supabase SQL Editor paste). Calendar tables exist in dev DB. | — |
 | **Apply C3 migration to DB** — paste contents of `prisma/sql/02-add-voice-olivia-foundation.sql` into Supabase SQL Editor and Run (Option B path, identical workflow to C1). | Before any of C4's routes start writing to voice/olivia tables | Schema-in-code → DB tables. 9 new tables: olivia_conversations, olivia_messages, olivia_presentations, olivia_consents, olivia_guardrails, olivia_user_memories, voice_conversations, voice_contacts, voice_action_items. |
+| **Apply V1 migration to DB** — paste `prisma/sql/03-add-valuation-foundation.sql` into Supabase SQL Editor and Run (Option B path, identical to C1+C3). | Before any V7 valuation API routes write to the new tables | 6 new valuation-domain tables: valuation_subjects, valuation_runs, valuation_sensitivities, financial_snapshots, deal_room_sessions, deal_room_messages. |
 | Set `STUB_USER_ID` env var in Vercel (Preview only) | Before testing C4 routes in Preview | The `lib/auth/session.ts` stub reads this. Set it to any string (e.g., `clerk_user_dev_001`). Throws clearly if unset. **NOT in Production** — production refuses to run the stub at all (W-015). |
 | Set Twilio env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`) in Vercel | Before C4 routes go live | Twilio call lifecycle + webhook signature verification. **Sensitive, Production + Preview only.** Add to `env.ts` when wired. |
 | Set ElevenLabs env vars (`ELEVENLABS_API_KEY`, `ELEVENLABS_OLIVIA_VOICE_ID`) | Before any voice TTS feature goes live | Used by `/api/olivia/voice` + `/api/olivia/call/audio` for ElevenLabs audio generation. **Sensitive, Production + Preview only.** |
@@ -168,10 +173,16 @@ These ARE the architectural decisions that took multiple painful conversations t
 
 ---
 
-## RECENT COMMIT TRAIL (last 18)
+## RECENT COMMIT TRAIL (last 24)
 
 ```
-<this docs commit>  docs: close Track C Session 17 — section nav + docs tree + frameworks panel + plan section nav
+<this handoff commit>  docs: end-of-batch handoff S18-S22 — Track C CLOSED + Track V 3/9 ✅
+<docs commit>          docs: close batch S18-S22 — SESSION_LOG Parts 25-29 + judgment-call trail
+f40fb1b feat(valuation): Track V Session V3 — engine math port (10 methods)
+9a67f05 feat(valuation): Track V Session V2 — types + bridge port
+ddd3f1b feat(valuation): Track V Session V1 — schema port (6 valuation models)
+9c2f25d feat(studio): Track C Session 19 — polish (J/K keyboard nav + autosave + theme switching)
+98a63d6 feat(studio): Track C Session 18 — right-pane tabs + audit log + theme picker
 75c39a5 feat(studio): Track C Session 17 — section nav + documents tree + frameworks panel + plan section nav
 833ab51 docs: add OLIVIA_NORTH_STAR.md as the first agent read every session
 3142ae8 docs: close Track C Session 16 — Library tab + scoring + Apply flow shipped

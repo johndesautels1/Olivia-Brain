@@ -1240,3 +1240,124 @@ Per `BUILD_SEQUENCE.md` Track C row 13: Olivia tab uses the chat brain from Trac
 ### Build status at session-17 close
 
 **Green.** Test: **207/207** passing. Typecheck: clean. Track C: **4 of 6 sessions ✅** (S14 + S15 + S16 + S17 done; S18–S19 remain). ~68 sessions remain to ship priorities 1–4 (was ~69 before S17).
+
+---
+
+## Part 25 — Session 18 (Track C close-out, internal session 5)
+
+**HEAD `98a63d6`. 218/218 tests passing.** Right-pane tabs + audit log + theme picker shipped.
+
+| Bucket | Files | LOC | Role |
+|---|---|---|---|
+| Data | `themes.ts`, `audit.ts` | 89, 47 | 5 themes (raw hex → tokens) + AuditEntry/pushAuditEntry pure |
+| UI | `OliviaChatTab`, `PreviewTab`, `ThemesTab`, `AuditTab` | 218, 167, 96, 113 | 5-tab Inspector with chat composer + light-mode preview + 5 theme cards + audit log |
+| Tests | `right-pane-tabs.test.tsx` | 138 | 11 cases incl pure pushAuditEntry round-trip + cap |
+| Wiring | `page.tsx` | +60 | 5-tab Inspector, audit push at 8 handler sites, themes state |
+
+**Decisions:**
+- Insight cards (Confidence/Suggestion/Warning) deferred — needs `/api/olivia/analyze` (post-Track-V).
+- Preview tab uses literal `#FAFBFC` / `#111827` — only place in app where dark gives way (per design § 8 #7).
+- ThemesTab surfaces picker; theme application via CSS-var swap lands in S19.
+- AuditTab "Reset Workspace" reduced to "Clear audit log" — full reset alongside autosave (S19).
+- pushAudit fires from every state-changing handler; functional setState in useCallback covers it cleanly without a hook abstraction.
+
+**Resume:** Session 19 polish — J/K nav + focus-trap + autosave + theme application.
+
+## Part 26 — Session 19 (Track C close, internal session 6)
+
+**HEAD `9c2f25d`. 223/223 tests. TRACK C CLOSED (6/6 sessions ✅).**
+
+| File | LOC | Role |
+|---|---|---|
+| `lib/studio/persistence.ts` | 86 | WorkspaceSnapshot + STORAGE_KEY + load/save/clear (silent on quota/parse errors) |
+| `hooks/__tests__/persistence.test.ts` | 65 | 5 cases — null when missing, round-trip, version mismatch, malformed JSON, clear |
+| `app/page.tsx` | +101 | useAutoSave({key, debounceMs:1500, onRestore}); useKeyboardNav({onNext, onPrev}); theme tokens written to `<html>` via setProperty |
+
+**Decisions:**
+- Discovered `useAutoSave.ts` (capital S) + `useKeyboardNav.ts` already existed with richer APIs — adapted page.tsx to consume them, did not duplicate. Brief Windows case-insensitive collision detour resolved.
+- Autosave gated on `isRestored` so the seed values don't overwrite real persisted state on first paint.
+- Theme application: 3 CSS-var overrides (`--studio-theme-{accent,primary,surface}`) + `data-studio-theme` attribute on `<html>`. Default tokens stay as the fallback when a theme doesn't override.
+- Focus-trap (Radix Dialog handles it) + arrow-key tab rover (Inspector handles it) already done in S14/S15 — no new work.
+
+**Resume:** Session 20 = V1 schema port (Track V opens).
+
+## Part 27 — Session 20 (Track V opens, V1)
+
+**HEAD `ddd3f1b`. Schema valid + Prisma client generated. 223/223 tests still passing.**
+
+6 new Prisma models in `prisma/schema.prisma` + SQL migration at `prisma/sql/03-add-valuation-foundation.sql` (177 lines):
+
+| Model | Purpose |
+|---|---|
+| `ValuationSubject` | User company being valued — 6 JSON evidence cols |
+| `ValuationRun` | Single execution of the 10-method engine |
+| `ValuationSensitivity` | Tornado-chart sensitivity rows (1:N from Run) |
+| `FinancialSnapshot` | Point-in-time financial records (1:N from Subject) |
+| `DealRoomSession` | **Valuation-context** negotiation simulator (NOT the sales-domain one dropped in C1) |
+| `DealRoomMessage` | Turns in a DealRoomSession |
+
+**Decisions:**
+- cuid → `@db.Uuid`, userProfileId → userId (matches C2/C3/C4 pattern).
+- LTM-domain FKs (UserProfile, AnalysisResult, Organization, Document) all dropped to plain UUID/UUID[] — bridge V2 reads via UKP if needed.
+- Track V exception logged in `project_ltm_types_no_speculative_generalization` memory: valuation-domain models ARE in scope (different from sales-domain DealRoomSession dropped in C1).
+- `Document.feedsValuation` flag deferred — Document not in OB until Track B Session 8.
+
+**Operator action:** paste `prisma/sql/03-add-valuation-foundation.sql` into Supabase SQL Editor and Run.
+
+**Resume:** Session 21 = V2 types + bridge.
+
+## Part 28 — Session 21 (Track V V2)
+
+**HEAD `9a67f05`. Typecheck clean. 223/223 tests still passing.**
+
+| File | LOC | Role |
+|---|---|---|
+| `lib/valuation/benchmarks.ts` | 64 | London tech multiples (11 sectors), regional seed sizes, stage discount rates, macro constants. Byte-for-byte from LTM. |
+| `lib/valuation/types.ts` | 557 | Zod schemas + TS types — `CompanyValuationInput` (60+ fields), `MetricEvidence`, output types, cascade types, intelligence-agent types. Byte-for-byte from LTM. |
+| `lib/valuation/bridge.ts` | 380 | `buildValuationInput()` + JSON shape types + `safeMetric` + 15-field `calculateCompleteness`. **Simplified vs LTM** — `AnalysisResult.companyProfile` and `Organization.techStackJson.autoValuation` fallbacks deferred (OB doesn't own those models; UKP-bridge picks up later). Surfaces missing critical fields as warnings. |
+
+**Decisions:**
+- Bridge writes `completenessScore` back to ValuationSubject after each call (best-effort; never blocks return).
+- Default `prisma` import is the OB convention (`import prisma from '@/lib/db/client'`), not named.
+- No new tests in V2 — bridge integration tests land in V7 against a seeded subject (full pipeline).
+
+**Resume:** Session 22 = V3 engine math.
+
+## Part 29 — Session 22 (Track V V3)
+
+**HEAD `f40fb1b`. Typecheck clean. 223/223 tests still passing. Track V: 3 of 9 sessions ✅.**
+
+8 files copied from `D:\London-Tech-Map\src\lib\valuation\` (byte-for-byte except cascade-toggle):
+
+| File | Bytes | Role |
+|---|---|---|
+| `engine.ts` | 74,539 | 10 valuation methods (scorecard, vc_method, revenue_multiple, ebitda_multiple, dcf, precedent_transactions, strategic_synergy, cost_to_duplicate, liquidation, real_options) + STAGE_WEIGHT_PRESETS + applyBuyerTypeAdjustments + `runValuation` orchestrator. |
+| `helpers.ts` | 2,706 | nz, band, mergeBandsWeighted, equityFromEnterprise, qualityPenaltyPct, clamp. |
+| `valuation-clock.ts` | 4,355 | Time-decay helpers. |
+| `cascade-toggle.ts` | ADAPTED | DB feature-toggle gate dropped (OB doesn't own `feature_toggles` table); env-var-only floor preserved. Restore DB-toggle path post-Track-V. |
+| `field-glossary.ts` | 59,145 | User-facing glossary for every input/output field. Pure data. |
+| `real-options.ts` | (V4 pulled forward) | Black-Scholes expansion + abandonment options. |
+| `real-options-compound.ts` | (V4 pulled forward) | Compound CRR binomial tree. |
+| `monte-carlo.ts` | (V4 pulled forward) | DCF Monte Carlo simulator. |
+
+**Decisions:**
+- Pulled 3 V4 files forward into V3 because `engine.ts` imports them. Net acceleration of Track V schedule, not scope creep.
+- LTM `__tests__/` directory deferred to V4 — they reference V4 helpers (market-comps-seed, hybrid, sensitivity) that haven't ported yet; deferring keeps the suite coherent.
+- `cascade-toggle.ts` is the only adapted file — env-var-only path is a strict subset of LTM behaviour. Restore DB-toggle path when OB ports `feature_toggles`.
+
+**Judgment calls in this batch (auditable trail):**
+1. (S18) Insight-state cards in OliviaChatTab → deferred to post-Track-V `/api/olivia/analyze`.
+2. (S18) AuditTab "Reset Workspace" → reduced to "Clear audit log"; full reset with autosave landed in S19.
+3. (S18) Default Inspector tab → switched from "olivia" to "library" so the new surface gets visibility (S16's most-baked capability).
+4. (S19) Adapted page.tsx to existing `useAutoSave` (capital S) + `useKeyboardNav` instead of duplicating after Windows case-collision discovery.
+5. (S19) Workspace reset trimmed to clear-audit-only — full slides/plan/docs/theme reset deferred.
+6. (S20) DealRoomSession naming clash with C1-dropped sales-domain model → memory-clarified Track V exception in `project_ltm_types_no_speculative_generalization`.
+7. (S20) `Document.feedsValuation` flag deferred to Track B Session 8 (Document model not in OB).
+8. (S21) Bridge `AnalysisResult` + `Organization` fallback paths deferred → UKP-bridge pickup later. Surfaces as warnings when critical fields missing.
+9. (S22) 3 V4 files (real-options, real-options-compound, monte-carlo) pulled forward into V3 — engine compile dependency.
+10. (S22) `cascade-toggle.ts` adapted to env-var-only (DB feature-toggle gate dropped).
+11. (S22) LTM `__tests__/` port deferred to V4.
+
+### Build status at session-22 close (end of batch S18-S22)
+
+**Green.** Test: **223/223** passing across 17 test files. Typecheck: clean. **Track C CLOSED (6/6 ✅)** + Track V 3/9 ✅ (V1 schema, V2 types+bridge, V3 engine math). ~63 sessions remain to ship priorities 1–4 (was ~68 before this batch).
