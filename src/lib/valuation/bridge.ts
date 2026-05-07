@@ -257,6 +257,14 @@ export interface BridgeOptions {
   geographyOverride?: string;
   /** Optional strategic synergy override (post-Track-L from cluesintelligence). */
   strategicSynergy?: StrategicSynergyInputs;
+  /**
+   * Optional Organization id that a `ValuationRun` is being scoped against.
+   * Persists onto `ValuationRun.targetMatchOrgId` and lets the UKP bridge
+   * pull strategic-synergy data for a specific target buyer when running
+   * embedded inside an LTM-shaped tenant. Pass-through only — the bridge
+   * does not look the org up itself (memory: no LTM Organization model).
+   */
+  targetMatchOrgId?: string;
 }
 
 /**
@@ -414,3 +422,106 @@ export async function buildValuationInput(
 
 /** Re-export the subject type for callers wiring CRUD around the bridge. */
 export type { ValuationSubject };
+
+// ═══════════════════════════════════════════════════════════════════════
+// MERGE BRIDGE + CASCADE
+// ═══════════════════════════════════════════════════════════════════════
+// When the cascade-extraction agents (V5/V6) produce a CompanyValuationInput
+// alongside the bridge's DB-sourced input, we keep the better data per field.
+//
+// Rules:
+//   - Identity (name, sector, geography, stage, businessModel): bridge wins.
+//   - Numeric metrics: pick the source with the higher-confidence non-null value.
+//   - Qualitative scores (founder risk, IP strength, etc.): bridge wins —
+//     cascade hardcodes defaults and would overwrite real DB scores.
+//   - Market benchmarks, scorecardFactors, regionalSeedBenchmark,
+//     strategicSynergy: always bridge.
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Pick the better MetricEvidence: prefer the source with non-null value and higher confidence. */
+function pickBetterMetric(bridge: MetricEvidence, cascade: MetricEvidence): MetricEvidence {
+  if (cascade.value !== null && bridge.value === null) return cascade;
+  if (bridge.value !== null && cascade.value === null) return bridge;
+  if (cascade.value !== null && bridge.value !== null) {
+    return cascade.confidence >= bridge.confidence ? cascade : bridge;
+  }
+  return bridge;
+}
+
+/**
+ * Merge bridge data (from DB + benchmarks) with cascade data (from LLM extraction).
+ *
+ * Bridge is the authoritative source for qualitative scores, scorecard
+ * factors, regional seed benchmark, strategic synergy, and market benchmarks.
+ * Cascade wins for `MetricEvidence` fields where it extracted a value with
+ * higher confidence than the bridge had.
+ */
+export function mergeBridgeAndCascade(
+  bridge: CompanyValuationInput,
+  cascade: CompanyValuationInput,
+): CompanyValuationInput {
+  return {
+    companyName: bridge.companyName,
+    companyId: bridge.companyId,
+    sector: bridge.sector,
+    subsector: bridge.subsector,
+    geography: bridge.geography,
+    stage: bridge.stage,
+    businessModel: bridge.businessModel,
+
+    annualRevenue: pickBetterMetric(bridge.annualRevenue, cascade.annualRevenue),
+    arr: pickBetterMetric(bridge.arr, cascade.arr),
+    grossMarginPct: pickBetterMetric(bridge.grossMarginPct, cascade.grossMarginPct),
+    ebitda: pickBetterMetric(bridge.ebitda, cascade.ebitda),
+    ebitdaMarginPct: pickBetterMetric(bridge.ebitdaMarginPct, cascade.ebitdaMarginPct),
+    burnMonthly: pickBetterMetric(bridge.burnMonthly, cascade.burnMonthly),
+    runwayMonths: pickBetterMetric(bridge.runwayMonths, cascade.runwayMonths),
+    growthYoYPct: pickBetterMetric(bridge.growthYoYPct, cascade.growthYoYPct),
+    netRevenueRetentionPct: pickBetterMetric(bridge.netRevenueRetentionPct, cascade.netRevenueRetentionPct),
+    churnPct: pickBetterMetric(bridge.churnPct, cascade.churnPct),
+    customerConcentrationTop3Pct: pickBetterMetric(bridge.customerConcentrationTop3Pct, cascade.customerConcentrationTop3Pct),
+    cacPaybackMonths: pickBetterMetric(bridge.cacPaybackMonths, cascade.cacPaybackMonths),
+    ltvToCac: pickBetterMetric(bridge.ltvToCac, cascade.ltvToCac),
+    burnMultiple: pickBetterMetric(bridge.burnMultiple, cascade.burnMultiple),
+
+    cashOnHand: pickBetterMetric(bridge.cashOnHand, cascade.cashOnHand),
+    debt: pickBetterMetric(bridge.debt, cascade.debt),
+    fullyDilutedShares: pickBetterMetric(bridge.fullyDilutedShares, cascade.fullyDilutedShares),
+    optionPoolPct: pickBetterMetric(bridge.optionPoolPct, cascade.optionPoolPct),
+
+    tam: pickBetterMetric(bridge.tam, cascade.tam),
+    sam: pickBetterMetric(bridge.sam, cascade.sam),
+    som: pickBetterMetric(bridge.som, cascade.som),
+    marketGrowthPct: pickBetterMetric(bridge.marketGrowthPct, cascade.marketGrowthPct),
+
+    capitalRaisedToDate: pickBetterMetric(bridge.capitalRaisedToDate, cascade.capitalRaisedToDate),
+    lastRoundPreMoney: pickBetterMetric(bridge.lastRoundPreMoney, cascade.lastRoundPreMoney),
+    lastRoundPostMoney: pickBetterMetric(bridge.lastRoundPostMoney, cascade.lastRoundPostMoney),
+
+    founderDependencyRisk: bridge.founderDependencyRisk,
+    legalRisk: bridge.legalRisk,
+    ipStrength: bridge.ipStrength,
+    productMaturity: bridge.productMaturity,
+    goToMarketMaturity: bridge.goToMarketMaturity,
+    londonStrategicFit: bridge.londonStrategicFit,
+    managementStrength: bridge.managementStrength,
+    founderReputationScore: bridge.founderReputationScore,
+    competitionIntensityScore: bridge.competitionIntensityScore,
+
+    capitalizedBuildCost: pickBetterMetric(bridge.capitalizedBuildCost, cascade.capitalizedBuildCost),
+    replacementCost: pickBetterMetric(bridge.replacementCost, cascade.replacementCost),
+    patentsCount: cascade.patentsCount > 0 ? cascade.patentsCount : bridge.patentsCount,
+    proprietaryDataScore: bridge.proprietaryDataScore,
+    trademarksCount: bridge.trademarksCount,
+    regulatoryApprovals: bridge.regulatoryApprovals,
+
+    scorecardFactors: bridge.scorecardFactors,
+    regionalSeedBenchmark: bridge.regionalSeedBenchmark,
+    strategicSynergy: bridge.strategicSynergy,
+
+    volatility: bridge.volatility,
+    timeToExit: bridge.timeToExit,
+
+    marketBenchmarks: bridge.marketBenchmarks,
+  };
+}
