@@ -44,9 +44,15 @@ import { SectionNav } from "@/components/studio/SectionNav";
 import { DocumentTree } from "@/components/studio/DocumentTree";
 import { FrameworksPanel } from "@/components/studio/FrameworksPanel";
 import { PlanSectionNav } from "@/components/studio/PlanSectionNav";
+import { OliviaChatTab } from "@/components/studio/OliviaChatTab";
+import { PreviewTab } from "@/components/studio/PreviewTab";
+import { ThemesTab } from "@/components/studio/ThemesTab";
+import { AuditTab } from "@/components/studio/AuditTab";
 import { generateSlidesForArchetype } from "@/lib/studio/slides";
 import { TOTAL_DOC_COUNT } from "@/lib/studio/doc-categories";
 import { PLAN_SECTIONS } from "@/lib/studio/plan-sections";
+import { DEFAULT_THEME, type ThemeKey } from "@/lib/studio/themes";
+import { pushAuditEntry, type AuditEntry } from "@/lib/studio/audit";
 import type {
   ActiveDoc,
   NavSection,
@@ -111,36 +117,84 @@ export default function HomePage() {
   );
   const [docCompletions] = useState<Record<string, number>>(() => ({}));
 
+  /* S18 — audit log + active theme. */
+  const [auditLog, setAuditLog] = useState<readonly AuditEntry[]>([]);
+  const [activeTheme, setActiveTheme] = useState<ThemeKey>(DEFAULT_THEME);
+
+  const pushAudit = useCallback((text: string) => {
+    setAuditLog((prev) => pushAuditEntry(prev, text));
+  }, []);
+
   const handleApplyArchetype = (
     archetype: ScoredArchetype | ScoredTemplate,
   ) => {
     const fresh = generateSlidesForArchetype(archetype);
     setSlides(fresh);
     setAppliedSummary(
-      `Applied "${archetype.name}" — ${fresh.length} slides regenerated. Editor lands in Session 18.`,
+      `Applied "${archetype.name}" — ${fresh.length} slides regenerated. Slide editor lands in a future session.`,
     );
+    pushAudit(`Applied archetype "${archetype.name}" → ${fresh.length} slides`);
   };
 
-  const toggleFramework = useCallback((id: number) => {
-    setActiveFrameworks((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  const toggleFramework = useCallback(
+    (id: number) => {
+      setActiveFrameworks((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      pushAudit(`Toggled framework #${id}`);
+    },
+    [pushAudit],
+  );
 
-  const toggleCategory = useCallback((key: string) => {
-    setExpandedCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  const toggleCategory = useCallback(
+    (key: string) => {
+      setExpandedCats((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    },
+    [],
+  );
 
-  const handleSelectDoc = useCallback((category: string, doc: string) => {
-    setActiveDoc({ category, doc });
+  const handleSelectDoc = useCallback(
+    (category: string, doc: string) => {
+      setActiveDoc({ category, doc });
+      pushAudit(`Opened doc: ${category} → ${doc}`);
+    },
+    [pushAudit],
+  );
+
+  const handleNavSection = useCallback(
+    (section: NavSection) => {
+      setNavSection(section);
+      pushAudit(`Switched section to ${section}`);
+    },
+    [pushAudit],
+  );
+
+  const handlePlanSelect = useCallback(
+    (idx: number) => {
+      setActivePlanIdx(idx);
+      pushAudit(`Selected plan section: ${PLAN_SECTIONS[idx]?.title ?? `#${idx}`}`);
+    },
+    [pushAudit],
+  );
+
+  const handleThemeSelect = useCallback(
+    (key: ThemeKey) => {
+      setActiveTheme(key);
+      pushAudit(`Theme changed to ${key}`);
+    },
+    [pushAudit],
+  );
+
+  const clearAuditLog = useCallback(() => {
+    setAuditLog([]);
   }, []);
 
   const inspectorTabs = useMemo<InspectorTab[]>(
@@ -148,46 +202,49 @@ export default function HomePage() {
       {
         id: "olivia",
         label: "Olivia",
-        content: (
-          <div style={{ display: "grid", gap: 12 }}>
-            <p style={{ margin: 0, color: "var(--fg-secondary)" }}>
-              Real-time intelligence — wires to <code>/api/olivia/chat</code>{" "}
-              in Session 18.
-            </p>
-            <p
-              style={{
-                margin: 0,
-                color: "var(--fg-tertiary)",
-                fontSize: "var(--text-xs)",
-              }}
-            >
-              For the live avatar smoke flow today, visit{" "}
-              <a href="/test-avatar" style={{ color: "var(--aurum-primary)" }}>
-                /test-avatar
-              </a>
-              .
-            </p>
-          </div>
-        ),
+        content: <OliviaChatTab onAuditEntry={pushAudit} />,
       },
       {
         id: "library",
         label: "Library",
+        content: <LibraryTab onApplyArchetype={handleApplyArchetype} />,
+      },
+      {
+        id: "preview",
+        label: "Preview",
         content: (
-          <LibraryTab onApplyArchetype={handleApplyArchetype} />
+          <PreviewTab
+            navSection={navSection}
+            slides={slides}
+            activePlanIdx={activePlanIdx}
+            activeDoc={activeDoc}
+            themeName={activeTheme}
+          />
         ),
+      },
+      {
+        id: "themes",
+        label: "Themes",
+        content: <ThemesTab active={activeTheme} onSelect={handleThemeSelect} />,
       },
       {
         id: "audit",
         label: "Audit",
-        content: (
-          <p style={{ margin: 0, color: "var(--fg-secondary)" }}>
-            Cascade trace + agent-decision log lands in Session 18.
-          </p>
-        ),
+        content: <AuditTab log={auditLog} onClear={clearAuditLog} />,
       },
     ],
-    [],
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+    [
+      auditLog,
+      navSection,
+      slides,
+      activePlanIdx,
+      activeDoc,
+      activeTheme,
+      pushAudit,
+      handleThemeSelect,
+      clearAuditLog,
+    ],
   );
 
   return (
@@ -206,7 +263,7 @@ export default function HomePage() {
            * + (post-Track-V) the center-pane view. */}
           <SectionNav
             active={navSection}
-            onChange={setNavSection}
+            onChange={handleNavSection}
             counts={{
               pitch: slides.length,
               plan: PLAN_SECTIONS.length,
@@ -224,7 +281,7 @@ export default function HomePage() {
           {navSection === "plan" && (
             <PlanSectionNav
               active={activePlanIdx}
-              onSelect={setActivePlanIdx}
+              onSelect={handlePlanSelect}
               confidences={planConfidences}
             />
           )}
