@@ -1612,3 +1612,60 @@ That's the bicycle-wheel rule. The first attempt skipped it. Reverted both commi
 **Vercel:** post-`7e4d356` deploy will pick up the new env-var schema (6 added optional secrets). Operator can wire the 7 Q3 integration keys at any point; each integration mock-degrades when its key is absent.
 
 **Next session:** **Track Q Session Q1 — 56-field schema design + form scaffold.** Define canonical Zod schemas in `src/lib/quantara/schema.ts` (sectioned: Core Financials, Ownership/Cap Table, Market, Team/Founder, IP, Vertical-Specific). Per BUILD_SEQUENCE Track Q row Q1.
+
+---
+
+## Part 37 — Session 30 (Track Q Session Q1 — 56-field Quantara schema)
+
+**HEAD `75c3b5d`. 427/427 tests across 28 suites. Typecheck clean.** Canonical 56-field founder-valuation intake schema, Prisma `quantaraJson` extension column, round-trip helpers, full validation + round-trip tests. **Track Q 1/7 ✅.**
+
+### LTM-first audit (per HANDOFF gotcha §3.10)
+
+| Capability | LTM has? | Decision |
+|---|---|---|
+| 56-field founder financial intake | YES — `D:\London-Tech-Map\public\assets\founder-valuation-form.html` (1762 LOC HTML mockup, never built into LTM React per `MASTER_BUILD_ORDER.md` rows 67-71 still ⬜) | OB-original schema MIRRORING the LTM mockup. OB is canonical implementation per June-8-demo strategy. |
+| Field-list breakdown by section | YES — `D:\London-Tech-Map\docs\TIER_SYSTEM.md` §"56-FIELD VALUATION INTAKE FORM" | Adopt taxonomy verbatim — 12 sections summing to 56. |
+| `ValuationSubject` model + 6 engine JSON columns | YES (origin) → YES OB (Track V V1) | REUSE for ~13 metric-wrapped fields; engine bridge contract untouched. |
+| `CompanyValuationInputSchema` (engine input) | YES → YES OB (Track V V2) | REUSE — Quantara imports `MetricEvidenceSchema` + `BuyerType` from `valuation/types.ts`. |
+| Composio dispatch | NO LTM → YES OB (O1) | Out of Q1 scope; Q3 wires the auto-fill. |
+| `clues-questionnaire-engine` repo | N/A | OUT OF SCOPE — different app (cluesintelligence relocation, 2,486 questions, 10 life domains). Not the founder-valuation 56 fields. |
+| `field_map_key` immutable identifier | NO LTM | Adopt the pattern: `QUANT_<FIN|CAP|FND|CRR|TRC|MKT|IPM|TEM|RSK|GRW|PRJ|STR>_NNN`. |
+
+### Files
+
+| File | Action | Notes |
+|---|---|---|
+| `src/lib/quantara/types.ts` | NEW | Type contracts: `QuantaraFieldId` (`f1`..`f56`), `QuantaraFieldMapKey`, `QuantaraSection`, `QuantaraFieldDefinition`, `QuantaraValues`, `QuantaraValuationSubjectShape`, `LastRoundType`, `TargetRoundType`, `QUANTARA_FIELD_COUNT=56`, `QUANTARA_FIELD_MAP_KEY_REGEX`. |
+| `src/lib/quantara/sections.ts` | NEW | 12-section catalog (Core Financials 14 · Capital Structure 4 · Funding History 3 · Current Round 2 · Traction 6 · Market 4 · IP & Moat 6 · Team 5 · Risk 3 · Growth Levers 4 · Projections 4 · Strategic 1 = 56). Defensive load-time invariant. |
+| `src/lib/quantara/schema.ts` | NEW | 56 `QuantaraFieldDefinition` records + Zod schemas (currency GBP, signed currency, percent, bounded percent 0..100, non-negative int, positive int, 1-10 score, short/long text, `LastRoundType` + `TargetRoundType` enums) + investor-class relevance presets + composite `QuantaraValuesSchema`. Defensive load-time field-count assertion. |
+| `src/lib/quantara/field-mapping.ts` | NEW | Per-field destination map: 13 metric-wrapped into existing engine JSON cols, 36 plain into `quantaraJson`. Round-trip helpers `quantaraToValuationSubject` + `valuationSubjectToQuantara` + `mergeQuantaraIntoSubject`. |
+| `src/lib/quantara/index.ts` | NEW | Barrel. |
+| `src/lib/quantara/__tests__/schema.test.ts` | NEW | 29 cases — section invariants, field-id format/uniqueness, field-map-key regex/uniqueness/section-code-match, weight ∈ {1,2,3}, investor-class relevance non-empty, lookup-table consistency, per-field rules (f1≥0, f7 negative-permitted, f17 positive integer, f18 0..100, f13 NRR>100 OK, f21/f23 enum strict, f39/f44/f47 1..10 integer, f24 non-neg int, f56 1..30), composite payload accepts empty/sparse + rejects out-of-range. |
+| `src/lib/quantara/__tests__/round-trip.test.ts` | NEW | 13 cases — full LTM-form fixture (`FULL_VALUES`) round-trips losslessly, sparse fixture preserves absence (no over-projection), MetricEvidence-wrap on engine cols, plain values in `quantaraJson`, undefined/null skipped, `mergeQuantaraIntoSubject` preserves untouched subkeys. |
+| `prisma/schema.prisma` | MODIFY | Add `quantaraJson Json?` column to `ValuationSubject` with triple-slash JSDoc listing the ~36 subkeys. |
+| `prisma/sql/04-add-quantara-foundation.sql` | NEW | Single `ALTER TABLE valuation_subjects ADD COLUMN "quantaraJson" JSONB`. Hand-written (additive change, no diff-generation needed). |
+
+### Decisions / judgment-call trail
+
+1. **OB is canonical for Quantara, not LTM.** LTM has the HTML mockup but never built it. June-8-demo strategy (locked 2026-05-07) makes OB the canonical implementation. LTM port-back is a separate post-OB session.
+2. **`clues-questionnaire-engine` is the wrong audit target.** First plan-presentation read it as the source-of-truth. Founder corrected: "the clues questionnaire engine and its 2500 questions plus or minus has nothing to do with london-tech-map and its 56 critical financial questions two different apps two different purposes we are training olivia on both." Audit retargeted to LTM `founder-valuation-form.html`. Plan corrected before any code shipped.
+3. **Single `quantaraJson` extension column** rather than expanding existing engine JSON column shapes. Keeps the Track V V2 engine bridge contract untouched. Quantara is the intake-form layer; engine input contract is its own concern.
+4. **`field_map_key` pattern adopted** from `clues-questionnaire-engine` (the relocation app). Different app, same primitive — immutable identifiers survive label/schema revision.
+5. **Founder-confidence default 0.7** for MetricEvidence wraps. Form answers come direct from the founder. Q4 cascade reconciles upward when corroborated by Stripe / CH / GitHub.
+6. **Cap-table sanity locked at the schema layer** — `f17` Fully Diluted Shares is `z.number().int().positive()`, not just non-negative. Catches the obvious cap-table-empty bug at parse time.
+7. **f35 Patents Granted → `ipDataJson.patentsCount`** (engine-consumed); f34 Patents Filed → `quantaraJson.patentsFiled` (form-only). Single canonical engine count; richer narrative stays Quantara-side.
+8. **f36 (text proprietary dataset description) + f38 (text regulatory approvals) NOT mapped onto engine boolean `regulatoryApprovals`** — engine boolean is a different concern; richer founder narrative goes to `quantaraJson` for Q4 cascade reasoning.
+9. **`mergeQuantaraIntoSubject` helper added** so partial saves don't clobber engine-only subkeys (e.g. `ebitdaMarginPct`, `cacPaybackMonths`) that exist on `ValuationSubject` but aren't in the Quantara field set.
+10. **SQL migration hand-written** rather than `prisma migrate diff`-generated. Single additive `ALTER TABLE` — no diff drift risk.
+
+### Build status at session-30 close
+
+**Green.** Tests: **427/427** passing across 28 suites (was 385/26 at O1 close — +42 new Quantara tests, +2 new test suites, no regressions). Typecheck: clean. **Track Q 1/7 ✅.** ~55 sessions remain to ship priorities 1–4.
+
+### Operator action surfaced
+
+| Action | When | Why |
+|---|---|---|
+| Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase | Before any Q1+ code reads/writes `ValuationSubject.quantaraJson` | Adds the `quantaraJson JSONB` column to `valuation_subjects`. |
+
+**Next session:** **Track Q Session Q2 — Form UI (non-metamorphic baseline).** Port the Quantara HTML wireframe layout to React + Aurum/Aether tokens (replacing the cyan branding). Build form rendering all 56 fields. Live data-completeness % bar. "Field N of 56" progress chip. Per BUILD_SEQUENCE Track Q row Q2.
