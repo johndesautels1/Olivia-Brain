@@ -65,31 +65,6 @@ export interface ProviderAttempt {
   error?: string;
 }
 
-/** Per-tool-dispatch entry on a FoundationTrace. Track O Session O1.
- *  Logs dispatch decisions (auto-approved / pending / rejected) without
- *  ever putting tool argument PII into the trace — only metadata. */
-export interface ToolCallTrace {
-  /** Stable tool id (e.g. "gmail.send", "calendar.create"). */
-  toolName: string;
-  /** Action verb portion of `toolName` ("send" / "create" / "read"). */
-  actionName: string;
-  /** Approval-gate decision after the confidence + risk evaluation. */
-  decision: "auto_approved" | "pending_approval" | "executed" | "rejected" | "not_configured";
-  /** Risk level the gate assigned. */
-  riskLevel: "low" | "medium" | "high" | "critical";
-  /** Confidence the dispatcher computed (0.0–1.0). */
-  confidenceScore: number;
-  /** Approval id when the dispatch parked for human review. */
-  pendingApprovalId?: string;
-  /** Whether the underlying Composio call succeeded (only meaningful when
-   *  decision === "executed" or "auto_approved"). */
-  success?: boolean;
-  /** Wall-clock duration of the dispatch attempt in ms. */
-  durationMs: number;
-  /** Sanitized error name when dispatch failed (no PII). */
-  error?: string;
-}
-
 export interface FoundationTrace {
   id: string;
   createdAt: string;
@@ -103,9 +78,6 @@ export interface FoundationTrace {
   integrationSnapshot: Record<string, StatusLevel>;
   userMessage: string;
   responsePreview: string;
-  /** Optional tool-dispatch trail for the turn. Empty / undefined means no
-   *  tools fired. Track O Session O1. */
-  toolCalls?: ToolCallTrace[];
 }
 
 export interface ChatResponsePayload {

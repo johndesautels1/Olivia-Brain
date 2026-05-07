@@ -26,7 +26,7 @@ import { mistral } from "@ai-sdk/mistral";
 import { openai } from "@ai-sdk/openai";
 import { perplexity } from "@ai-sdk/perplexity";
 import { xai } from "@ai-sdk/xai";
-import { generateText, type LanguageModel, type Tool } from "ai";
+import { generateText, type LanguageModel } from "ai";
 
 import { getServerEnv } from "@/lib/config/env";
 import { getFoundationStatus, getProviderStatuses } from "@/lib/foundation/status";
@@ -46,12 +46,6 @@ interface CascadeInput {
   forceMock?: boolean;
   recalledContext: string[];
   integrationSnapshot: Record<string, StatusLevel>;
-  /** Optional Vercel AI SDK tool registry. When provided, `generateText`
-   *  is called with `tools` + `toolChoice: "auto"` so the LLM can request
-   *  tool calls; the SDK loops up to `maxSteps` times, executing each
-   *  tool's `execute` callback and feeding results back for narration.
-   *  Track O Session O1. */
-  tools?: Record<string, Tool>;
 }
 
 interface CascadeResult {
@@ -260,7 +254,6 @@ export async function runModelCascade(input: CascadeInput): Promise<CascadeResul
             prompt: buildPrompt(input),
             temperature: 0.3,
             maxOutputTokens: 900,
-            ...(input.tools ? { tools: input.tools, toolChoice: "auto", maxSteps: 3 } : {}),
           }),
       );
 

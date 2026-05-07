@@ -186,50 +186,6 @@ export const INTEGRATION_CATALOG: IntegrationCatalogEntry[] = [
     requiredKeys: ["HUBSPOT_ACCESS_TOKEN"],
     purpose: "CRM sync for leads, contacts, and pipeline state.",
   },
-  // Q3 read-only integrations (Track O Session O1). Each backs a Q3 auto-fill
-  // field; mock-mode degraded data when the key is absent.
-  {
-    id: "stripe",
-    label: "Stripe",
-    group: "ops",
-    requiredKeys: ["STRIPE_API_KEY"],
-    purpose: "Read-only ARR / MRR / customer-count for Q3 auto-fill.",
-  },
-  {
-    id: "github",
-    label: "GitHub",
-    group: "ops",
-    requiredKeys: ["GITHUB_TOKEN"],
-    purpose: "Read-only repo + contributor + commit-velocity stats for Q3 auto-fill.",
-  },
-  {
-    id: "linkedin",
-    label: "LinkedIn",
-    group: "ops",
-    requiredKeys: ["LINKEDIN_API_KEY"],
-    purpose: "Read-only company headcount + profile metadata for Q3 auto-fill.",
-  },
-  {
-    id: "quickbooks",
-    label: "QuickBooks",
-    group: "ops",
-    requiredKeys: ["QUICKBOOKS_API_KEY"],
-    purpose: "Read-only revenue + expense rollups for Q3 auto-fill.",
-  },
-  {
-    id: "xero",
-    label: "Xero",
-    group: "ops",
-    requiredKeys: ["XERO_API_KEY"],
-    purpose: "Read-only revenue + expense rollups for Q3 auto-fill (UK-first).",
-  },
-  {
-    id: "companies_house",
-    label: "Companies House",
-    group: "ops",
-    requiredKeys: ["COMPANIES_HOUSE_API_KEY"],
-    purpose: "Read-only UK company registration, filings, officer data for Q3 auto-fill.",
-  },
   {
     id: "clues_london_calendar",
     label: "CLUES London Calendar",

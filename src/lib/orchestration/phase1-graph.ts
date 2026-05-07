@@ -6,13 +6,11 @@ import type {
   FoundationTrace,
   ProviderAttempt,
   StatusLevel,
-  ToolCallTrace,
 } from "@/lib/foundation/types";
 import { getConversationStore } from "@/lib/memory/store";
 import { recordTrace } from "@/lib/observability/traces";
 import { inferIntent } from "@/lib/orchestration/intent";
 import { runModelCascade } from "@/lib/services/model-cascade";
-import { buildCascadeTools } from "@/lib/tools/composio";
 
 const AttemptSchema = z.object({
   providerId: z.string(),
@@ -22,28 +20,9 @@ const AttemptSchema = z.object({
   error: z.string().optional(),
 });
 
-const ToolCallSchema = z.object({
-  toolName: z.string(),
-  actionName: z.string(),
-  decision: z.enum([
-    "auto_approved",
-    "pending_approval",
-    "executed",
-    "rejected",
-    "not_configured",
-  ]),
-  riskLevel: z.enum(["low", "medium", "high", "critical"]),
-  confidenceScore: z.number(),
-  pendingApprovalId: z.string().optional(),
-  success: z.boolean().optional(),
-  durationMs: z.number(),
-  error: z.string().optional(),
-});
-
 const Phase1State = new StateSchema({
   conversationId: z.string(),
   userMessage: z.string(),
-  userId: z.string().default(""),
   forceMock: z.boolean().default(false),
   intent: z
     .enum(["planning", "research", "operations", "general", "questionnaire", "math", "judge"])
@@ -51,7 +30,6 @@ const Phase1State = new StateSchema({
   runtimeMode: z.enum(["mock", "live"]).default("mock"),
   recalledContext: z.array(z.string()).default(() => []),
   attempts: z.array(AttemptSchema).default(() => []),
-  toolCalls: z.array(ToolCallSchema).default(() => []),
   integrationSnapshot: z
     .record(z.string(), z.enum(["configured", "missing"]))
     .default(() => ({})),
@@ -93,18 +71,6 @@ const chooseIntent: typeof Phase1State.Node = async (state) => {
 };
 
 const generateResponse: typeof Phase1State.Node = async (state) => {
-  // Track O Session O1 — build the Composio tool registry when the turn
-  // is tool-eligible. The "operations" intent is the natural fit (CRM,
-  // email, calendar, lead, pipeline, outreach, inbox keywords). Future
-  // sessions can extend the eligibility logic.
-  const toolBundle =
-    state.intent === "operations" && !state.forceMock
-      ? buildCascadeTools({
-          userId: state.userId || state.conversationId,
-          conversationId: state.conversationId,
-        })
-      : null;
-
   const cascadeResult = await runModelCascade({
     conversationId: state.conversationId,
     message: state.userMessage,
@@ -112,7 +78,6 @@ const generateResponse: typeof Phase1State.Node = async (state) => {
     forceMock: state.forceMock,
     recalledContext: state.recalledContext,
     integrationSnapshot: state.integrationSnapshot,
-    tools: toolBundle?.tools,
   });
 
   return {
@@ -121,7 +86,6 @@ const generateResponse: typeof Phase1State.Node = async (state) => {
     selectedProvider: cascadeResult.providerId,
     selectedModel: cascadeResult.modelId,
     responseText: cascadeResult.text,
-    toolCalls: toolBundle ? toolBundle.getTraces() : [],
   };
 };
 
@@ -165,9 +129,6 @@ const persistTurn: typeof Phase1State.Node = async (state) => {
     integrationSnapshot: state.integrationSnapshot,
     userMessage: state.userMessage,
     responsePreview: state.responseText.slice(0, 240),
-    ...(state.toolCalls.length > 0
-      ? { toolCalls: state.toolCalls as ToolCallTrace[] }
-      : {}),
   };
 
   await recordTrace(trace);
@@ -195,15 +156,11 @@ export async function invokePhase1Graph(input: {
   conversationId: string;
   userMessage: string;
   forceMock?: boolean;
-  /** Composio entity id used by tool dispatch. Defaults to conversationId
-   *  when not supplied (Track F Clerk swap will pass the real user id). */
-  userId?: string;
 }) {
   const result = (await phase1Graph.invoke({
     conversationId: input.conversationId,
     userMessage: input.userMessage,
     forceMock: input.forceMock ?? false,
-    userId: input.userId ?? input.conversationId,
   })) as Phase1GraphState;
 
   return {
@@ -214,7 +171,6 @@ export async function invokePhase1Graph(input: {
     provider: result.selectedProvider,
     model: result.selectedModel,
     attempts: result.attempts,
-    toolCalls: result.toolCalls,
     recalledContext: result.recalledContext,
     traceId: result.traceId,
   };
