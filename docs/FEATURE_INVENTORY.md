@@ -2,8 +2,8 @@
 
 > **Snapshot of every shipped capability + the remaining roadmap.**
 >
-> Last refreshed: **2026-05-07** at HEAD `eb93ef9` (post-Q3 end-of-batch handoff).
-> Test gate: **494/494 across 37 suites**. Typecheck: **clean**.
+> Last refreshed: **2026-05-07** at HEAD `94895d9` (post-Q4 feat commit).
+> Test gate: **510/510 across 39 suites**. Typecheck: **clean**.
 >
 > This file is a snapshot — refresh it at end of each batch (after the SESSION_LOG entry lands) so the next session opens to a current view of the codebase. It's a complement to `BUILD_SEQUENCE.md` (which is the session-by-session plan) and `HANDOFF.md` (which is the resume-point doc).
 
@@ -24,7 +24,7 @@
 | 9 | **Map (London tech districts)** | Mapbox + Google Maps 3D dual-implementation. 28 districts with sector filtering. Cluster cards. Street view modal. Layer/category/stats panels. Draggable controls. |
 | 10 | **Pitch deck + business plan studio** | 75 archetypes, 12 templates, 16 slide types. Scoring by stage/industry. LLM draft + optimize endpoints. Investor-readiness analyzer. |
 | 11 | **Valuation engine (10-method)** | DCF, VC method, multiples, scorecard, precedent transactions, strategic synergy, cost-to-duplicate, liquidation, real-options binomial. Monte Carlo + sensitivity tornado. 14 specialist agents. War Room (negotiation simulator) + Deal Room + Acquisition Mirror + Equity Waterfall. |
-| 12 | **Quantara founder intake** | 56-field weighted form at `/founder-intake` inside canonical workspace shell. Per-section completion rings, field-N/56 chip, IntersectionObserver scroll sync, save round-trip via `mergeQuantaraIntoSubject`. **Q3 auto-fill** populates 38/56 fields from APIs + industry benchmarks with per-field accept/reject. |
+| 12 | **Quantara founder intake** | 56-field weighted form at `/founder-intake` inside canonical workspace shell. Per-section completion rings, field-N/56 chip, IntersectionObserver scroll sync, save round-trip via `mergeQuantaraIntoSubject`. **Q3 auto-fill** populates 38/56 fields from APIs + industry benchmarks with per-field accept/reject. **Q4 truth-score cascade** surfaces coral discrepancy chips when founder values disagree with API references by >5% (19-field overlap with V5 agent), with Trust API / Keep mine reconcile flow. |
 | 13 | **Bridge / Universal Knowledge Protocol** | `UniversalKnowledgeProvider` interface. Two providers shipped: `OliviaSelfProvider` (Supabase) + `LtmKnowledgeProvider` (LTM `/api/v1/*` over Bearer auth). |
 | 14 | **Multi-tenant + white-label** | Tenant isolation, member roster, per-tenant config + adapter overrides + model overrides + policies + API keys. White-label theme generator. Branding packs, custom personas, prompt packs, entitlements. |
 | 15 | **Personas (Olivia + Cristiano + Emelia)** | Routing logic. Cristiano™ judge endpoint at `/api/judge` (Opus 4.6 unilateral verdicts). Emelia (back-end support) and Olivia (client-facing) personas wired. |
@@ -76,6 +76,7 @@
 | `pitch/` | 75 archetypes, 12 templates, 16 slide types, scoring | SHIPPED |
 | `quantara/` | 56-field schema + sections + field-mapping + types | SHIPPED |
 | `quantara/auto-fill/` | Q3 orchestrator + 7 extractors + founder defaults | SHIPPED |
+| `quantara/discrepancy/` | Q4 truth-score wrapper + 19-field mapping + detection | SHIPPED |
 | `queries/` | Calendar queries (CRUD, filters, sync) | SHIPPED |
 | `rag/` | Citation-first RAG with source ranking | SHIPPED |
 | `realtime/` | Unified transport: LiveKit, Twilio, Vapi, Retell | SHIPPED |
@@ -96,7 +97,7 @@
 | `voice/` | Unified TTS (ElevenLabs/OpenAI) + STT (Deepgram/Whisper) | SHIPPED |
 | `white-label/` | Branding packs, custom personas, prompt packs | SHIPPED |
 
-**50 subsystems · 43 SHIPPED · 1 LTM-PORTED · 2 PARTIAL · 3 STUB · 1 PENDING**
+**51 subsystems · 44 SHIPPED · 1 LTM-PORTED · 2 PARTIAL · 3 STUB · 1 PENDING**
 
 ---
 
@@ -147,7 +148,7 @@
 | `calendar/` | 14 | Calendar view, agenda rail, entry modals, voice input, sync panels, focus mode, prep task list |
 | `map/` | 14 | Mapbox + Google 3D + layer/sector/category controls + cluster grid + street-view modal + legend |
 | `studio/` | 9 | Library archetype search, section nav, frameworks, plan nav, doc tree, 3 right-pane tabs |
-| `quantara/` | 9 | **Q2 + Q3** — IntakeForm + IntakeSidebar + IntakeSectionBlock + IntakeField (with suggestion row) + IntakeOliviaPanel + IntakeVerdictPanel + section/field meta + completeness math |
+| `quantara/` | 9 | **Q2 + Q3 + Q4** — IntakeForm + IntakeSidebar + IntakeSectionBlock + IntakeField (with suggestion row + discrepancy row) + IntakeOliviaPanel + IntakeVerdictPanel + section/field meta + completeness math |
 | `primitives/` | 5 | AvatarOrb, Badge, ConsensusDots, CompletionRing, DeckDetailModal |
 | `workspace/` | 5 | WorkspaceShell + Header + RailLeft + Center + Inspector |
 | `olivia/` | 4 | OliviaProvider, OliviaVideoAvatar, OliviaConsentModal, OliviaDisplayScreen |
@@ -191,7 +192,7 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 
 | Track | Sessions remaining | Scope summary |
 |---|---|---|
-| **Track Q (Quantara)** — Q4 → Q7 | **4** | Q4 field-validation cascade (truth-score-agent reconciles user-vs-API) · Q5 investor-class metamorphic UI · Q6 vertical-specific schedules (AI/SaaS, HealthTech, ClimateTech, PropTech) · Q7 voice-first paragraphical capture + persona generation |
+| **Track Q (Quantara)** — Q5 → Q7 | **3** | Q5 investor-class metamorphic UI · Q6 vertical-specific schedules (AI/SaaS, HealthTech, ClimateTech, PropTech) · Q7 voice-first paragraphical capture + persona generation |
 | **Track P (Deal Protection)** — P1 → P7 | **7** | Smart Score + bands · clause classifier (20 types) · term-sheet parser API · Investor Reputation DB + admin CRUD · multi-round dilution + email drafts · WarRoom integration + counter term sheet · negotiation rehearsal + versioning + multi-LLM consensus |
 | **Track D (Studio↔Brain wiring)** — S15-S16 | **2** | Re-point Studio "Ask Olivia / Analyze / Optimize" to OB cascade |
 | **Track E (Voice input, S17)** | **1** | Voice-driven Studio capture |
@@ -206,7 +207,7 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 | **Track O (Weakness closure)** — O2-O5 | **4** | Eval runtime weekly (W-002) · sub-600ms voice latency (W-003) · citation-first RAG wired (W-004) · avatar lip-sync upgrade (W-005) |
 | **Track L (cluesintelligence Unification, post-launch)** | **~10** | Verdict + persona + what-if endpoints · `CluesIntelligenceProvider` bridge · BEE phase B1-B3 · enrichment-client · verdict pipeline · Olivia narration · GAMMA + Simli + HeyGen · what-if simulator · Patronus + load test · launch readiness |
 | **Other / buffer** | ~7 | cluesxscore mini-app session breakdown not yet expanded; cross-track contingency |
-| | **~53 sessions** | |
+| | **~52 sessions** | |
 
 **At ~4 sessions/day pace ≈ 13 working days, or ~3 calendar weeks.**
 

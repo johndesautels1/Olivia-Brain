@@ -1809,3 +1809,59 @@ That's the bicycle-wheel rule. The first attempt skipped it. Reverted both commi
 | **OPTIONAL** — set `STRIPE_API_KEY`, `GITHUB_TOKEN`, `LINKEDIN_API_KEY`, `QUICKBOOKS_API_KEY`, `XERO_API_KEY`, `COMPANIES_HOUSE_API_KEY`, `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (Sensitive, Production + Preview only — never "All Environments" per `~/CLAUDE.md`) | When live-mode auto-fill is desired | Without keys, every integration short-circuits to its mock payload at confidence 0.5. The form still works end-to-end — mock-mode auto-fill produces ≥30 fields covered. Live keys upgrade to confidence 0.9 and surface real founder data. |
 
 **Next session:** **Track Q Session Q4 — Field-validation cascade.** When the founder enters a value that disagrees with an API-derived value (e.g. user types ARR=£245k, Stripe says £198k), Olivia surfaces the discrepancy with a chip and asks to reconcile. Reuses LTM's `truth-score-agent` ported in V5. Per BUILD_SEQUENCE Track Q row Q4.
+
+---
+
+## Part 40 — Session 33 (Track Q Session Q4 — field-validation cascade)
+
+**510/510 tests across 39 suites. Typecheck clean.** Coral discrepancy chips surface when founder values disagree with stored API references by >5%. Reuses V5's `runTruthScore` byte-for-byte via projection — no re-implementation of threshold or per-field directionality. **Track Q 4/7 ✅.**
+
+### LTM-first audit (per HANDOFF gotcha §3.10)
+
+| Capability | LTM has? | Decision |
+|---|---|---|
+| `truth-score-agent` (5% threshold + per-field optimistic/pessimistic) | YES (V5 — `src/lib/agents/valuation/truth-score-agent.ts`, byte-for-byte LTM port; deterministic, no LLM) | REUSE — Q4 wraps via projection. No re-implementation. |
+| `MetricEvidence` shape (`{ value, refs, confidence }`) | YES (V2) | REUSE — wrap raw founder values + Q3 suggestion values into MetricEvidence on the way into the agent. |
+| `ExtractedValuationInput` + `CompanyValuationInput` types | YES (V2 — `src/lib/valuation/types.ts`) | REUSE — Q4 builds these as projections; agent never reads `extractionNotes`/`missingItems`/etc. so they ship as empty defaults. |
+| Q3 `QuantaraSuggestion` (per-field source + value + confidence) | YES (Q3 — `src/lib/quantara/auto-fill/`) | REUSE — apiReferenceValues map in IntakeForm uses the same shape. |
+| Per-field discrepancy UI primitives | NO LTM | OB-original (Q4 builds the coral chip + reconcile flow on top of Q2/Q3 IntakeField). |
+
+### Files
+
+| File | Action | Notes |
+|---|---|---|
+| `src/lib/quantara/discrepancy/types.ts` | NEW | `QuantaraDiscrepancyGap` (fieldId + manualValue + referenceValue + gapPct + direction + source + sourceLabel) + `QuantaraDiscrepancyResult` (per-field map + truthScore + totalFields/verifiedFields). |
+| `src/lib/quantara/discrepancy/field-mapping.ts` | NEW | `QUANTARA_TO_TRUTH_FIELD` (19-field intersection) + inverse map + `isComparableField` type guard. Q1 destination map ∩ V5 agent COMPARABLE_FIELDS. |
+| `src/lib/quantara/discrepancy/detect.ts` | NEW | Projects `QuantaraValues` + `Map<QuantaraFieldId, QuantaraSuggestion>` into `MetricEvidence`-shaped inputs the agent reads. Calls `runTruthScore`. Re-keys gaps back to `QuantaraFieldId`. Caps gapPct at 100. Pure. |
+| `src/lib/quantara/discrepancy/index.ts` | NEW | Barrel. |
+| `src/lib/quantara/index.ts` | MODIFY | Re-export discrepancy types + `detectDiscrepancies`. |
+| `src/components/quantara/IntakeField.tsx` | MODIFY | Adds `discrepancy`, `onTrustReference`, `onDismissDiscrepancy` props. When set AND value filled (NOT empty), renders coral alert row with source chip + gap % + "you/api" values + Trust API / Keep mine buttons. Border priority: discrepancy > suggestion > default. |
+| `src/components/quantara/IntakeSectionBlock.tsx` | MODIFY | Passes `discrepancies` map + handlers down to each IntakeField. |
+| `src/components/quantara/IntakeForm.tsx` | MODIFY | Adds `apiReferenceValues` (persistent) + `dismissedDiscrepancies` (Set) state. `discrepancies` derived via useMemo over `(values, apiReferenceValues, dismissedDiscrepancies)`. Auto-fill response now mirrors suggestions into apiReferenceValues. `handleTrustReference` snaps value to reference. `handleDismissDiscrepancy` adds to dismissed set. |
+| `src/lib/quantara/discrepancy/__tests__/detect.test.ts` | NEW | 10 cases — within-tolerance no gap, optimistic vs pessimistic directionality preserved through wrapper, non-comparable fields dropped, missing-side handled, 5-field end-to-end exit criterion, gapPct capped at 100. |
+| `src/components/quantara/__tests__/IntakeField.discrepancy.test.tsx` | NEW | 6 cases — hidden when value empty, rendered when filled, manual + reference values surface, Trust/Keep handlers fire, optimistic vs pessimistic copy swap. |
+
+### Decisions / judgment-call trail
+
+1. **Wrap, don't re-implement.** `runTruthScore` from V5 is byte-for-byte LTM and deterministic. Q4 projects its inputs into the shape the agent reads (raw numbers → MetricEvidence) and re-keys outputs by `QuantaraFieldId`. The 5% threshold and per-field directionality stay inside the agent — the wrapper never duplicates them.
+2. **Persistent `apiReferenceValues` map separate from dismissable `suggestions`.** Q3's suggestions map is the inbox the founder accepts/rejects; once empty, it's gone. Q4 needs a second map that stays around forever (within the session) so the truth-score-agent has data to compare against even after the founder accepts/edits. Auto-fill populates BOTH maps from the same response.
+3. **Discrepancy only renders when value is filled.** `showDiscrepancy = discrepancy !== undefined && filled`. Empty fields with an API reference show the Q3 suggestion row instead — discrepancy is post-typing-only.
+4. **Discrepancy chip wins border-color over suggestion chip.** A pending discrepancy is a data-quality blocker; an aether-tinted "Stripe-derived" pill on top of a coral border would muddy the message. Coral wins, suggestion row hides (since `filled === true` blocks `showSuggestion` anyway).
+5. **`Trust API` snaps the value, doesn't merge.** Founder's options are binary: take the API value verbatim OR keep their typed value verbatim. No "split the difference" affordance — keeps the audit clean (what the founder agreed to vs what they overrode).
+6. **`Keep mine` is per-session only.** No persistence (no Prisma writes from Q4). If the founder reloads the form, dismissed discrepancies come back. Acceptable for Q4 baseline; Q4-extra (post-Q7) can persist `OliviaUserMemory` records if helpful.
+7. **Non-comparable fields silently drop.** The agent's COMPARABLE_FIELDS covers 27 entries; Q1's destination map maps 56 Quantara fields. The intersection is 19 fields. Text/score/enum fields (f21 round type, f43 exit narrative, f39 network effects) are dropped at projection time without warning — they were never going to round-trip anyway.
+8. **gapPct capped at 100.** When one side is near-zero the agent's formula can compute gaps in the high hundreds. The chip displays a percentage; rendering "847% gap" reads worse than "100% gap". Cap at projection time, not in the agent (preserves V5's surface).
+9. **Auto-fill re-run resets dismissed discrepancies.** New API data may differ from the previous fetch; if the founder previously dismissed a chip, the new fetch resurfaces it. Mirrors "Stripe just refreshed — check again."
+10. **`detectDiscrepancies` is a pure useMemo.** No side-effects, deterministic. Safe to call on every IntakeForm render — the agent is fast (deterministic loops over ~19 fields).
+
+### Build status at session-33 close
+
+**Green.** Tests: **510/510** passing across **39 suites** (was 494/37 at Q3 close — +16 new across 2 new suites). Typecheck: clean. **Track Q 4/7 ✅.** ~52 sessions remain to ship priorities 1–4.
+
+### Operator actions surfaced
+
+| Action | When | Why |
+|---|---|---|
+| Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase (still owed from Q1) | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Carries forward — Q4 itself never writes (UI-only discrepancy detection); persistence remains on the existing Q2 POST flow. |
+
+**Next session:** **Track Q Session Q5 — Investor-class metamorphic UI.** Form re-orders sections + adds class-specific fields based on `nextRoundType` (angel / seed / series_a / series_b / buyout). Bayesian-style routing. Per-investor-class question bias from `Organization` records (LTM ecosystem data ported in V1). Per BUILD_SEQUENCE Track Q row Q5.
