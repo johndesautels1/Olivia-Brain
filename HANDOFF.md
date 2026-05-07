@@ -457,10 +457,7 @@ Paste this verbatim into the new Claude Code conversation. It's everything the n
 ```
 Pick up Track Q Session Q5 — Investor-class metamorphic UI.
 
-Repo: https://github.com/johndesautels1/Olivia-Brain
-Local: D:\Olivia Brain (clone if missing — see HANDOFF.md § 0a)
-HEAD: 1b769a0 (post-Q4 end-of-batch handoff)
-Test gate: 510/510 across 39 suites. Typecheck clean.
+Repo: https://github.com/johndesautels1/Olivia-Brain (branch main) at D:\Olivia Brain, HEAD 3c68849. Clone URL: git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain". LTM read-only at D:\London-Tech-Map (clone URL https://github.com/johndesautels1/london-tech-map.git if not on disk — confirm with user before cloning, do NOT guess the URL). Studio prototypes at D:\Studio-Olivia. Clues Main vision docs at D:\Clues Main. Test gate: 510/510 across 39 suites. Typecheck clean.
 
 Mandatory pre-work, in this exact order, NO skipping:
 
