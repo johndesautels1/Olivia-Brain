@@ -30,7 +30,7 @@
  * for the Studio shell.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Center,
   Header,
@@ -51,8 +51,13 @@ import { AuditTab } from "@/components/studio/AuditTab";
 import { generateSlidesForArchetype } from "@/lib/studio/slides";
 import { TOTAL_DOC_COUNT } from "@/lib/studio/doc-categories";
 import { PLAN_SECTIONS } from "@/lib/studio/plan-sections";
-import { DEFAULT_THEME, type ThemeKey } from "@/lib/studio/themes";
+import { DEFAULT_THEME, THEMES, type ThemeKey } from "@/lib/studio/themes";
 import { pushAuditEntry, type AuditEntry } from "@/lib/studio/audit";
+import {
+  STORAGE_KEY,
+  type WorkspaceSnapshot,
+} from "@/lib/studio/persistence";
+import { useAutoSave, useKeyboardNav } from "@/hooks";
 import type {
   ActiveDoc,
   NavSection,
@@ -120,6 +125,77 @@ export default function HomePage() {
   /* S18 — audit log + active theme. */
   const [auditLog, setAuditLog] = useState<readonly AuditEntry[]>([]);
   const [activeTheme, setActiveTheme] = useState<ThemeKey>(DEFAULT_THEME);
+
+  /* S19 — selected slide for J/K nav. */
+  const [selectedSlide, setSelectedSlide] = useState<number>(0);
+
+  /* S19 — one-shot restore via useAutoSave's onRestore. Validates the
+   * version + shape before applying to avoid feeding stale schemas back
+   * into state. */
+  const handleRestore = useCallback((snap: WorkspaceSnapshot) => {
+    if (snap.version !== 1) return;
+    setNavSection(snap.navSection);
+    setSlides(snap.slides);
+    setActivePlanIdx(snap.activePlanIdx);
+    setActiveFrameworks(new Set(snap.activeFrameworks ?? []));
+    setActiveDoc(snap.activeDoc);
+    setExpandedCats(new Set(snap.expandedCats ?? []));
+    setActiveTheme(snap.activeTheme);
+    setAuditLog(snap.auditLog ?? []);
+  }, []);
+
+  const { save: saveAutosave, isRestored } = useAutoSave<WorkspaceSnapshot>({
+    key: STORAGE_KEY,
+    debounceMs: 1500,
+    onRestore: handleRestore,
+  });
+
+  /* S19 — debounced autosave: build the snapshot + push it to the hook's
+   * debouncer whenever any of its inputs change. The hook itself batches
+   * per `debounceMs`. */
+  const autosaveSnapshot = useMemo<WorkspaceSnapshot>(
+    () => ({
+      version: 1,
+      navSection,
+      slides,
+      activePlanIdx,
+      activeFrameworks: Array.from(activeFrameworks),
+      activeDoc,
+      expandedCats: Array.from(expandedCats),
+      activeTheme,
+      auditLog: Array.from(auditLog),
+    }),
+    [
+      navSection,
+      slides,
+      activePlanIdx,
+      activeFrameworks,
+      activeDoc,
+      expandedCats,
+      activeTheme,
+      auditLog,
+    ],
+  );
+  useEffect(() => {
+    /* Skip autosave until the initial restore has resolved — otherwise
+     * we overwrite real persisted data with seed values on first paint. */
+    if (!isRestored) return;
+    saveAutosave(autosaveSnapshot);
+  }, [autosaveSnapshot, isRestored, saveAutosave]);
+
+  /* S19 — apply active theme by writing override tokens to <html>.
+   * Theme tokens are CSS-var overrides; default tokens stay as the
+   * fallback when a theme doesn't set a particular var. */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const t = THEMES[activeTheme];
+    /* Direct CSS-var overrides — see tokens.css for the canonical set. */
+    root.style.setProperty("--studio-theme-accent", t.accent);
+    root.style.setProperty("--studio-theme-primary", t.primary);
+    root.style.setProperty("--studio-theme-surface", t.surface);
+    root.dataset.studioTheme = activeTheme;
+  }, [activeTheme]);
 
   const pushAudit = useCallback((text: string) => {
     setAuditLog((prev) => pushAuditEntry(prev, text));
@@ -196,6 +272,27 @@ export default function HomePage() {
   const clearAuditLog = useCallback(() => {
     setAuditLog([]);
   }, []);
+
+  /* S19 — global J/K keyboard nav. Routes to slides in pitch mode,
+   * plan sections in plan mode. Skips when typing in inputs (the hook
+   * handles that). */
+  const handleNext = useCallback(() => {
+    if (navSection === "pitch" && slides.length > 0) {
+      setSelectedSlide((idx) => Math.min(slides.length - 1, idx + 1));
+    } else if (navSection === "plan") {
+      handlePlanSelect(Math.min(PLAN_SECTIONS.length - 1, activePlanIdx + 1));
+    }
+  }, [navSection, slides.length, activePlanIdx, handlePlanSelect]);
+
+  const handlePrev = useCallback(() => {
+    if (navSection === "pitch" && slides.length > 0) {
+      setSelectedSlide((idx) => Math.max(0, idx - 1));
+    } else if (navSection === "plan") {
+      handlePlanSelect(Math.max(0, activePlanIdx - 1));
+    }
+  }, [navSection, slides.length, activePlanIdx, handlePlanSelect]);
+
+  useKeyboardNav({ onNext: handleNext, onPrev: handlePrev });
 
   const inspectorTabs = useMemo<InspectorTab[]>(
     () => [
