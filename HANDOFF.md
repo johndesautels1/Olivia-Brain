@@ -17,8 +17,8 @@
 | **GitHub** | https://github.com/johndesautels1/Olivia-Brain |
 | **Local working dir** | `D:\Olivia Brain` |
 | **Default branch** | `main` |
-| **Code HEAD (Q3)** | `a4e0fda` (Q3 — Olivia auto-fill via Composio + per-field accept/reject) |
-| **Docs HEAD before this handoff commit** | `c733357` (Q3 SESSION_LOG + BUILD_SEQUENCE) |
+| **Code HEAD (Q4)** | `94895d9` (Q4 — field-validation cascade / truth-score discrepancy chips) |
+| **Docs HEAD before this handoff commit** | `f2bc9ed` (Q4 SESSION_LOG + BUILD_SEQUENCE + FEATURE_INVENTORY refresh) |
 | **HEAD after this handoff commit** | will be the `git push` immediately after this doc lands |
 | **LTM repo (READ-ONLY — port FROM, never edit)** | `D:\London-Tech-Map` |
 | **LTM source-of-truth for Quantara fields** | `D:\London-Tech-Map\public\assets\founder-valuation-form.html` (1762 LOC HTML mockup, never built into LTM React) + `D:\London-Tech-Map\docs\TIER_SYSTEM.md` §"56-FIELD VALUATION INTAKE FORM" |
@@ -27,9 +27,9 @@
 | **Questionnaire engine repo (canonical for Track L cluesintelligence, NOT Track Q)** | https://github.com/johndesautels1/clues-questionnaire-engine (private). 2,486 RELOCATION questions across 10 life domains + 12 Bayesian dimensions. **Different app from Quantara** — see § 1 + gotcha § 3.12. |
 | **Other CLUES product repos** | `clues-property-search`, `Heart-Recovery-Calender`, `lifescore-study` (per `00_PRODUCT_TRUTH.md`) |
 
-**Updated:** 2026-05-07 (end of batch — Q3 — Track Q 3/7 ✅)
-**State:** Track Q Session Q3 ✅ ("Let Olivia complete the rest" goes live: parallel fan-out across 7 O1 read-only Composio integrations + a conservative founder-defaults extractor; per-field source chip + accept/reject/edit affordance; manual edits implicitly dismiss; mock-mode populates 38 of 56 fields by default). Track Q Sessions Q1-Q2 ✅. Track O Session O1 ✅. Track V remains 9/9 ✅. Tests **494/494 across 37 suites** (was 466/33 at Q2 close — +28 new Q3 tests across 4 new test suites). Typecheck clean.
-**Next session:** Track Q Session Q4 — Field-validation cascade. When founder-entered values disagree with API-derived suggestions (e.g. user types ARR=£245k, Stripe-derived shows £198k), Olivia surfaces the discrepancy with a chip and asks to reconcile. Reuses LTM's `truth-score-agent` ported in Track V Session V5. Per BUILD_SEQUENCE Track Q row Q4.
+**Updated:** 2026-05-07 (end of batch — Q4 — Track Q 4/7 ✅)
+**State:** Track Q Session Q4 ✅ (Coral discrepancy chips surface when founder-typed values disagree with persistent API references by >5%, via byte-for-byte reuse of V5's `runTruthScore`. Per-field "Trust API" / "Keep mine" reconcile flow. Discrepancy detection covers 19 fields — well above the 5+ exit criterion). Track Q Sessions Q1-Q3 ✅. Track O Session O1 ✅. Track V remains 9/9 ✅. Tests **510/510 across 39 suites** (was 494/37 at Q3 close — +16 new Q4 tests across 2 new test suites). Typecheck clean.
+**Next session:** Track Q Session Q5 — Investor-class metamorphic UI. Form re-orders sections + adds class-specific fields based on `nextRoundType` (angel / seed / series_a / series_b / buyout). Bayesian-style routing. Per-investor-class question bias from `Organization` records (LTM ecosystem data ported in V1). Per BUILD_SEQUENCE Track Q row Q5.
 
 ---
 
@@ -67,7 +67,7 @@ After reading you will run an LTM audit (gotcha §3.10) before any new code.
 | 24 | `D:\Olivia Brain\docs\final-stack.md` | 141 | Final stack. |
 | 25 | `D:\Olivia Brain\docs\london-calendar-adapter-contract.md` | 274 | London calendar adapter contract. |
 | 26 | `D:\Olivia Brain\docs\olivia-core-architecture.md` | 135 | Olivia core architecture. |
-| 27 | `D:\Olivia Brain\docs\SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` | ~1810 | **READ PARTS 30–39** at minimum (V4–V9 + O1 + Q1 + Q2 + Q3). Earlier parts are background. |
+| 27 | `D:\Olivia Brain\docs\SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` | ~1880 | **READ PARTS 30–40** at minimum (V4–V9 + O1 + Q1 + Q2 + Q3 + Q4). Earlier parts are background. |
 
 **Total: ~11,000 lines.** At ~500 lines/min reading speed that's ~22 minutes. **Do it.**
 
@@ -107,46 +107,44 @@ Quoting the user verbatim:
 
 ---
 
-## 2 · Resume point — Session 33 = Track Q Session Q4
+## 2 · Resume point — Session 34 = Track Q Session Q5
 
-Per `D:\Olivia Brain\docs\BUILD_SEQUENCE.md` Track Q row Q4 (~line 151):
+Per `D:\Olivia Brain\docs\BUILD_SEQUENCE.md` Track Q row Q5 (~line 152):
 
-> **Q4 — Field-validation cascade.** When user enters a value that disagrees with API-derived value (e.g., user says ARR=£245k, Stripe says £198k), Olivia surfaces the discrepancy with a chip and asks to reconcile. Reuses LTM's `truth-score-agent` ported in V5.
+> **Q5 — Investor-class metamorphic UI.** Form re-orders sections + adds class-specific fields based on `nextRoundType` (angel / seed / series_a / series_b / buyout). Bayesian-style routing. Per-investor-class question bias from `Organization` records (LTM ecosystem data ported in V1).
 >
-> **Exit criterion:** Discrepancy detection works on 5 representative fields. UI flow: enter → cascade compares → chip surfaces → user reconciles. Tests pass.
+> **Exit criterion:** Switching `nextRoundType` re-renders the form with class-specific section ordering + new fields. Tests pass.
 
-### What Q3 shipped (HEAD = `a4e0fda` for code, docs at `c733357` + this handoff)
+### What Q4 shipped (HEAD = `94895d9` for code, docs at `f2bc9ed` + this handoff)
 
-- **`src/lib/quantara/auto-fill/`** (12 files: types, orchestrator, index, 7 extractors + 1 founder-defaults + 2 test suites). `runAutoFill(context)` runs all 8 extractors in parallel via `Promise.all`. Tie-break: higher confidence → real-mode wins ties → `INTEGRATION_PRIORITY` (Stripe > QB > Xero > CH > GitHub > LinkedIn > Supabase > defaults) breaks remaining ties.
-- **`/api/founder-intake/auto-fill`** route (POST). Stateless — returns suggestions only; persistence stays on the existing Q2 POST. Auth via `getAuthSession()` stub. Rate limits 6/min/client (stricter than save's 12/min — this dispatch hits 7 external APIs each call). 15s timeout via `Promise.race`.
-- **IntakeField** extended: optional `suggestion`, `onAcceptSuggestion`, `onRejectSuggestion` props. When a suggestion exists AND the field is empty, renders an aether-tinted suggestion row with source chip ("Stripe-derived"), formatted value, confidence badge, optional note, ✓ Accept / ✗ Reject buttons.
-- **IntakeSidebar** CTA goes live: state machine `idle | running | ready | error` drives copy. "Let Olivia complete the rest" → "Olivia is filling…" → "N pending — accept or reject above" → error message.
-- **IntakeForm** holds `suggestions: Map<QuantaraFieldId, QuantaraSuggestion>` + `autoFillState`. Manual edits implicitly dismiss pending suggestions.
-- **Tests** — 28 new (9 orchestrator + 11 extractors + 3 auto-fill route + 5 IntakeField suggestion). 494/494 across 37 suites (was 466/33 at Q2 close). Typecheck clean.
+- **`src/lib/quantara/discrepancy/`** (4 files + 1 test suite). `detectDiscrepancies(values, apiReferenceValues)` projects both maps into `MetricEvidence` shape and calls V5's `runTruthScore` byte-for-byte. Re-keys gaps back to `QuantaraFieldId`. Caps gapPct at 100. Pure useMemo.
+- **`QUANTARA_TO_TRUTH_FIELD`** (19-field intersection of Q1's destination map ∩ V5 agent's COMPARABLE_FIELDS): f1, f3, f5, f7, f8, f9, f12, f13, f15, f16, f17, f18, f19, f20, f27, f30, f31, f32, f33.
+- **IntakeField** extended: `discrepancy`, `onTrustReference`, `onDismissDiscrepancy` props. Coral alert row with source chip + gap % + manual/reference values + Trust API / Keep mine buttons. Border priority discrepancy > suggestion > default.
+- **IntakeForm** holds `apiReferenceValues: Map<QuantaraFieldId, QuantaraSuggestion>` (persistent — never dismissed) + `dismissedDiscrepancies: Set<QuantaraFieldId>` (per-session). Auto-fill response now mirrors suggestions into the persistent reference map. `discrepancies` derived via `useMemo`.
+- **Tests** — 16 new (10 detect + 6 IntakeField discrepancy). 510/510 across 39 suites (was 494/37 at Q3 close). Typecheck clean.
 
-### Before scaffolding Q4 — REQUIRED LTM AUDIT
+### Before scaffolding Q5 — REQUIRED LTM AUDIT
 
 | Source to inspect | Why |
 |---|---|
-| `D:\Olivia Brain\src\lib\valuation\agents\` (Track V V5 outputs) | **Look for `truth-score-agent`.** BUILD_SEQUENCE Q4 explicitly says "Reuses LTM's `truth-score-agent` ported in V5." Confirm the agent module exists; read its surface contract; design Q4 to consume it without modification. If it doesn't exist or shipped under a different name, document the gap and propose either porting from LTM `src/lib/valuation/agents/` or a Q4-internal discrepancy-detection helper. |
-| `D:\London-Tech-Map\src\lib\valuation\agents\truth-score-agent.ts` (or analogous LTM source) | The original LTM truth-score-agent. **AUDIT FIRST per §1 + §3.10** before re-implementing. Decide: port byte-for-byte if not in OB; reuse if already ported in V5. |
-| `D:\Olivia Brain\src\lib\quantara\auto-fill\types.ts` (Q3) | The `QuantaraSuggestion` shape. Q4 compares `values[fieldId]` against an active suggestion; reuse the existing source/confidence shape. |
-| `D:\Olivia Brain\src\components\quantara\IntakeField.tsx` (Q3) | The aether suggestion row. Q4 adds a coral discrepancy chip when the user-entered value disagrees with a stored API-derived value. |
-| `D:\Olivia Brain\src\components\quantara\IntakeForm.tsx` (Q3) | The form's suggestion state. Q4 keeps stored API-derived values in a parallel map (NOT dismissed on manual edit) so the truth-score-agent can compare. |
+| `D:\Olivia Brain\prisma\schema.prisma` (`Organization` model — V1 LTM port) | BUILD_SEQUENCE Q5 explicitly mentions "Per-investor-class question bias from `Organization` records (LTM ecosystem data ported in V1)." Confirm what shape that data has and whether per-investor-class biases are inferable from the existing columns or require a new join table. |
+| `D:\London-Tech-Map\src\lib\` (any investor-class metamorphic UI) | LTM may have a similar metamorphic pattern in its valuation or pitch surfaces. Audit before re-implementing. |
+| `D:\Olivia Brain\src\lib\quantara\sections.ts` + `schema.ts` (Q1) | The 12-section catalog is fixed; Q5 reorders the visible order per investor class but does NOT renumber the canonical schema. Investor-class relevance is already encoded per-field in `QuantaraFieldDefinition.investorClassRelevance: ReadonlyArray<BuyerType>` — Q5 surfaces this. |
+| `D:\Olivia Brain\src\components\quantara\IntakeForm.tsx` (Q4) | The form currently renders sections in `QUANTARA_SECTIONS` order. Q5 introduces a derived `displayOrder` per investor class. |
+| `D:\Olivia Brain\src\lib\valuation\types.ts` (`BuyerType` union) | Q5's investor-class field (`f23 Target Round Type`) drives the metamorphic logic. Map TargetRoundType → BuyerType for relevance filtering. |
 
 **Expected outcomes:**
 
-- Q4 builds NEW `src/lib/quantara/discrepancy/` (or extends auto-fill) that wraps the V5 truth-score-agent for the 5 representative fields (likely f1 ARR, f2 MRR, f15 cash on hand, f24 paying customers, f40 team size).
-- IntakeField extends with a coral discrepancy chip + reconcile flow.
-- IntakeForm holds a `apiReferenceValues: Map<QuantaraFieldId, ApiReferenceValue>` map separate from the dismissable `suggestions` map.
-- No new schema. No new Prisma writes — discrepancy detection is in-form UI.
+- Q5 builds NEW `src/lib/quantara/metamorphic/` that takes `(targetRoundType, sections, fields)` and returns `{ sectionDisplayOrder, fieldRelevanceFilter }`.
+- `IntakeForm` consumes this: when `f23` changes, sections re-order and lower-relevance fields can be hidden / de-emphasised.
+- No new schema. No new Prisma writes.
 
 ### Operator actions still owed (carried forward from Q1)
 
 | Action | When | Why |
 |---|---|---|
-| **Apply Q1 SQL migration** — `prisma/sql/04-add-quantara-foundation.sql` | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Adds the new column. Single `ALTER TABLE`. Operator path: paste into Supabase SQL Editor + Run (Option B, identical to V1's `03-add-valuation-foundation.sql`). **Saves will fail with "column does not exist" 500 until applied.** |
-| **OPTIONAL** — set `STRIPE_API_KEY`, `GITHUB_TOKEN`, `LINKEDIN_API_KEY`, `QUICKBOOKS_API_KEY`, `XERO_API_KEY`, `COMPANIES_HOUSE_API_KEY`, `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (Sensitive, Production + Preview only — never "All Environments" per `~/CLAUDE.md`) | When live-mode auto-fill is desired | Without keys, every integration short-circuits to its mock payload at confidence 0.5. The form still works end-to-end — mock-mode auto-fill produces ≥30 fields covered. Live keys upgrade to confidence 0.9 and surface real founder data. |
+| **Apply Q1 SQL migration** — `prisma/sql/04-add-quantara-foundation.sql` | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Carried forward — Q4 itself never writes (UI-only discrepancy detection); persistence remains on the existing Q2 POST flow. |
+| **OPTIONAL** — set `STRIPE_API_KEY`, `GITHUB_TOKEN`, `LINKEDIN_API_KEY`, `QUICKBOOKS_API_KEY`, `XERO_API_KEY`, `COMPANIES_HOUSE_API_KEY`, `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (Sensitive, Production + Preview only) | When live-mode auto-fill + discrepancy detection are desired | Without keys, integrations short-circuit to mock with confidence 0.5. Discrepancy detection still runs against mock-mode references. |
 
 ---
 
@@ -321,7 +319,11 @@ Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into ev
 ## 7 · Recent commit trail
 
 ```
-<this handoff commit>  docs: end-of-batch handoff Q3 — Track Q 3/7 ✅ + Q4 prep
+<this handoff commit>  docs: end-of-batch handoff Q4 — Track Q 4/7 ✅ + Q5 prep
+f2bc9ed docs: Track Q Session Q4 — SESSION_LOG Part 40 + BUILD_SEQUENCE Q4 ✅ + FEATURE_INVENTORY refresh
+94895d9 feat(quantara): Track Q Session Q4 — field-validation cascade (truth-score discrepancy chips)
+35a5622 docs: add FEATURE_INVENTORY.md — comprehensive snapshot at HEAD eb93ef9
+eb93ef9 docs: end-of-batch handoff Q3 — Track Q 3/7 ✅ + Q4 prep
 c733357 docs: Track Q Session Q3 — SESSION_LOG Part 39 + BUILD_SEQUENCE Q3 ✅
 a4e0fda feat(quantara): Track Q Session Q3 — Olivia auto-fill via Composio + per-field accept/reject
 9bcb39a docs: end-of-batch handoff Q2 — Track Q 2/7 ✅ + Q3 prep
@@ -330,10 +332,7 @@ a4e0fda feat(quantara): Track Q Session Q3 — Olivia auto-fill via Composio + p
 29849f8 docs: end-of-batch handoff Q1 — Track Q 1/7 ✅ + Q2 prep + clues-questionnaire-engine correction
 5f4ceb0 docs: Track Q Session Q1 — SESSION_LOG Part 37 + BUILD_SEQUENCE Q1 ✅
 75c3b5d feat(quantara): Track Q Session Q1 — 56-field schema + ValuationSubject round-trip
-189c675 docs: handoff — mandatory readme list (27 docs, ~11K lines) + LTM-first command + full repo paths
-7e183a4 docs: end-of-batch handoff O1 rebuild — W-001 CLOSED via LTM-first audit + Q1 prep
 7e4d356 feat(tools): Track O Session O1 rebuild — Composio dispatch + LTM-ported Companies House client + 6 net-new Q3 integrations (W-001 closed)
-7cba95d docs: end-of-batch handoff V9 — Track V CLOSED + O1 prep
 24781da feat(valuation): Track V Session V9 — War Room family + Deal Room + Acquisition Mirror + Equity Waterfall
 ```
 
@@ -345,11 +344,11 @@ Founder direction: **`clueslondon.com` (priority 1)** + **`cluesintelligence.com
 
 **June 8 strategy.** London Tech Show on 2026-06-08 is a **demo target, not a full clueslondon ship.** Olivia Brain is the canonical implementation; LTM port-back happens in a separate post-OB session.
 
-**Pace.** ~4 sessions/day. **~53 sessions remain to ship priorities 1–4** (was ~54 at Q2 close; -1 for Q3).
+**Pace.** ~4 sessions/day. **~52 sessions remain to ship priorities 1–4** (was ~53 at Q3 close; -1 for Q4).
 
 **Tracks remaining:**
 
-- **Next: Track Q (Quantara, Q4–Q7).** Q1 ✅ closed. Q2 ✅ closed. Q3 ✅ closed. Q4 = field-validation cascade.
+- **Next: Track Q (Quantara, Q5–Q7).** Q1-Q4 ✅ all closed. Q5 = investor-class metamorphic UI.
 - Track P (Deal Protection + gap closures, P1–P7).
 - Track D (Studio ↔ brain wiring).
 - Track E (voice input, S17).
@@ -394,21 +393,21 @@ Full session-by-session breakdown: `D:\Olivia Brain\docs\BUILD_SEQUENCE.md`.
 ```bash
 cd "D:\Olivia Brain"
 git status                                    # should report 1 stash, working tree clean
-git log --oneline -10                         # HEAD is the post-Q3 handoff commit
+git log --oneline -10                         # HEAD is the post-Q4 handoff commit
 ```
 
 Then in Claude Code, in this order — no skipping:
 
 1. **Read every line of every doc in §0.** All 27 entries. ~11,000 lines. ~22 minutes. **The user has explicitly stated that prior agents skip these. Don't be one of them.**
-2. **Internally answer the bicycle-wheel question for Q4:** does V5's `truth-score-agent` exist in OB at `src/lib/valuation/agents/`? If yes, what's its surface contract? (Q4 design depends on this — if the agent compares two values and returns a structured discrepancy, Q4 is a thin wrapper that calls it for the 5 representative fields. If the agent ships a different shape, Q4 either adapts or builds an internal helper.) Confirm the comparison fields the spec calls out: ARR (Stripe vs founder), MRR, cash on hand, paying customers, team size — these are the 5 representative.
-3. **Run the LTM audit per §1 + §3.10.** Specifically: confirm V5 ported `truth-score-agent` byte-for-byte from `D:\London-Tech-Map\src\lib\valuation\agents\` and that no further LTM work is needed.
+2. **Internally answer the bicycle-wheel question for Q5:** the per-field `investorClassRelevance: ReadonlyArray<BuyerType>` in `QuantaraFieldDefinition` (Q1) already encodes which BuyerTypes care about each field. Q5 surfaces that — re-orders sections + filters/de-emphasises low-relevance fields when the founder picks a `nextRoundType`. Where does `BuyerType` live? (`src/lib/valuation/types.ts`.) How does it map to `TargetRoundType` (the `f23` enum)? Build a small adapter.
+3. **Run the LTM audit per §1 + §3.10.** Confirm whether LTM has a similar metamorphic UI primitive in its pitch or valuation surfaces; if so, port byte-for-byte; if not, document OB-original.
 4. **Re-read § 3.12 of this file.** The `clues-questionnaire-engine` is for Track L, not Track Q. Don't confuse the two.
-5. Confirm Vercel build is green on the post-`a4e0fda` deploy.
+5. Confirm Vercel build is green on the post-`94895d9` deploy.
 6. **Confirm Q1 SQL migration applied to Supabase** — check `valuation_subjects` table for the `quantaraJson` column. If absent, apply `prisma/sql/04-add-quantara-foundation.sql` first.
-7. Begin Session 33: build the discrepancy-detection wrapper (`src/lib/quantara/discrepancy/` or similar) that calls `truth-score-agent` for 5 representative fields when the founder enters a value AND a stored API-derived value exists. Surface coral discrepancy chip on `IntakeField`. Add reconcile flow. Tests for the wrapper + chip render.
+7. Begin Session 34: build `src/lib/quantara/metamorphic/` (or extend `sections.ts`) that takes `(targetRoundType, sections, fields)` and returns `{ sectionDisplayOrder, fieldRelevanceFilter }`. Wire IntakeForm to consume on `f23` change. Tests for the reorder logic + IntakeForm rerender.
 8. Typecheck + tests gate before commit.
 9. Commit + push as one feat commit. Then end-of-batch handoff per the protocol (announce, update HANDOFF.md, last commit of the batch).
 
-**Standing rule reminder:** stop after Q4's deliverable lands. Q5-Q7 each need their own user pre-authorisation before chaining.
+**Standing rule reminder:** stop after Q5's deliverable lands. Q6-Q7 each need their own user pre-authorisation before chaining.
 
 **The user's standard:** *"It sounds to me like you don't give a flying fuck and do a half ass job"* — that was a prior agent's review for skipping the audit. Don't earn it.
