@@ -33,6 +33,44 @@
 
 ---
 
+## 0a · FRESH-AGENT QUICK START (run these before reading anything)
+
+If you're in a brand-new conversation and the working tree might not exist yet, run these in order. They're idempotent — safe to re-run.
+
+```powershell
+# 1. Get the repo. If `D:\Olivia Brain` already exists, skip the clone and just pull.
+if (-not (Test-Path "D:\Olivia Brain")) {
+    git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"
+} else {
+    cd "D:\Olivia Brain"; git fetch origin; git checkout main; git pull --ff-only
+}
+cd "D:\Olivia Brain"
+
+# 2. Verify HEAD matches the handoff. Should print 1b769a0 or later (post-Q4 handoff).
+git log --oneline -5
+
+# 3. Working tree must be clean.
+git status --short
+
+# 4. Install / refresh deps.
+npm install
+
+# 5. Set the pre-Clerk auth stub (W-015). ANY UUID works for dev — must be set or
+#    `getAuthSession()` throws and every route 503s. Production (NODE_ENV=production)
+#    refuses to run regardless until Track F lands real Clerk.
+$env:STUB_USER_ID = "00000000-0000-0000-0000-000000000001"
+
+# 6. Smoke gates — both must be GREEN before you touch any code.
+npm run typecheck     # expected: clean (no errors)
+npm test              # expected: 510 passed across 39 suites
+```
+
+**If the smoke gates are red, STOP.** Don't write code on top of a broken baseline — fix the regression first or raise it to the user. The handoff captures a green tree at HEAD `1b769a0`; if your tree is red, something drifted and the audit comes before any new feature work.
+
+`D:\London-Tech-Map` (LTM) is read-only from this repo — you'll need it for the LTM-first audit step. If it's not on disk, ask the user to clone or copy it; do NOT clone it from a Claude-side guess at the URL.
+
+---
+
 ## 0 · MANDATORY READING — read every line of every doc on this list
 
 **THIS IS NOT OPTIONAL.** The user's complaint is that prior agents skipped readmes and built the wrong thing. The list below is exhaustive. Read every line. Do not skim. Do not paraphrase. Do not substitute prior assumptions.
@@ -409,5 +447,100 @@ Then in Claude Code, in this order — no skipping:
 9. Commit + push as one feat commit. Then end-of-batch handoff per the protocol (announce, update HANDOFF.md, last commit of the batch).
 
 **Standing rule reminder:** stop after Q5's deliverable lands. Q6-Q7 each need their own user pre-authorisation before chaining.
+
+---
+
+## 11 · Copy-paste prompt for the next agent
+
+Paste this verbatim into the new Claude Code conversation. It's everything the next agent needs to start.
+
+```
+Pick up Track Q Session Q5 — Investor-class metamorphic UI.
+
+Repo: https://github.com/johndesautels1/Olivia-Brain
+Local: D:\Olivia Brain (clone if missing — see HANDOFF.md § 0a)
+HEAD: 1b769a0 (post-Q4 end-of-batch handoff)
+Test gate: 510/510 across 39 suites. Typecheck clean.
+
+Mandatory pre-work, in this exact order, NO skipping:
+
+1. Run HANDOFF.md § 0a "FRESH-AGENT QUICK START" — clone if needed,
+   verify HEAD, npm install, set STUB_USER_ID, run typecheck + npm test.
+   Both must be GREEN before any code change.
+
+2. Read HANDOFF.md to the bottom. It's ~470 lines and includes:
+   • § 1 the bicycle-wheel rule (LTM-first audit — non-negotiable)
+   • § 2 resume point with full Q5 audit checklist
+   • § 3 gotchas (read § 3.10 LTM audit + § 3.12 questionnaire-engine
+     vs Quantara distinction in particular)
+   • § 4 outstanding state + operator actions still owed
+   • § 6 absolute rules (do not violate)
+   • § 10 mandatory start sequence
+
+3. Read every line of every doc in HANDOFF § 0. All 27 entries,
+   ~11,000 lines. Top priority for Q5 specifically:
+   • ~/CLAUDE.md (master rules)
+   • ~/.claude/projects/C--Users-broke/memory/MEMORY.md
+   • docs/00_PRODUCT_TRUTH.md (eternal source of truth)
+   • docs/01_UI_DESIGN_SYSTEM.md (Aurum/Aether tokens, no raw hex)
+   • docs/BOOTSTRAP.md
+   • docs/BUILD_SEQUENCE.md (find Track Q row Q5)
+   • docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md PARTS 30-40
+     (V4-V9 + O1 + Q1-Q4 — Q4 is Part 40)
+   • docs/FEATURE_INVENTORY.md (current snapshot)
+
+4. Run the Q5 LTM audit (HANDOFF § 2):
+   • Confirm prisma/schema.prisma `Organization` model shape (V1 LTM
+     port). Read leading triple-slash comments.
+   • Inspect D:\London-Tech-Map\src\lib\ for any existing investor-
+     class metamorphic UI primitive — port byte-for-byte if present;
+     OB-original if absent. Document the audit decision in your
+     commit message.
+   • Re-read src/lib/quantara/{sections,schema,types}.ts (Q1) to
+     confirm the per-field investorClassRelevance: ReadonlyArray<
+     BuyerType> contract is what Q5 surfaces.
+   • Map TargetRoundType (the f23 enum) ↔ BuyerType (
+     src/lib/valuation/types.ts) so Q5's metamorphic logic can route
+     against the existing taxonomy.
+
+5. Build per BUILD_SEQUENCE Track Q row Q5:
+   • New src/lib/quantara/metamorphic/ (or extend sections.ts) that
+     takes (targetRoundType, sections, fields) and returns
+     { sectionDisplayOrder, fieldRelevanceFilter }.
+   • Wire src/components/quantara/IntakeForm.tsx to consume on f23
+     change — sections re-order + low-relevance fields hide or
+     de-emphasise.
+   • No new schema. No new Prisma writes. Aurum/Aether tokens, no
+     raw hex.
+
+Exit criterion (BUILD_SEQUENCE Q5): switching nextRoundType re-renders
+the form with class-specific section ordering + new fields. Tests pass.
+
+Standing rules:
+• LTM is READ-ONLY. AUDIT FIRST per § 1 + § 3.10.
+• No band-aids (no force-dynamic, no @ts-ignore, no Suspense
+  workarounds). Find and fix root causes.
+• Verify before claiming done (npm test + npm run typecheck both
+  green pre-commit).
+• Lockfile in same commit as package.json.
+• Commit + push together (Vercel deploys from git).
+• One concern per commit (feat → docs → handoff in three commits).
+• AbortSignal + timeout on every network call.
+• PII never enters spans/traces/logs.
+• JSDoc on every exported symbol.
+• ONE TASK AT A TIME — stop after Q5 lands; Q6-Q7 need their own
+  pre-authorisation.
+• NEVER run local builds (no npm run build). Vercel builds from git.
+
+End of batch: announce "preparing the handoff", update HANDOFF.md +
+SESSION_LOG Part 41 + BUILD_SEQUENCE Q5 ✅ + FEATURE_INVENTORY.md per
+its refresh protocol, push three commits (feat → docs → handoff).
+
+The user's standard: "It sounds to me like you don't give a flying
+fuck and do a half ass job" — that was a prior agent's review for
+skipping the audit. Don't earn it.
+```
+
+---
 
 **The user's standard:** *"It sounds to me like you don't give a flying fuck and do a half ass job"* — that was a prior agent's review for skipping the audit. Don't earn it.
