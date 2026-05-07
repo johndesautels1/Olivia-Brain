@@ -30,7 +30,7 @@
  * for the Studio shell.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Center,
   Header,
@@ -39,52 +39,9 @@ import {
   WorkspaceShell,
   type InspectorTab,
 } from "@/components/workspace";
-
-const INSPECTOR_TABS: InspectorTab[] = [
-  {
-    id: "olivia",
-    label: "Olivia",
-    content: (
-      <div style={{ display: "grid", gap: 12 }}>
-        <p style={{ margin: 0, color: "var(--fg-secondary)" }}>
-          Real-time intelligence — wires to <code>/api/olivia/chat</code> in
-          Session 18.
-        </p>
-        <p
-          style={{
-            margin: 0,
-            color: "var(--fg-tertiary)",
-            fontSize: "var(--text-xs)",
-          }}
-        >
-          For the live avatar smoke flow today, visit{" "}
-          <a href="/test-avatar" style={{ color: "var(--aurum-primary)" }}>
-            /test-avatar
-          </a>
-          .
-        </p>
-      </div>
-    ),
-  },
-  {
-    id: "library",
-    label: "Library",
-    content: (
-      <p style={{ margin: 0, color: "var(--fg-secondary)" }}>
-        75 deck archetypes + 12 plan templates land in Session 16.
-      </p>
-    ),
-  },
-  {
-    id: "audit",
-    label: "Audit",
-    content: (
-      <p style={{ margin: 0, color: "var(--fg-secondary)" }}>
-        Cascade trace + agent-decision log lands in Session 18.
-      </p>
-    ),
-  },
-];
+import { LibraryTab } from "@/components/studio/LibraryTab";
+import { generateSlidesForArchetype } from "@/lib/studio/slides";
+import type { ScoredArchetype, ScoredTemplate, Slide } from "@/lib/studio/types";
 
 const RAIL_LINKS: { href: string; label: string; description: string }[] = [
   {
@@ -115,8 +72,72 @@ const RAIL_LINKS: { href: string; label: string; description: string }[] = [
 ];
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState("olivia");
+  const [activeTab, setActiveTab] = useState("library");
   const [avatarPulse, setAvatarPulse] = useState(false);
+
+  /* Minimal slides state for the Library Apply flow (S16). The full
+   * slide-editor surface lands in S17; here we just hold what `Apply
+   * This Archetype` regenerated, plus log a one-line message in
+   * `appliedSummary` so the user has a confirmation breadcrumb. */
+  const [slides, setSlides] = useState<Slide[]>([]);
+  const [appliedSummary, setAppliedSummary] = useState<string | null>(null);
+
+  const handleApplyArchetype = (
+    archetype: ScoredArchetype | ScoredTemplate,
+  ) => {
+    const fresh = generateSlidesForArchetype(archetype);
+    setSlides(fresh);
+    setAppliedSummary(
+      `Applied "${archetype.name}" — ${fresh.length} slides regenerated. Editor lands in Session 17.`,
+    );
+  };
+
+  const inspectorTabs = useMemo<InspectorTab[]>(
+    () => [
+      {
+        id: "olivia",
+        label: "Olivia",
+        content: (
+          <div style={{ display: "grid", gap: 12 }}>
+            <p style={{ margin: 0, color: "var(--fg-secondary)" }}>
+              Real-time intelligence — wires to <code>/api/olivia/chat</code>{" "}
+              in Session 18.
+            </p>
+            <p
+              style={{
+                margin: 0,
+                color: "var(--fg-tertiary)",
+                fontSize: "var(--text-xs)",
+              }}
+            >
+              For the live avatar smoke flow today, visit{" "}
+              <a href="/test-avatar" style={{ color: "var(--aurum-primary)" }}>
+                /test-avatar
+              </a>
+              .
+            </p>
+          </div>
+        ),
+      },
+      {
+        id: "library",
+        label: "Library",
+        content: (
+          <LibraryTab onApplyArchetype={handleApplyArchetype} />
+        ),
+      },
+      {
+        id: "audit",
+        label: "Audit",
+        content: (
+          <p style={{ margin: 0, color: "var(--fg-secondary)" }}>
+            Cascade trace + agent-decision log lands in Session 18.
+          </p>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     <WorkspaceShell
@@ -245,12 +266,46 @@ export default function HomePage() {
               shell reskins automatically. See{" "}
               <code>docs/01_UI_DESIGN_SYSTEM.md</code>.
             </div>
+
+            {/* Applied-archetype confirmation breadcrumb (S16). */}
+            {appliedSummary && (
+              <div
+                role="status"
+                aria-live="polite"
+                style={{
+                  padding: 12,
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--border-aether)",
+                  background: "var(--aether-mute)",
+                  color: "var(--fg-primary)",
+                  fontSize: "var(--text-sm)",
+                  display: "grid",
+                  gap: 4,
+                }}
+              >
+                <strong style={{ color: "var(--aether-primary)" }}>
+                  Library →
+                </strong>
+                <span>{appliedSummary}</span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "var(--text-2xs)",
+                    color: "var(--fg-tertiary)",
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {slides.length} slides queued: {slides.map((s) => s.type).join(" · ")}
+                </span>
+              </div>
+            )}
           </div>
         </Center>
       }
       inspector={
         <Inspector
-          tabs={INSPECTOR_TABS}
+          tabs={inspectorTabs}
           activeTabId={activeTab}
           onTabChange={setActiveTab}
         />
