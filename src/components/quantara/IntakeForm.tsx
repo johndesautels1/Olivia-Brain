@@ -57,10 +57,15 @@ import {
   type InspectorTab,
 } from "@/components/workspace";
 import {
-  QUANTARA_SECTIONS,
+  QUANTARA_SECTIONS_BY_ID,
+  getSectionOrderForRound,
   type QuantaraFieldId,
   type QuantaraSectionId,
   type QuantaraValues,
+  type SupplementaryFieldId,
+  type SupplementaryValues,
+  type SupplementaryValuesForRound,
+  type TargetRoundType,
 } from "@/lib/quantara";
 import type {
   AutoFillSummary,
@@ -75,6 +80,7 @@ import { overallCompleteness } from "./completeness";
 import { IntakeOliviaPanel } from "./IntakeOliviaPanel";
 import { IntakeSectionBlock } from "./IntakeSectionBlock";
 import { IntakeSidebar, type AutoFillState } from "./IntakeSidebar";
+import { IntakeSupplementaryBlock } from "./IntakeSupplementaryBlock";
 import { IntakeVerdictPanel } from "./IntakeVerdictPanel";
 
 export interface IntakeFormProps {
@@ -84,6 +90,12 @@ export interface IntakeFormProps {
   initialCompanyName?: string;
   /** Subject id of an in-progress save (resume flow). */
   initialSubjectId?: string;
+  /**
+   * Q5 — initial supplementary values restored from a previous save.
+   * Multi-round shape: switching `f23 — Target Round Type` between rounds
+   * preserves prior entries.
+   */
+  initialSupplementaryValues?: SupplementaryValues;
 }
 
 type SaveState =
@@ -108,6 +120,7 @@ export function IntakeForm({
   initialValues,
   initialCompanyName,
   initialSubjectId,
+  initialSupplementaryValues,
 }: IntakeFormProps) {
   const [values, setValues] = useState<QuantaraValues>(initialValues ?? {});
   const [companyName, setCompanyName] = useState<string>(
@@ -116,8 +129,16 @@ export function IntakeForm({
   const [subjectId, setSubjectId] = useState<string | undefined>(
     initialSubjectId,
   );
+  /**
+   * Q5 — multi-round supplementary values map. Keyed by `TargetRoundType`,
+   * then by `SupplementaryFieldId`. Switching `f23` swaps which slot is
+   * visible; we never delete entries from inactive rounds, so a founder
+   * can switch back and forth without losing work.
+   */
+  const [supplementaryValues, setSupplementaryValues] =
+    useState<SupplementaryValues>(initialSupplementaryValues ?? {});
   const [activeSection, setActiveSection] = useState<QuantaraSectionId>(
-    QUANTARA_SECTIONS[0].id,
+    "core_financials",
   );
   const [inspectorTab, setInspectorTab] = useState<string>("olivia");
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
@@ -145,6 +166,36 @@ export function IntakeForm({
   });
 
   const overall = useMemo(() => overallCompleteness(values), [values]);
+
+  /**
+   * Q5 — active target round type. Drives section reorder + which
+   * supplementary block mounts. Coerced from `values.f23` since the
+   * canonical schema stores it as a typed enum string.
+   */
+  const targetRoundType: TargetRoundType | undefined = useMemo(() => {
+    const v = values.f23;
+    if (typeof v !== "string") return undefined;
+    /* No need to validate against the enum here — `IntakeField` only
+       lets the founder pick valid options (the LTM mockup's
+       `<select id="f23">`). Defensive cast is sufficient. */
+    return v as TargetRoundType;
+  }, [values.f23]);
+
+  /**
+   * Q5 — section render order. Returns canonical when `targetRoundType`
+   * is undefined; reorders by relevance otherwise. Pure derivation —
+   * memoised on the round type.
+   */
+  const sectionOrder = useMemo(
+    () => getSectionOrderForRound(targetRoundType),
+    [targetRoundType],
+  );
+
+  /** Q5 — supplementary slot for the active round (empty when none). */
+  const activeSupplementaryValues: SupplementaryValuesForRound = useMemo(() => {
+    if (!targetRoundType) return {};
+    return supplementaryValues[targetRoundType] ?? {};
+  }, [supplementaryValues, targetRoundType]);
 
   /**
    * Q4 — discrepancy detection. Runs the V5 truth-score-agent (5%
@@ -190,6 +241,30 @@ export function IntakeForm({
       dismissSuggestion(fieldId);
     },
     [dismissSuggestion],
+  );
+
+  /**
+   * Q5 — update one supplementary field for the active round type.
+   * Writes into `supplementaryValues[targetRoundType][fieldId]`. No-op
+   * when no round type is selected (the supplementary block is hidden
+   * in that state).
+   */
+  const handleChangeSupplementary = useCallback(
+    (fieldId: SupplementaryFieldId, next: unknown) => {
+      if (!targetRoundType) return;
+      setSupplementaryValues((prev) => {
+        const prevForRound: SupplementaryValuesForRound =
+          prev[targetRoundType] ?? {};
+        const nextForRound: SupplementaryValuesForRound = { ...prevForRound };
+        if (next === undefined) {
+          delete nextForRound[fieldId];
+        } else {
+          nextForRound[fieldId] = next;
+        }
+        return { ...prev, [targetRoundType]: nextForRound };
+      });
+    },
+    [targetRoundType],
   );
 
   const handleAcceptSuggestion = useCallback(
@@ -337,7 +412,9 @@ export function IntakeForm({
       observer.observe(el);
     }
     return () => observer.disconnect();
-  }, []);
+    /* Re-observe on order change so reorder doesn't strand the observer
+       on stale references (Q5). */
+  }, [sectionOrder]);
 
   const handleSave = useCallback(async () => {
     if (!companyName.trim()) {
@@ -358,6 +435,9 @@ export function IntakeForm({
         body: JSON.stringify({
           companyName: companyName.trim(),
           values,
+          /* Q5 — full multi-round supplementary map. Server merges per-round
+             so partial saves never clobber other rounds' entries. */
+          supplementaryValues,
           subjectId,
         }),
         signal: controller.signal,
@@ -379,7 +459,7 @@ export function IntakeForm({
     } finally {
       clearTimeout(timeout);
     }
-  }, [companyName, subjectId, values]);
+  }, [companyName, subjectId, supplementaryValues, values]);
 
   /* Reset the "saved" toast 4s after it lands, mirroring LTM mockup. */
   useEffect(() => {
@@ -525,21 +605,33 @@ export function IntakeForm({
             onCompanyNameChange={setCompanyName}
           />
 
-          {QUANTARA_SECTIONS.map((s) => (
-            <div key={s.id} ref={registerSectionRef(s.id)}>
-              <IntakeSectionBlock
-                sectionId={s.id}
-                values={values}
-                onChange={handleChangeField}
-                suggestions={suggestions}
-                onAcceptSuggestion={handleAcceptSuggestion}
-                onRejectSuggestion={handleRejectSuggestion}
-                discrepancies={discrepancies}
-                onTrustReference={handleTrustReference}
-                onDismissDiscrepancy={handleDismissDiscrepancy}
-              />
-            </div>
-          ))}
+          {sectionOrder.map((id) => {
+            const s = QUANTARA_SECTIONS_BY_ID[id];
+            return (
+              <div key={s.id} ref={registerSectionRef(s.id)}>
+                <IntakeSectionBlock
+                  sectionId={s.id}
+                  values={values}
+                  onChange={handleChangeField}
+                  suggestions={suggestions}
+                  onAcceptSuggestion={handleAcceptSuggestion}
+                  onRejectSuggestion={handleRejectSuggestion}
+                  discrepancies={discrepancies}
+                  onTrustReference={handleTrustReference}
+                  onDismissDiscrepancy={handleDismissDiscrepancy}
+                />
+              </div>
+            );
+          })}
+
+          {/* Q5 — round-specific supplementary block. Mounts only when a
+              target round type is selected. Persists per-round so a
+              founder switching between rounds keeps their work. */}
+          <IntakeSupplementaryBlock
+            roundType={targetRoundType}
+            values={activeSupplementaryValues}
+            onChange={handleChangeSupplementary}
+          />
 
           <FinalCTA overall={overall} />
         </Center>

@@ -31,6 +31,14 @@ export {
   type IntakeSectionBlockProps,
 } from "./IntakeSectionBlock";
 export {
+  IntakeSupplementaryBlock,
+  type IntakeSupplementaryBlockProps,
+} from "./IntakeSupplementaryBlock";
+export {
+  IntakeSupplementaryField,
+  type IntakeSupplementaryFieldProps,
+} from "./IntakeSupplementaryField";
+export {
   IntakeSidebar,
   type IntakeSidebarProps,
   type AutoFillState,

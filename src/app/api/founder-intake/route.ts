@@ -41,11 +41,15 @@ import prisma from "@/lib/db/client";
 import { rateLimit } from "@/lib/rate-limit";
 import {
   QuantaraValuesSchema,
+  SupplementaryValuesSchema,
   mergeQuantaraIntoSubject,
+  mergeSupplementaryIntoQuantaraJson,
   quantaraToValuationSubject,
+  readSupplementaryFromQuantaraJson,
   valuationSubjectToQuantara,
   type QuantaraValuationSubjectShape,
   type QuantaraValues,
+  type SupplementaryValues,
 } from "@/lib/quantara";
 
 import { overallCompleteness } from "@/components/quantara/completeness";
@@ -53,6 +57,8 @@ import { overallCompleteness } from "@/components/quantara/completeness";
 interface PostBody {
   companyName?: unknown;
   values?: unknown;
+  /** Q5 — multi-round supplementary values map. Optional. */
+  supplementaryValues?: unknown;
   subjectId?: unknown;
 }
 
@@ -106,6 +112,24 @@ export async function POST(request: NextRequest) {
   }
   const values = valuesParse.data as QuantaraValues;
 
+  /* Q5 — supplementary values are optional. When absent, we leave any
+     prior supplementary entries on the subject untouched (the merge
+     helper's no-op path). When present, validate strictly against the
+     per-round Zod schemas in `SupplementaryValuesSchema`. */
+  const supplementaryParse = SupplementaryValuesSchema.safeParse(
+    body.supplementaryValues ?? {},
+  );
+  if (!supplementaryParse.success) {
+    return badRequest(
+      `Invalid supplementaryValues: ${supplementaryParse.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join("; ")}`,
+    );
+  }
+  const supplementaryValues =
+    supplementaryParse.data as unknown as SupplementaryValues;
+  const hasSupplementary = Object.keys(supplementaryValues).length > 0;
+
   let userId: string;
   try {
     const session = await getAuthSession();
@@ -135,6 +159,17 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       const merged = mergeQuantaraIntoSubject(toShape(existing), values);
+      /* Q5 — supplementary merge runs as a second pass on the
+         already-merged quantaraJson so canonical-field subkeys land
+         first and supplementary values nest under the
+         `supplementary` namespace. Per-round entries don't clobber
+         each other (see `mergeSupplementaryIntoQuantaraJson` tests). */
+      const finalQuantaraJson = hasSupplementary
+        ? mergeSupplementaryIntoQuantaraJson(
+            merged.quantaraJson ?? null,
+            supplementaryValues,
+          )
+        : merged.quantaraJson;
       const summary = overallCompleteness(values);
 
       const updated = await prisma.valuationSubject.update({
@@ -146,7 +181,7 @@ export async function POST(request: NextRequest) {
           marketDataJson: asJson(merged.marketDataJson),
           capitalDataJson: asJson(merged.capitalDataJson),
           fundingDataJson: asJson(merged.fundingDataJson),
-          quantaraJson: asJson(merged.quantaraJson),
+          quantaraJson: asJson(finalQuantaraJson),
           completenessScore: summary.percent,
         },
         select: { id: true, completenessScore: true },
@@ -164,6 +199,13 @@ export async function POST(request: NextRequest) {
 
     /* Create new — project values directly (no merge target). */
     const projection = quantaraToValuationSubject(values);
+    /* Q5 — fold supplementary values into the fresh quantaraJson. */
+    const initialQuantaraJson = hasSupplementary
+      ? mergeSupplementaryIntoQuantaraJson(
+          projection.quantaraJson ?? null,
+          supplementaryValues,
+        )
+      : projection.quantaraJson;
     const summary = overallCompleteness(values);
     const created = await prisma.valuationSubject.create({
       data: {
@@ -174,7 +216,7 @@ export async function POST(request: NextRequest) {
         marketDataJson: asJson(projection.marketDataJson),
         capitalDataJson: asJson(projection.capitalDataJson),
         fundingDataJson: asJson(projection.fundingDataJson),
-        quantaraJson: asJson(projection.quantaraJson),
+        quantaraJson: asJson(initialQuantaraJson),
         completenessScore: summary.percent,
       },
       select: { id: true },
@@ -236,16 +278,25 @@ export async function GET(request: NextRequest) {
         subjectId: null,
         companyName: null,
         values: {},
+        supplementaryValues: {},
         completenessScore: 0,
       });
     }
 
-    const values = valuationSubjectToQuantara(toShape(subject));
+    const shape = toShape(subject);
+    const values = valuationSubjectToQuantara(shape);
+    /* Q5 — extract per-round supplementary values from the
+       `supplementary` namespace under quantaraJson. Empty when the
+       subject was saved before Q5 shipped. */
+    const supplementaryValues = readSupplementaryFromQuantaraJson(
+      shape.quantaraJson ?? null,
+    );
     return NextResponse.json({
       ok: true,
       subjectId: subject.id,
       companyName: subject.companyName,
       values,
+      supplementaryValues,
       completenessScore: Number(subject.completenessScore ?? 0),
     });
   } catch (err) {

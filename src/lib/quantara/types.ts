@@ -24,6 +24,10 @@
 import type { z } from 'zod';
 import type { BuyerType } from '../valuation/types';
 
+/** Re-exported so consumers in `./metamorphic/` and tests can import via the
+ *  Quantara surface without reaching into `../valuation/types`. */
+export type { BuyerType };
+
 // ── Section ids ────────────────────────────────────────────────────────
 
 /**
