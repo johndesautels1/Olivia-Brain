@@ -57,13 +57,14 @@ Not yet started: Companies House + Kimi providers (scope-cut from Session 5; tra
 ## Doc reading order for new agents
 
 **Always read first (every session, in this order):**
-1. **`00_PRODUCT_TRUTH.md`** — eternal source of truth for the product universe. Non-negotiable.
-2. **`01_UI_DESIGN_SYSTEM.md`** — universal dark-mode design language, color tokens, modular workspace architecture, multi-agent visualization, accessibility floor. Every UI conforms. Non-negotiable.
-3. **`02_COMPETITIVE_FEATURE_MATRIX.md`** — synthesized competitive analysis (22 platforms across Gemini/Grok/Claude Desktop sources). What we steal, what we explicitly reject. Action queue smallest → largest.
-4. **`03_BRAIN_ENRICHMENT_ENGINE.md`** — universal architectural primitive: how Olivia auto-enriches when any spoke app updates schema / data / knowledge. Bidirectional event pipeline, Prisma models, signing, idempotency.
-5. **`04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md`** — flagship plan: audit of Clues Main canonical docs + plan to fold the questionnaire-engine into the unified app. Subject to change as the team locks new questions / Bayesian / persona schema.
-6. `BOOTSTRAP.md` — this file. Implementation context.
-7. `BUILD_SEQUENCE.md` — what's done, what's next, what's blocking what.
+1. **`OLIVIA_NORTH_STAR.md`** — the single question every commit must answer yes to. Six product surfaces, three modes (embedded / gateway / standalone), bicycle-wheel hub. Locked 2026-05-07. **Read this before anything else.**
+2. **`00_PRODUCT_TRUTH.md`** — eternal source of truth for the product universe. Non-negotiable.
+3. **`01_UI_DESIGN_SYSTEM.md`** — universal dark-mode design language, color tokens, modular workspace architecture, multi-agent visualization, accessibility floor. Every UI conforms. Non-negotiable.
+4. **`02_COMPETITIVE_FEATURE_MATRIX.md`** — synthesized competitive analysis (22 platforms across Gemini/Grok/Claude Desktop sources). What we steal, what we explicitly reject. Action queue smallest → largest.
+5. **`03_BRAIN_ENRICHMENT_ENGINE.md`** — universal architectural primitive: how Olivia auto-enriches when any spoke app updates schema / data / knowledge. Bidirectional event pipeline, Prisma models, signing, idempotency.
+6. **`04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md`** — flagship plan: audit of Clues Main canonical docs + plan to fold the questionnaire-engine into the unified app. Subject to change as the team locks new questions / Bayesian / persona schema.
+7. `BOOTSTRAP.md` — this file. Implementation context.
+8. `BUILD_SEQUENCE.md` — what's done, what's next, what's blocking what.
 
 **Read for the specific task:**
 | Task | Doc |
