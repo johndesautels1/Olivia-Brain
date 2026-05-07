@@ -1865,3 +1865,83 @@ That's the bicycle-wheel rule. The first attempt skipped it. Reverted both commi
 | Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase (still owed from Q1) | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Carries forward — Q4 itself never writes (UI-only discrepancy detection); persistence remains on the existing Q2 POST flow. |
 
 **Next session:** **Track Q Session Q5 — Investor-class metamorphic UI.** Form re-orders sections + adds class-specific fields based on `nextRoundType` (angel / seed / series_a / series_b / buyout). Bayesian-style routing. Per-investor-class question bias from `Organization` records (LTM ecosystem data ported in V1). Per BUILD_SEQUENCE Track Q row Q5.
+
+---
+
+## Part 41 — 2026-05-07 — Track Q Session Q5: Investor-class metamorphic UI
+
+**HEAD before:** `bf7bb08` (Q4 handoff, 510/510 across 39 suites). **HEAD after Q5 code:** `1791395`. **HEAD after Q5 docs:** (this commit). **Tests:** 510/510 → **573/573** across **39 → 44 suites** (+63 new across 5 new suites). Typecheck: clean.
+
+### Spec drift surfaced + resolved before coding
+
+The Q5 row in BUILD_SEQUENCE referenced two artefacts that didn't match the live repo:
+
+1. **`nextRoundType`** — actual schema field is `f23 — Target Round Type` (`Seed | Series A | Series B | Series C | Growth | Strategic`); buyer classes live in `BuyerType` (`angel | vc | private_equity | strategic_partner | acquirer`), already encoded per-field via `investorClassRelevance` metadata in `src/lib/quantara/schema.ts`. The Q5 spec used the wrong name; live schema is what shipped.
+2. **`Organization` records ported in V1** — V1's spec adds 4 valuation Prisma models (ValuationSubject, ValuationRun, ValuationSensitivity, FinancialSnapshot), NOT `Organization`. Track V is sequenced *after* Track Q in BUILD_SEQUENCE (run-rate Sessions 20–28 vs Q's 30–36), so Q5 cannot depend on Organization data. Confirmed via `grep "model Organization" prisma/schema.prisma` — no match.
+
+User-confirmed decisions before code:
+- **Class-specific fields** — parallel supplementary list under `quantaraJson.supplementary[roundType]`, NOT extending the canonical 56. Preserves the FIELD N/56 chip + completeness math.
+- **Organization-bias** — deferred to W-017. Q5 drives metamorphism off `f23` + per-field `investorClassRelevance` only. Honors `project_ltm_types_no_speculative_generalization` rule.
+
+### What ships
+
+**Pure-function metamorphic primitives** (`src/lib/quantara/metamorphic/`):
+
+| File | Surface |
+|---|---|
+| `types.ts` | `SupplementaryFieldId` (`s1..s18`), `SupplementaryFieldDefinition`, `SupplementaryControlKind`, `SupplementaryValues` (multi-round map), `QUANTARA_SUPPLEMENTARY_FIELD_COUNT = 18`. Re-export of `BuyerType` from `../valuation/types` so consumers import via the Quantara surface. |
+| `round-buyer-mapping.ts` | `getInvestorClassesForRound(roundType): readonly BuyerType[]` — Seed → [angel, vc]; Series A → [vc]; Series B/C → [vc, private_equity]; Growth → [private_equity, strategic_partner]; Strategic → [strategic_partner, acquirer]. `buyerClassesIntersect` helper. |
+| `section-order.ts` | `getSectionOrderForRound(roundType?)` — splits sections into primary (relevance ≥ 0.5) vs secondary using each section's per-field `investorClassRelevance`; canonical-order tiebreak within tier. Pure, snapshot-friendly. Also exports `sectionRelevanceScore` and `isSectionPrimaryForRound`. |
+| `field-relevance.ts` | `getFieldRelevanceTier(fieldId, roundType?): 'primary' \| 'secondary'` per field. `getAllFieldRelevanceTiers(roundType?)` returns a frozen full map for memo-efficient consumers. |
+| `supplementary.ts` | 18 round-specific fields (3 per round × 6 rounds) covering Lead Investor Status, SAFE/convertible terms, founder personal runway (Seed); lead-investor-identified, board composition, liquidation preference (Series A); anti-dilution, pro-rata, tranche structure (Series B); strategic mix, IPO readiness, existing-investor re-up rate (Series C); PIK/dividend, debt component, secondary sale window (Growth); acquirer interest, earnout/holdback, strategic synergy areas (Strategic). Inline Zod + per-field UI metadata (`select-enum`, `multi-select-enum`, `text`, `long-text`, `currency-gbp`, `percent`, `integer`, `number`). `SupplementaryValuesSchema` validates the full multi-round map. |
+| `supplementary-mapping.ts` | `supplementaryToJson` / `supplementaryFromJson` — projection to/from `quantaraJson.supplementary[roundType][subkey]`. `mergeSupplementaryIntoQuantaraJson` does per-round merges so partial saves never clobber unrelated rounds. `readSupplementaryFromQuantaraJson` extracts the namespace from a stored bag. |
+| `index.ts` | Barrel. |
+
+**UI components** (`src/components/quantara/`):
+
+| File | Action | Notes |
+|---|---|---|
+| `IntakeSupplementaryBlock.tsx` | NEW | Aether-tinted block (Aether = intelligence per § 1.3 of UI design system) that mounts when `f23` is set. Title "<RoundType> signal" + count chip + completion ring + 3-field grid. Hides when `roundType` undefined. |
+| `IntakeSupplementaryField.tsx` | NEW | Self-contained renderer covering all 8 supplementary control kinds. Aether-tinted radio/checkbox accent for select-enum / multi-select-enum. Not coupled to `IntakeField` — Q3/Q4 supplementary extensions ship later as additive props. |
+| `IntakeForm.tsx` | MODIFY | Watches `values.f23`, computes `sectionOrder` via `getSectionOrderForRound`, renders sections in that order via `QUANTARA_SECTIONS_BY_ID` lookup. Adds `supplementaryValues: SupplementaryValues` state (multi-round map) and `handleChangeSupplementary` updater. Save flow includes `supplementaryValues` in POST body. IntersectionObserver dependency now includes `sectionOrder` so reorder doesn't strand it on stale refs. |
+| `index.ts` | MODIFY | Re-exports the two new components. |
+
+**API route** (`src/app/api/founder-intake/route.ts`):
+
+- POST accepts `supplementaryValues`, validates via `SupplementaryValuesSchema`, merges via `mergeSupplementaryIntoQuantaraJson` after the canonical merge so `quantaraJson.supplementary` lands without disturbing canonical-field subkeys or other rounds. New + update paths both wired.
+- GET returns the multi-round supplementary map alongside canonical values via `readSupplementaryFromQuantaraJson`.
+
+### Tests
+
+| Suite | New cases |
+|---|---|
+| `metamorphic/__tests__/round-buyer-mapping.test.ts` | 13 |
+| `metamorphic/__tests__/section-order.test.ts` | 11 |
+| `metamorphic/__tests__/field-relevance.test.ts` | 9 |
+| `metamorphic/__tests__/supplementary.test.ts` | 24 |
+| `components/quantara/__tests__/IntakeForm.metamorphic.test.tsx` | 6 |
+| **Total** | **63 across 5 new suites** |
+
+Coverage spans: per-round buyer mapping correctness, section reorder primary/secondary boundary, field relevance unknown-id graceful default, supplementary catalog invariants (3 fields per round, unique subkeys per round), Zod multi-round payload validation including a forward-compat unknown-subkey case, projection round-trip losslessness across 3 rounds, merge preservation of prior-round entries, and IntakeForm-level integration covering: hidden-when-no-round, mount-on-round-set, swap-on-round-change, section-reorder-on-round-change, supplementaryValues-in-POST-body, prior-round-preservation-on-switch-back.
+
+### Decisions / judgment-call trail
+
+1. **Threshold-based section reorder, not a per-round override list.** Override maps go stale; the 0.5 relevance threshold derives from per-field `investorClassRelevance` already in the schema. New canonical fields automatically participate in the right tier.
+2. **Supplementary fields parallel to the canonical 56, not extending it.** Preserves the 56-field invariant + FIELD N/56 chip + Q3/Q4 cascade scoping. Supplementary completeness ring lives in the supplementary block itself.
+3. **Multi-round preservation on switch-back.** A founder switching Seed → Series A → Seed keeps their Seed entries. Storage shape is `quantaraJson.supplementary[roundType][subkey]`, keyed by all 6 round types.
+4. **`select-enum` rendered as radio fieldset, not native `<select>`.** Aether-tinted card-style radios match the design system's modular workspace aesthetic and surface options at-a-glance — important for term-sheet structure choices where the founder needs to compare options side by side.
+5. **Subkey-based persistence (not field-id).** `quantaraJson.supplementary[Seed][leadInvestorStatus]`, not `[s1]`. Mirrors the canonical destination map's convention; downstream consumers (Track P deal protection, Track L cluesintelligence) bind to subkey names that survive id renames.
+6. **Cast through `unknown` for Zod v4 enum dynamic-array helper.** `enumFrom(options)` runs `z.enum(values as unknown as readonly [string, ...string[]])` because Zod v4's `z.enum` generic constraint changed from tuple to `Readonly<Record<string, EnumValue>>`. Runtime is fine; the cast is the canonical TS escape for runtime polymorphism. Not a band-aid — explicit type-system limitation around dynamic literal arrays.
+7. **`Organization`-records investor-bias deferred, not stubbed.** Q5 ships without it; logged as W-017. No band-aid stub. Lands when Track V actually ports LTM Organization data and a real consumer materialises (Track L most likely).
+
+### Build status at session-Q5 close
+
+**Green.** Tests: **573/573** passing across **44 suites** (+63 new across 5 new suites). Typecheck: clean. **Track Q 5/7 ✅.** ~51 sessions remain to ship priorities 1–4.
+
+### Operator actions surfaced
+
+| Action | When | Why |
+|---|---|---|
+| Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase (still owed from Q1) | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Carries forward from Q1 — Q5 reuses the same `quantaraJson` column under a new `supplementary` namespace; no new SQL migration needed for Q5. |
+
+**Next session:** **Track Q Session Q6 — Vertical-specific schedules.** AI/SaaS adds model provenance + training-data fields; HealthTech adds MHRA pathway + clinical data; ClimateTech adds ESG + impact metrics; PropTech adds property data accuracy. Mounts via Q5 metamorphic primitive. Per BUILD_SEQUENCE Track Q row Q6.
