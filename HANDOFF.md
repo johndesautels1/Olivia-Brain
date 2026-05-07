@@ -17,8 +17,8 @@
 | **GitHub** | https://github.com/johndesautels1/Olivia-Brain |
 | **Local working dir** | `D:\Olivia Brain` |
 | **Default branch** | `main` |
-| **Code HEAD (Q2)** | `749697a` (Q2 — 56-field founder-intake form UI + save route) |
-| **Docs HEAD before this handoff commit** | `443f643` (Q2 SESSION_LOG + BUILD_SEQUENCE) |
+| **Code HEAD (Q3)** | `a4e0fda` (Q3 — Olivia auto-fill via Composio + per-field accept/reject) |
+| **Docs HEAD before this handoff commit** | `c733357` (Q3 SESSION_LOG + BUILD_SEQUENCE) |
 | **HEAD after this handoff commit** | will be the `git push` immediately after this doc lands |
 | **LTM repo (READ-ONLY — port FROM, never edit)** | `D:\London-Tech-Map` |
 | **LTM source-of-truth for Quantara fields** | `D:\London-Tech-Map\public\assets\founder-valuation-form.html` (1762 LOC HTML mockup, never built into LTM React) + `D:\London-Tech-Map\docs\TIER_SYSTEM.md` §"56-FIELD VALUATION INTAKE FORM" |
@@ -27,9 +27,9 @@
 | **Questionnaire engine repo (canonical for Track L cluesintelligence, NOT Track Q)** | https://github.com/johndesautels1/clues-questionnaire-engine (private). 2,486 RELOCATION questions across 10 life domains + 12 Bayesian dimensions. **Different app from Quantara** — see § 1 + gotcha § 3.12. |
 | **Other CLUES product repos** | `clues-property-search`, `Heart-Recovery-Calender`, `lifescore-study` (per `00_PRODUCT_TRUTH.md`) |
 
-**Updated:** 2026-05-07 (end of batch — Q2 — Track Q 2/7 ✅)
-**State:** Track Q Session Q2 ✅ (`/founder-intake` route renders the full 56-field form inside the canonical `WorkspaceShell` with Aurum/Aether tokens — no cyan, no raw hex; weight-aware completeness math; `IntersectionObserver`-driven section sync; save flow round-trips through `mergeQuantaraIntoSubject` so partial saves don't clobber engine-only JSON subkeys). Track Q Session Q1 ✅. Track O Session O1 ✅. Track V remains 9/9 ✅. Tests **466/466 across 33 suites** (was 427/28 at Q1 close — +39 new Q2 tests across 5 new test suites). Typecheck clean.
-**Next session:** Track Q Session Q3 — Olivia auto-fill via Composio. Wire the disabled "Let Olivia complete the rest" sidebar button to the O1 Composio integrations (Stripe, Supabase, GitHub, Companies House, LinkedIn, QuickBooks, Xero). Each integration returns confidence-weighted values; UI shows source chips ("Stripe-derived", "GitHub-derived", "Companies-House-derived"). Founders accept / reject / edit each suggestion. Per BUILD_SEQUENCE Track Q row Q3.
+**Updated:** 2026-05-07 (end of batch — Q3 — Track Q 3/7 ✅)
+**State:** Track Q Session Q3 ✅ ("Let Olivia complete the rest" goes live: parallel fan-out across 7 O1 read-only Composio integrations + a conservative founder-defaults extractor; per-field source chip + accept/reject/edit affordance; manual edits implicitly dismiss; mock-mode populates 38 of 56 fields by default). Track Q Sessions Q1-Q2 ✅. Track O Session O1 ✅. Track V remains 9/9 ✅. Tests **494/494 across 37 suites** (was 466/33 at Q2 close — +28 new Q3 tests across 4 new test suites). Typecheck clean.
+**Next session:** Track Q Session Q4 — Field-validation cascade. When founder-entered values disagree with API-derived suggestions (e.g. user types ARR=£245k, Stripe-derived shows £198k), Olivia surfaces the discrepancy with a chip and asks to reconcile. Reuses LTM's `truth-score-agent` ported in Track V Session V5. Per BUILD_SEQUENCE Track Q row Q4.
 
 ---
 
@@ -67,7 +67,7 @@ After reading you will run an LTM audit (gotcha §3.10) before any new code.
 | 24 | `D:\Olivia Brain\docs\final-stack.md` | 141 | Final stack. |
 | 25 | `D:\Olivia Brain\docs\london-calendar-adapter-contract.md` | 274 | London calendar adapter contract. |
 | 26 | `D:\Olivia Brain\docs\olivia-core-architecture.md` | 135 | Olivia core architecture. |
-| 27 | `D:\Olivia Brain\docs\SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` | ~1740 | **READ PARTS 30–38** at minimum (V4–V9 + O1 + Q1 + Q2). Earlier parts are background. |
+| 27 | `D:\Olivia Brain\docs\SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` | ~1810 | **READ PARTS 30–39** at minimum (V4–V9 + O1 + Q1 + Q2 + Q3). Earlier parts are background. |
 
 **Total: ~11,000 lines.** At ~500 lines/min reading speed that's ~22 minutes. **Do it.**
 
@@ -107,47 +107,46 @@ Quoting the user verbatim:
 
 ---
 
-## 2 · Resume point — Session 32 = Track Q Session Q3
+## 2 · Resume point — Session 33 = Track Q Session Q4
 
-Per `D:\Olivia Brain\docs\BUILD_SEQUENCE.md` Track Q row Q3 (~line 150):
+Per `D:\Olivia Brain\docs\BUILD_SEQUENCE.md` Track Q row Q4 (~line 151):
 
-> **Q3 — Olivia auto-fill via Composio.** Wire the "Let Olivia complete the rest" button to the Composio integrations from O1. Each integration returns confidence-weighted values; UI shows source chip ("Stripe-derived", "GitHub-derived"). User can accept/reject/edit each suggestion.
+> **Q4 — Field-validation cascade.** When user enters a value that disagrees with API-derived value (e.g., user says ARR=£245k, Stripe says £198k), Olivia surfaces the discrepancy with a chip and asks to reconcile. Reuses LTM's `truth-score-agent` ported in V5.
 >
-> **Exit criterion:** Auto-fill button on a fresh form populates 30+ of the 56 fields from connected APIs. Typecheck clean.
+> **Exit criterion:** Discrepancy detection works on 5 representative fields. UI flow: enter → cascade compares → chip surfaces → user reconciles. Tests pass.
 
-### What Q2 shipped (HEAD = `749697a` for code, docs at `443f643` + this handoff)
+### What Q3 shipped (HEAD = `a4e0fda` for code, docs at `c733357` + this handoff)
 
-- **`src/components/quantara/`** (10 files: section-meta, field-ui-meta, completeness, IntakeField, IntakeSectionBlock, IntakeSidebar, IntakeOliviaPanel, IntakeVerdictPanel, IntakeForm, index + 4 test suites).
-- **`/founder-intake`** route (`src/app/founder-intake/page.tsx`) — server component that mounts `<IntakeForm />`. Renders inside the canonical `WorkspaceShell` (S14): Header (AvatarOrb + QUANTARA wordmark + crumb + FIELD/COMPLETE chips + Save button) + RailLeft (12-row section nav with per-section CompletionRing + completeness card + disabled-Q3 Olivia gap-analysis CTA) + Center (hero + 12 IntakeSectionBlocks + final CTA) + Inspector (Olivia + Verdict tabs).
-- **`/api/founder-intake`** route (POST + GET). POST validates body via Q1's `QuantaraValuesSchema`, then writes via `mergeQuantaraIntoSubject` so partial saves preserve engine-only JSON subkeys (`ebitdaMarginPct`, `cacPaybackMonths`) populated by Track V routes. Rate limits 12/min POST, 30/min GET. AbortSignal + 15s timeout on caller side. Persists weighted `completenessScore`.
-- **Aurum-only section accents.** LTM mockup had 12 distinct per-section colours (emerald/violet/amber/sky/teal/orange/indigo/rose/red/lime/fuchsia/purple). Per `01_UI_DESIGN_SYSTEM.md` § 1.3 ("Aurum and Aether never appear together in the same component" + "Aurum = decisions, value, finance, verdict") section icons standardised on Aurum gold; per-state colour comes from existing tier-coloured `Badge` / `CompletionRing` primitives.
-- **Weight-aware completeness math.** Critical fields (weight 3) contribute 3× helper fields (weight 1). `0` and negatives count as filled (founders may legitimately enter 0 for "no patents granted" / negative for EBITDA losses) — fixes a bug-class the LTM mockup's `updateProgress()` had.
-- **`IntersectionObserver`** drives active-section sync on manual scroll (rootMargin `-80px 0px -60% 0px`). Click in rail → smooth-scroll + activate; scroll → topmost-visible activates.
-- **Tests** — 39 new (11 completeness + 6 field-ui-meta + 12 IntakeField + 6 IntakeForm + 4 API route). 466/466 across 33 suites (was 427/28 at Q1 close). Typecheck clean.
+- **`src/lib/quantara/auto-fill/`** (12 files: types, orchestrator, index, 7 extractors + 1 founder-defaults + 2 test suites). `runAutoFill(context)` runs all 8 extractors in parallel via `Promise.all`. Tie-break: higher confidence → real-mode wins ties → `INTEGRATION_PRIORITY` (Stripe > QB > Xero > CH > GitHub > LinkedIn > Supabase > defaults) breaks remaining ties.
+- **`/api/founder-intake/auto-fill`** route (POST). Stateless — returns suggestions only; persistence stays on the existing Q2 POST. Auth via `getAuthSession()` stub. Rate limits 6/min/client (stricter than save's 12/min — this dispatch hits 7 external APIs each call). 15s timeout via `Promise.race`.
+- **IntakeField** extended: optional `suggestion`, `onAcceptSuggestion`, `onRejectSuggestion` props. When a suggestion exists AND the field is empty, renders an aether-tinted suggestion row with source chip ("Stripe-derived"), formatted value, confidence badge, optional note, ✓ Accept / ✗ Reject buttons.
+- **IntakeSidebar** CTA goes live: state machine `idle | running | ready | error` drives copy. "Let Olivia complete the rest" → "Olivia is filling…" → "N pending — accept or reject above" → error message.
+- **IntakeForm** holds `suggestions: Map<QuantaraFieldId, QuantaraSuggestion>` + `autoFillState`. Manual edits implicitly dismiss pending suggestions.
+- **Tests** — 28 new (9 orchestrator + 11 extractors + 3 auto-fill route + 5 IntakeField suggestion). 494/494 across 37 suites (was 466/33 at Q2 close). Typecheck clean.
 
-### Before scaffolding Q3 — REQUIRED LTM AUDIT
+### Before scaffolding Q4 — REQUIRED LTM AUDIT
 
 | Source to inspect | Why |
 |---|---|
-| `D:\London-Tech-Map\src\lib\` (full lib inventory) | **Mandatory per gotcha §3.10.** Specifically check whether LTM has any Composio-aware auto-fill implementation that should be ported byte-for-byte rather than reinvented. O1's audit (commit `7e4d356`) confirmed Composio dispatch lives in OB, not LTM. Re-confirm: LTM has individual provider clients (Stripe, GitHub, etc.) but no founder-intake auto-fill orchestrator. |
-| `D:\Olivia Brain\src\lib\tools\composio.ts` + `src/lib/tools/approval-gate.ts` (O1 outputs) | The O1-shipped Composio dispatch + 7 read-only integrations. Q3 plumbs through these — do NOT rebuild a parallel Composio client. |
-| `D:\Olivia Brain\src\lib\cascade\providers/` (LTM-ported per O1) | The Companies House client that O1 ported byte-for-byte (`lib/companies-house/client.ts`). Q3 uses this for the auto-fill `companies-house-derived` source. |
-| `D:\Olivia Brain\src\components\quantara\IntakeSidebar.tsx` (Q2) | The disabled "Let Olivia complete the rest (Q3)" CTA. Q3 wires the click handler. |
-| `D:\Olivia Brain\src\components\quantara\IntakeField.tsx` (Q2) | The single-field card. Q3 adds a `sourceChip` slot per field for "Stripe-derived" / "GitHub-derived" attribution + accept/reject/edit affordances. |
-| `D:\London-Tech-Map\public\assets\founder-valuation-form.html` (Q2's design source) | The LTM mockup's `triggerOliviaFill()` JS shows the user-facing flow at 1556-1620 (modal "Olivia is filling 22 fields" → fields populate one at a time → success toast). Q3 mirrors this orchestration shape against real Composio responses (rather than the mockup's setTimeout fakes). |
+| `D:\Olivia Brain\src\lib\valuation\agents\` (Track V V5 outputs) | **Look for `truth-score-agent`.** BUILD_SEQUENCE Q4 explicitly says "Reuses LTM's `truth-score-agent` ported in V5." Confirm the agent module exists; read its surface contract; design Q4 to consume it without modification. If it doesn't exist or shipped under a different name, document the gap and propose either porting from LTM `src/lib/valuation/agents/` or a Q4-internal discrepancy-detection helper. |
+| `D:\London-Tech-Map\src\lib\valuation\agents\truth-score-agent.ts` (or analogous LTM source) | The original LTM truth-score-agent. **AUDIT FIRST per §1 + §3.10** before re-implementing. Decide: port byte-for-byte if not in OB; reuse if already ported in V5. |
+| `D:\Olivia Brain\src\lib\quantara\auto-fill\types.ts` (Q3) | The `QuantaraSuggestion` shape. Q4 compares `values[fieldId]` against an active suggestion; reuse the existing source/confidence shape. |
+| `D:\Olivia Brain\src\components\quantara\IntakeField.tsx` (Q3) | The aether suggestion row. Q4 adds a coral discrepancy chip when the user-entered value disagrees with a stored API-derived value. |
+| `D:\Olivia Brain\src\components\quantara\IntakeForm.tsx` (Q3) | The form's suggestion state. Q4 keeps stored API-derived values in a parallel map (NOT dismissed on manual edit) so the truth-score-agent can compare. |
 
 **Expected outcomes:**
 
-- Q3 builds a new `src/lib/quantara/auto-fill/` orchestrator that maps Composio integration responses to QuantaraFieldId values with confidence weights.
-- `IntakeField` extends to support a `source` chip + accept/reject/edit affordance per suggestion.
-- `IntakeSidebar`'s disabled CTA becomes live; clicking dispatches the parallel Composio fan-out.
-- No new schema. No new Prisma model. The auto-fill values write through the same `/api/founder-intake` POST as Q2.
+- Q4 builds NEW `src/lib/quantara/discrepancy/` (or extends auto-fill) that wraps the V5 truth-score-agent for the 5 representative fields (likely f1 ARR, f2 MRR, f15 cash on hand, f24 paying customers, f40 team size).
+- IntakeField extends with a coral discrepancy chip + reconcile flow.
+- IntakeForm holds a `apiReferenceValues: Map<QuantaraFieldId, ApiReferenceValue>` map separate from the dismissable `suggestions` map.
+- No new schema. No new Prisma writes — discrepancy detection is in-form UI.
 
-### Operator actions still owed (Q1 — unchanged)
+### Operator actions still owed (carried forward from Q1)
 
 | Action | When | Why |
 |---|---|---|
-| **Apply Q1 SQL migration** — `prisma/sql/04-add-quantara-foundation.sql` | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Adds the new column. Single `ALTER TABLE`. Operator path: paste into Supabase SQL Editor + Run (Option B, identical to V1's `03-add-valuation-foundation.sql`). **Q2 saves will fail with "column does not exist" 500 until applied.** |
+| **Apply Q1 SQL migration** — `prisma/sql/04-add-quantara-foundation.sql` | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Adds the new column. Single `ALTER TABLE`. Operator path: paste into Supabase SQL Editor + Run (Option B, identical to V1's `03-add-valuation-foundation.sql`). **Saves will fail with "column does not exist" 500 until applied.** |
+| **OPTIONAL** — set `STRIPE_API_KEY`, `GITHUB_TOKEN`, `LINKEDIN_API_KEY`, `QUICKBOOKS_API_KEY`, `XERO_API_KEY`, `COMPANIES_HOUSE_API_KEY`, `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (Sensitive, Production + Preview only — never "All Environments" per `~/CLAUDE.md`) | When live-mode auto-fill is desired | Without keys, every integration short-circuits to its mock payload at confidence 0.5. The form still works end-to-end — mock-mode auto-fill produces ≥30 fields covered. Live keys upgrade to confidence 0.9 and surface real founder data. |
 
 ---
 
@@ -248,7 +247,8 @@ The §5.1 "Olivia's agentic critical-date pipeline" section. User's call when re
 
 | Action | When | Why |
 |---|---|---|
-| **Apply Q1 SQL migration** — `prisma/sql/04-add-quantara-foundation.sql` | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Single additive `ALTER TABLE` adding the `quantaraJson JSONB` column. Q2 ships the route; without this migration the route 500s with "column does not exist". |
+| **Apply Q1 SQL migration** — `prisma/sql/04-add-quantara-foundation.sql` | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Single additive `ALTER TABLE` adding the `quantaraJson JSONB` column. Q2 ships the route; without this migration the route 500s with "column does not exist". Q3 auto-fill is stateless so doesn't itself hit the column, but accepted suggestions persist via the same Q2 POST → still gated. |
+| **OPTIONAL** — Q3 auto-fill API keys (Stripe, GitHub, LinkedIn, QuickBooks, Xero, Companies House, Supabase) | When live-mode auto-fill is desired | Without keys every integration short-circuits to mock-mode (confidence 0.5). With keys: confidence 0.9 + real founder data. **Sensitive, Production + Preview only — never "All Environments"** per `~/CLAUDE.md`. |
 | **Apply C3 SQL migration** — `prisma/sql/02-add-voice-olivia-foundation.sql` | Before C4 routes write to voice/olivia tables | 9 tables. |
 | **Apply V1 SQL migration** — `prisma/sql/03-add-valuation-foundation.sql` | Before V7 routes write to valuation tables | 6 tables. |
 | `STUB_USER_ID` env var (Preview only, never Production) | Before testing C4 / V7 / V9 / O1 routes in Preview | Stub auth reads it. |
@@ -321,7 +321,10 @@ Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into ev
 ## 7 · Recent commit trail
 
 ```
-<this handoff commit>  docs: end-of-batch handoff Q2 — Track Q 2/7 ✅ + Q3 prep
+<this handoff commit>  docs: end-of-batch handoff Q3 — Track Q 3/7 ✅ + Q4 prep
+c733357 docs: Track Q Session Q3 — SESSION_LOG Part 39 + BUILD_SEQUENCE Q3 ✅
+a4e0fda feat(quantara): Track Q Session Q3 — Olivia auto-fill via Composio + per-field accept/reject
+9bcb39a docs: end-of-batch handoff Q2 — Track Q 2/7 ✅ + Q3 prep
 443f643 docs: Track Q Session Q2 — SESSION_LOG Part 38 + BUILD_SEQUENCE Q2 ✅
 749697a feat(quantara): Track Q Session Q2 — 56-field founder-intake form UI + save route
 29849f8 docs: end-of-batch handoff Q1 — Track Q 1/7 ✅ + Q2 prep + clues-questionnaire-engine correction
@@ -330,10 +333,6 @@ Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into ev
 189c675 docs: handoff — mandatory readme list (27 docs, ~11K lines) + LTM-first command + full repo paths
 7e183a4 docs: end-of-batch handoff O1 rebuild — W-001 CLOSED via LTM-first audit + Q1 prep
 7e4d356 feat(tools): Track O Session O1 rebuild — Composio dispatch + LTM-ported Companies House client + 6 net-new Q3 integrations (W-001 closed)
-96975e4 Revert "feat(tools): Track O Session O1 — Composio dispatch + 7 read-only integrations (W-001 closed)"
-dba6d1e Revert "docs: end-of-batch handoff O1 — W-001 CLOSED + Q1 prep"
-462aa34 docs: end-of-batch handoff O1 — W-001 CLOSED + Q1 prep            (REVERTED — first attempt skipped LTM audit)
-db2f0cf feat(tools): Track O Session O1 — Composio dispatch + 7 read-only integrations (W-001 closed)  (REVERTED — first attempt)
 7cba95d docs: end-of-batch handoff V9 — Track V CLOSED + O1 prep
 24781da feat(valuation): Track V Session V9 — War Room family + Deal Room + Acquisition Mirror + Equity Waterfall
 ```
@@ -346,11 +345,11 @@ Founder direction: **`clueslondon.com` (priority 1)** + **`cluesintelligence.com
 
 **June 8 strategy.** London Tech Show on 2026-06-08 is a **demo target, not a full clueslondon ship.** Olivia Brain is the canonical implementation; LTM port-back happens in a separate post-OB session.
 
-**Pace.** ~4 sessions/day. **~54 sessions remain to ship priorities 1–4** (was ~55 at Q1 close; -1 for Q2).
+**Pace.** ~4 sessions/day. **~53 sessions remain to ship priorities 1–4** (was ~54 at Q2 close; -1 for Q3).
 
 **Tracks remaining:**
 
-- **Next: Track Q (Quantara, Q3–Q7).** Q1 ✅ closed. Q2 ✅ closed. Q3 = Composio auto-fill.
+- **Next: Track Q (Quantara, Q4–Q7).** Q1 ✅ closed. Q2 ✅ closed. Q3 ✅ closed. Q4 = field-validation cascade.
 - Track P (Deal Protection + gap closures, P1–P7).
 - Track D (Studio ↔ brain wiring).
 - Track E (voice input, S17).
@@ -395,21 +394,21 @@ Full session-by-session breakdown: `D:\Olivia Brain\docs\BUILD_SEQUENCE.md`.
 ```bash
 cd "D:\Olivia Brain"
 git status                                    # should report 1 stash, working tree clean
-git log --oneline -10                         # HEAD is the post-Q2 handoff commit
+git log --oneline -10                         # HEAD is the post-Q3 handoff commit
 ```
 
 Then in Claude Code, in this order — no skipping:
 
 1. **Read every line of every doc in §0.** All 27 entries. ~11,000 lines. ~22 minutes. **The user has explicitly stated that prior agents skip these. Don't be one of them.**
-2. **Internally answer the bicycle-wheel question for Q3:** does LTM have a Composio-aware founder-intake auto-fill orchestrator? (No — O1's audit confirmed individual provider clients exist in LTM but no orchestrator. OB is canonical for this primitive.) Where does the per-field "source chip" UI affordance live? (Extension of Q2's `IntakeField`.) What confidence-weighting math should the auto-fill use? (Each provider returns `{ value, confidence }`; the cascade chooses the highest-confidence per field; the UI shows the source chip + accept/reject/edit per suggestion.)
-3. **Run the LTM audit per §1 + §3.10.** The O1 audit already covered the Composio orchestrator concern; Q3 adds individual integration *consumers* (Stripe → ARR/MRR/CAC/LTV; GitHub → team-size/technical-staff; Companies House → cash-on-hand/total-debt/funding-history). Confirm each individual integration LTM has, then check whether OB ported it in O1.
+2. **Internally answer the bicycle-wheel question for Q4:** does V5's `truth-score-agent` exist in OB at `src/lib/valuation/agents/`? If yes, what's its surface contract? (Q4 design depends on this — if the agent compares two values and returns a structured discrepancy, Q4 is a thin wrapper that calls it for the 5 representative fields. If the agent ships a different shape, Q4 either adapts or builds an internal helper.) Confirm the comparison fields the spec calls out: ARR (Stripe vs founder), MRR, cash on hand, paying customers, team size — these are the 5 representative.
+3. **Run the LTM audit per §1 + §3.10.** Specifically: confirm V5 ported `truth-score-agent` byte-for-byte from `D:\London-Tech-Map\src\lib\valuation\agents\` and that no further LTM work is needed.
 4. **Re-read § 3.12 of this file.** The `clues-questionnaire-engine` is for Track L, not Track Q. Don't confuse the two.
-5. Confirm Vercel build is green on the post-`749697a` deploy.
-6. **Confirm Q1 SQL migration applied to Supabase** — check `valuation_subjects` table for the `quantaraJson` column. If absent, apply `prisma/sql/04-add-quantara-foundation.sql` first; Q2 saves and Q3 auto-fill writes BOTH need the column. The `/api/founder-intake` POST will return 500 with "column does not exist" until applied.
-7. Begin Session 32: scaffold `src/lib/quantara/auto-fill/` orchestrator (per-integration → `QuantaraFieldId` value extractors with confidence) + extend `IntakeField` with a source-chip + accept/reject/edit affordance + wire `IntakeSidebar`'s disabled "Let Olivia complete the rest (Q3)" button to dispatch the parallel Composio fan-out + reuse the existing `/api/founder-intake` POST for persistence (no new API surface). Tests for the orchestrator + the source-chip render.
+5. Confirm Vercel build is green on the post-`a4e0fda` deploy.
+6. **Confirm Q1 SQL migration applied to Supabase** — check `valuation_subjects` table for the `quantaraJson` column. If absent, apply `prisma/sql/04-add-quantara-foundation.sql` first.
+7. Begin Session 33: build the discrepancy-detection wrapper (`src/lib/quantara/discrepancy/` or similar) that calls `truth-score-agent` for 5 representative fields when the founder enters a value AND a stored API-derived value exists. Surface coral discrepancy chip on `IntakeField`. Add reconcile flow. Tests for the wrapper + chip render.
 8. Typecheck + tests gate before commit.
 9. Commit + push as one feat commit. Then end-of-batch handoff per the protocol (announce, update HANDOFF.md, last commit of the batch).
 
-**Standing rule reminder:** stop after Q3's deliverable lands. Q4-Q7 each need their own user pre-authorisation before chaining.
+**Standing rule reminder:** stop after Q4's deliverable lands. Q5-Q7 each need their own user pre-authorisation before chaining.
 
 **The user's standard:** *"It sounds to me like you don't give a flying fuck and do a half ass job"* — that was a prior agent's review for skipping the audit. Don't earn it.
