@@ -6,10 +6,12 @@
 import { describe, it, expect } from "vitest";
 
 describe("V7 route modules — smoke", () => {
+  // /api/valuation/run transitively imports the cascade orchestrator + all
+  // 14 valuation agents; cold transform on Windows can exceed the 15s global.
   it("POST /api/valuation/run", async () => {
     const mod = await import("@/app/api/valuation/run/route");
     expect(typeof mod.POST).toBe("function");
-  });
+  }, 60_000);
 
   it("POST /api/valuation/subject", async () => {
     const mod = await import("@/app/api/valuation/subject/route");

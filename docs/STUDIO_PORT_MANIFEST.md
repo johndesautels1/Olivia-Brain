@@ -570,3 +570,163 @@ Same Tailwind / token-name divergence as the map (W-011 + W-012). Calendar UI fi
 | Smoke tests (C6) | NEW | 3 files / 6 cases | — | jsdom + matchMedia stub + heavy-dep mocks |
 
 **Track Calendar exit state:** all 6 sessions ✅ closed. Build green: typecheck clean + 100/100 Vitest tests passing. Tailwind/styling caveat (W-013) and missing operator actions (above) flagged for resolution in their respective tracks.
+
+---
+
+## M. Valuation subsystem (added 2026-05-07 — Track V V1–V9 closed)
+
+LTM valuation engine ported across **9 sessions** (V1 → V9, run-rate Sessions S20 → S28). ~93 files cloned so Studio Olivia inherits the Einstein-genius valuation capability that LTM already had: 10 valuation methods × stochastic simulation × sensitivity analysis × Cristiano two-pass critique × War Room negotiation rehearsal × bidirectional `negotiationSummary` link from `ValuationRun → DealRoomSession`, all surfaced through a single `ValuationWorkbench` mounted at `/analysis/valuation`. LTM stays untouched per `project_track_v_ltm_valuation_port` memory; ports are byte-for-byte with three categories of adaptations: (a) `Clerk auth → getAuthSession()` stub (W-015), (b) LTM-only Prisma references (`Organization`, `Document`, `UserProfile`, `AnalysisResult`) pushed out via injection or returned `null` per `project_ltm_types_no_speculative_generalization`, (c) Next.js 16 `params: Promise<…>` shape on dynamic route segments.
+
+### M.1 Schema — valuation foundation (V1: 6 models)
+
+| Model | Notes |
+|-------|-------|
+| `ValuationSubject` | Company-of-record for a valuation. Sector + stage + companyName. |
+| `ValuationRun` | One reconciliation run. Carries `inputSnapshot`, `methodResultsJson`, `reconciledResultJson`, `confidenceScore`, `buyerType`, `status`. Has many `DealRoomSessions` for the bidirectional War Room link. |
+| `ValuationSensitivity` | Tornado / sensitivity analysis snapshot per run. |
+| `FinancialSnapshot` | Per-period extracted financials. |
+| `DealRoomSession` | War Room session row. `userId` (not `userProfileId`); `valuationRunId` FK back to the run. OB schema deltas vs LTM: `rubricScoresJson` + `durationSeconds` only (LTM `companyName / calendarEntryId / duration / rubricScores / negotiationAnchors / exhibitsTabled` are LTM-domain extras — not ported, not stubbed). Company name reaches OB via the `valuationRun → valuationSubject` relation chain. |
+| `DealRoomMessage` | Per-turn message. `dealRoomSessionId` (not LTM `sessionId`); LTM `exhibitRef: Int` → OB `exhibitsJson: Json[]`. The session route accepts both shapes from the body. |
+
+SQL migration generated via `prisma migrate diff` at `prisma/sql/03-add-valuation-foundation.sql`. Operator path: paste-into-Supabase-SQL-Editor (Option B).
+
+### M.2 lib/valuation (V2 + V3 + V4 — engine math + bridge + stochastic)
+
+| File | Adaptation | Status |
+|------|------------|--------|
+| `types.ts` (V2) | byte-for-byte — `BuyerType`, `ValuationBand`, `AcquisitionMirrorResult`, `CompanyStage`, etc. | ✅ |
+| `dashboard-types.ts` (V2) | byte-for-byte — `DashboardData`, `NegotiationSummary` (bidirectional contract surface). | ✅ |
+| `bridge.ts` (V2) | byte-for-byte — `mergeBridgeAndCascade`, `buildValuationInput`, `calculateCompleteness`. | ✅ |
+| `engine.ts` (V3) | byte-for-byte — 10 valuation methods (DCF, EV/Revenue, EV/EBITDA, Berkus, Scorecard, Risk-Factor, VC, First-Chicago, Real-Options, Hybrid). | ✅ |
+| `monte-carlo.ts` (V4) | byte-for-byte — stochastic simulation with seeded RNG. | ✅ |
+| `kde.ts` (V4) | byte-for-byte — kernel density estimation for distribution rendering. | ✅ |
+| `sensitivity.ts` (V4) | byte-for-byte — tornado / what-if analysis. | ✅ |
+| `real-options.ts` + `real-options-compound.ts` (V3) | byte-for-byte — Black-Scholes-on-real-options. | ✅ |
+| `hybrid.ts` (V3) | byte-for-byte — hybrid method weighting. | ✅ |
+| `benchmarks.ts` (V3) | byte-for-byte — sector / stage benchmark tables. | ✅ |
+| `market-comps-seed.ts` (V3) | byte-for-byte — comp seed dataset. | ✅ |
+| `field-glossary.ts` (V3) | byte-for-byte — `GlossaryTooltip` field key registry. | ✅ |
+| `helpers.ts` + `valuation-clock.ts` + `cascade-toggle.ts` (V3) | byte-for-byte — utilities + scenario clock. | ✅ |
+| `war-room-calendar.ts` (V4) | NEW — auto-spawns `CalendarEntry` + `CalendarReminder` rows when a War Room session opens. Phone-based SMS no-ops until Track F (Clerk) wires phone numbers. | ✅ |
+
+### M.3 lib/agents/valuation (V5 + V6 — 14 agents + LLM adapter)
+
+| File | Source | Status |
+|------|--------|--------|
+| `llm-adapter.ts` (V5) | Cascade-routed adapter — uses existing `src/lib/cascade/providers/*` (Anthropic + OpenAI + Gemini + Grok + Tavily); LTM's bespoke OpenAI-only client retired. | ✅ adapted |
+| `valuation-orchestrator.ts` (V5) | Top-level agent runner. | ✅ |
+| `document-intake.ts` (V5) | Document chunk extraction. `LoadCandidateOrgsFn` callback injected so OB callers (running embedded in LTM or via UKP bridge) supply org candidates. | ✅ adapted |
+| `financial-extractor.ts` (V5) | Per-period financial extraction. | ✅ |
+| `method-selection.ts` (V5) | Picks method weights by stage / sector. | ✅ |
+| `validation-agent.ts` (V5) | Cross-method sanity checks. | ✅ |
+| `truth-score-agent.ts` (V5) | Defensibility scoring. | ✅ |
+| `evidence-mapper.ts` (V5) | Maps evidence chunks to method inputs. | ✅ |
+| `cristiano.ts` (V6) | Cristiano two-pass adversarial critique. `LoadCandidateOrgsFn` injected (same pattern as document-intake). | ✅ adapted |
+| `challenge-agent.ts` (V6) | Top-N investor challenges. | ✅ |
+| `counter-narrative-agent.ts` (V6) | Anti-narrative generation. | ✅ |
+| `pre-mortem-agent.ts` (V6) | Pre-mortem risk surfacing. | ✅ |
+| `justification-agent.ts` (V6) | Method-by-method written rationale. | ✅ |
+| `acquisition-mirror.ts` (V6) | Buyer-vs-seller valuation perspective synthesis. | ✅ |
+| `index.ts` (V5) | barrel | ✅ |
+
+### M.4 API routes (V7 — 9 routes + tier gate stub)
+
+| Route | Methods | Notes |
+|-------|---------|-------|
+| `/api/valuation/run` | POST | Heavy entry — transitively imports cascade orchestrator + 14 agents. `gatherDocuments` returns `null` until the future track wires it (LTM `prisma.document` not in OB). |
+| `/api/valuation/subject` | POST | Create / fetch `ValuationSubject`. |
+| `/api/valuation/[runId]` | GET, PATCH | Reads `ValuationRun` + builds `negotiationSummary` from the latest completed `DealRoomSession` (lines 493-520). Next 16 async-params shape applied. |
+| `/api/valuation/sensitivity` | GET | Tornado snapshot fetch. |
+| `/api/valuation/latest` | GET | Most-recent run for the user. |
+| `/api/valuation/compare` | POST | Multi-run side-by-side. |
+| `/api/valuation/export` | POST | Letter / Gamma export. |
+| `/api/valuation/deal-room/session` | GET, POST, PUT, DELETE | War Room session CRUD. POST `create` spawns `CalendarEntry` + Olivia notification (best-effort, non-blocking). PUT accepts both LTM-shaped (`rubricScores`, `duration`) and OB-shaped (`rubricScoresJson`, `durationSeconds`) bodies. |
+| `/api/valuation/deal-room/score-rubric` | POST | LLM rubric scorer (called on session exit). |
+
+`lib/require-tier.ts` ships with `requireTier`, `tierAtLeast`, `getUserTier`, `PlanTier`, `TierCheckResult` matching the LTM contract. Pre-Clerk every authenticated caller passes as `executive` tier (W-015 swap point in Track F Session 18).
+
+`lib/auth/session.ts` exposes `getAuthSession()` returning `{ userId }` — reads `STUB_USER_ID` env var (Preview only, never Production), throws clearly in production. One-line swap when Clerk lands.
+
+**Not ported in V7 (intentional):** `/api/valuation/deal-room/route.ts` (top-level chat POST) does not exist in LTM either — `DealRoomSimulator` falls back to keyword-matched canned challenges when the route is missing, which is the production behavior in both repos.
+
+### M.5 UI components (V8 — workbench + 31 zone components)
+
+| Component | LOC | Notes |
+|-----------|-----|-------|
+| `ValuationWorkbench.tsx` | 136K | Top-level dashboard. Mounted at `app/analysis/valuation/page.tsx`. Imports the entire valuation/* tree. |
+| `HeaderSection`, `MethodStackPanel`, `ValuationBridge`, `ChartCard`, `KpiCards`, `OliviaNarrative`, `RiskOpportunityPanel`, `RiskMatrix`, `PreMortemPanel`, `EvidenceRoom`, `DocumentHeatmap`, `ComparableFingerprint`, `CohortBenchmark`, `MonteCarloHistogram`, `BinomialTreeViz`, `ScenarioDial`, `ScenarioComparison`, `SensitivitySliders`, `TornadoChart`, `ValuationLetter`, `ExportPanel`, `ValuationTimeline`, `DataLineageSankey`, `CascadeStatusBar`, `CompanyIntelligenceNexus`, `CommandPalette`, `ProvenanceChip`, `WhatChangedDiff`, `GlossaryTooltip`, `DraggableGrid` | varies | 30 zone components, all byte-for-byte. |
+| `motion/{AnimatedNumber, EngineProgress, EmptyState, MorphBar, SkeletonLoading, StaggerContainer, index}` | small | Motion primitives + barrel. |
+| `_v9-placeholders.tsx` (V8 → deleted in V9) | 2.5K | Re-export shims for the 5 V9 components so V8 type-checked before V9 landed. Removed in V9 once real ports replaced them. |
+
+V8 npm packages installed: `html2canvas`, `cmdk`, `three` (transitively — D3 / observable libs already present).
+
+### M.6 War Room family + Deal Room + Acquisition Mirror + Equity Waterfall (V9 — 10 files)
+
+| Component | LOC est. | Role | Adaptation |
+|-----------|----------|------|------------|
+| `WarRoom.tsx` | 14K | Top-level shell. Toggles between Briefing (pre-session) and Session (live) modes. Auto-creates `DealRoomSession` on entry, auto-saves messages, fires LLM rubric scorer on exit, persists overall score + duration. | byte-for-byte |
+| `WarRoomBriefing.tsx` | 28K | Pre-session command center: positioning bar, defensibility score, Cristiano challenger panel, key-objections accordion, evidence room, concession ladder, comparable transactions, footer. | byte-for-byte |
+| `WarRoomSession.tsx` | 24K | In-session 3-column desktop layout (DealRoomSimulator / Exhibit viewer / NegotiationAnchorCard) with mobile panel-toggle overlay. Live timer + rubric ticker. | byte-for-byte |
+| `WarRoomTranscript.tsx` | 35K | Post-session viewer. Olivia read-back via `/api/olivia/voice` (ElevenLabs) → browser TTS fallback. Markdown export, copy, share, email-via-Olivia, notepad with calendar-note + Olivia-memory persistence. | byte-for-byte |
+| `WarRoomDocumentBridge.tsx` | 26K | Voice-command document fetcher ("Olivia, fetch the pitch deck"). Pulls Web Speech API + dedupes evidence-chain → exhibit ledger. Echo-suppression: pauses recognition while Olivia is speaking. | byte-for-byte (uses `useOliviaOptional` from existing OliviaProvider) |
+| `war-room-utils.ts` | 26K | Production-grade rubric scoring engine (6 dimensions, weighted-keyword heuristics, phrase pattern matching, specificity bonus, confidence language analysis, response-length multiplier). `computeDefensibility` for the briefing view. Color helpers + `formatCurrency`. | byte-for-byte |
+| `DealRoomSimulator.tsx` | 18K | Cristiano stress-test chat. `/api/valuation/deal-room` (POST) primary path; keyword-matched canned-challenge fallback when route 404s (matches LTM behavior — neither repo ports the route). | byte-for-byte |
+| `AcquisitionMirror.tsx` | 7.5K | Buyer-vs-seller valuation columns + negotiation zone bar. | byte-for-byte |
+| `NegotiationAnchorCard.tsx` | 12K | Walk-away / target / anchor with proportional range beam (LCH gradient + display-precision-rounded gap labels). | byte-for-byte |
+| `EquityWaterfall.tsx` | 7K | EV → cash → debt → equity → ESOP → diluted → per-share waterfall. | byte-for-byte |
+
+### M.7 Bidirectional `negotiationSummary` link (wired in V7+V8, exercised in V9)
+
+War Room writes flow back into `ValuationRun.negotiationSummary` via the existing `DealRoomSession` Prisma relation. The wiring is layered:
+
+| Layer | Behavior |
+|-------|----------|
+| **Write side (V9 components)** | `WarRoom.tsx` POSTs `action: 'create'` → `DealRoomSession` row created with `valuationRunId`, `buyerType`. Subsequent POSTs `action: 'add_messages'` append `DealRoomMessage` rows. PUT on session exit updates `status: 'completed'`, `rubricScoresJson`, `overallScore`, `durationSeconds`, `completedAt`. |
+| **Read side (V7 GET route)** | `GET /api/valuation/[runId]` (lines 493-520) selects the most recent completed `DealRoomSession` for the run (or most recent active if none completed) and projects it as `NegotiationSummary` onto the `ValuationRun` response. `exhibitsTabled` + `negotiationAnchors` returned `null` (LTM-only fields not in OB schema). |
+| **Surface (V2 type contract)** | `DashboardData.negotiationSummary: NegotiationSummary | null` is the bidirectional contract; every consumer (Opus Judge, Gamma export, Dashboard, Studio-Olivia, Emilia) reads it the same way. |
+
+No new wiring code in V9 — the V9 spec line "Wire negotiationSummary bidirectional link" was satisfied by V2's type contract + V7's GET route + V8's workbench consumption. V9 ships the UI that exercises the write path.
+
+### M.8 Smoke tests
+
+| Test file | Cases | Notes |
+|-----------|-------|-------|
+| `src/components/valuation/__tests__/workbench.test.ts` | 32 | V8 module-import smoke for ValuationWorkbench + 30 zone components + motion barrel. V9 bumps `ValuationWorkbench` per-test timeout to 60_000ms because the V9 War Room family deepens the import graph beyond the 15s global. Other modules stay on the global. |
+| `src/app/api/valuation/__tests__/routes.test.ts` | 11 | V7 route-module smoke (8 routes) + 2 helper-contract tests. V9 bumps `POST /api/valuation/run` per-test timeout to 60_000ms (cascade + 14 agents transitively imported). |
+
+Test outcome at V9 close: **368/368 across 24 suites** (typecheck clean).
+
+### M.9 Active weaknesses
+
+| ID | Where | When |
+|----|-------|------|
+| **W-013** | Valuation UI Tailwind/styling fidelity (same gap as map + calendar) | Track C polish — revisit after Track V close |
+| **W-015** | `lib/auth/session.ts` is a Clerk stub | Track F Session 18 |
+| **W-016** | `lib/system-alerts.ts` console-only stub (no `SystemAlert` model) | Future track that needs system alerts |
+
+V9 introduced no new W-IDs.
+
+### M.10 LTM tests deferred
+
+`src/lib/valuation/__tests__/e2e-pipeline.test.ts` and `security-rng.test.ts` were dropped in V4 because they import LTM-only `src/lib/export/{csv-json-export, timeline-export, sanitize}` modules that LTM itself never shipped. Re-port only after the export utilities exist; no obvious owner.
+
+### M.11 Operator actions captured during the track
+
+| Action | Status | Why |
+|--------|--------|-----|
+| Apply V1 SQL migration to Supabase (`prisma/sql/03-add-valuation-foundation.sql`) | ⏳ Pending | Required before V7 routes write to valuation tables |
+| Set `STUB_USER_ID` env var in Vercel Preview | ⏳ Pending (carried from § L) | V7 routes use `getAuthSession()` stub (W-015); throws if unset |
+
+### M.12 Track V closure summary
+
+| Slot | LTM source | Ported | Deferred | Adapted |
+|------|------------|--------|----------|---------|
+| Valuation Prisma models | 6 | 6 | 0 | userProfileId→userId on DealRoomSession; LTM-only DealRoomSession columns dropped (companyName/calendarEntryId/duration/rubricScores/negotiationAnchors/exhibitsTabled); LTM `DealRoomMessage.exhibitRef:Int` → OB `exhibitsJson:Json[]` |
+| `lib/valuation/*` | 24 | 24 | 0 | byte-for-byte (V2–V4) |
+| `lib/agents/valuation/*` | 14 + adapter | 14 + adapter | 0 | LLM adapter routes via cascade providers; document-intake + cristiano use injected `LoadCandidateOrgsFn` |
+| API routes | 9 | 9 | 0 | Clerk → `getAuthSession()` stub; Next 16 async-params on `[runId]`; `gatherDocuments` returns null until Track L wires LTM `Document` model |
+| UI components | 31 (V8) + 10 (V9) = 41 | 41 | 0 | byte-for-byte; V9 reuses existing OB OliviaProvider; calls existing `/api/olivia/{memory,voice,email}` + `/api/calendar/notes` routes |
+| App routes | 1 (`/analysis/valuation`) | 1 | 0 | byte-for-byte |
+| Smoke tests | NEW | 2 files / 43 cases | 2 LTM tests deferred (`e2e-pipeline`, `security-rng` — depend on LTM-only export utils) | per-test timeout bumps for the heaviest dynamic imports |
+
+**Track V exit state:** all 9 sessions ✅ closed. Build green: typecheck clean + 368/368 Vitest tests passing. Vercel deploy on V8 (commit `edb195a`) READY in production. Bidirectional `ValuationRun ↔ DealRoomSession` link exercised end-to-end. Tailwind/styling caveat (W-013) and missing operator actions (above) flagged for resolution in their respective tracks.
