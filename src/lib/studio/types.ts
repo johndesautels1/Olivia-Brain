@@ -16,6 +16,18 @@ import type { Deck } from "@/components/primitives/DeckDetailModal";
 
 export type PersonaKey = "Angel" | "SeedVC" | "SeriesA" | "Strategic" | "Buyout";
 
+/* ── Section nav (drives left-rail content + center-pane view) ─────── */
+
+export type NavSection = "pitch" | "plan" | "documents" | "general";
+
+/** What the user is currently editing in the Documents view. */
+export interface ActiveDoc {
+  /** `DOC_CATEGORIES` key. */
+  category: string;
+  /** Doc name within that category. */
+  doc: string;
+}
+
 /* ── Deck config — drives Library scoring (§ 2.3 left-aside controls) ── */
 
 export interface DeckConfig {

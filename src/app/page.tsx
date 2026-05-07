@@ -30,7 +30,7 @@
  * for the Studio shell.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Center,
   Header,
@@ -40,8 +40,20 @@ import {
   type InspectorTab,
 } from "@/components/workspace";
 import { LibraryTab } from "@/components/studio/LibraryTab";
+import { SectionNav } from "@/components/studio/SectionNav";
+import { DocumentTree } from "@/components/studio/DocumentTree";
+import { FrameworksPanel } from "@/components/studio/FrameworksPanel";
+import { PlanSectionNav } from "@/components/studio/PlanSectionNav";
 import { generateSlidesForArchetype } from "@/lib/studio/slides";
-import type { ScoredArchetype, ScoredTemplate, Slide } from "@/lib/studio/types";
+import { TOTAL_DOC_COUNT } from "@/lib/studio/doc-categories";
+import { PLAN_SECTIONS } from "@/lib/studio/plan-sections";
+import type {
+  ActiveDoc,
+  NavSection,
+  ScoredArchetype,
+  ScoredTemplate,
+  Slide,
+} from "@/lib/studio/types";
 
 const RAIL_LINKS: { href: string; label: string; description: string }[] = [
   {
@@ -76,11 +88,28 @@ export default function HomePage() {
   const [avatarPulse, setAvatarPulse] = useState(false);
 
   /* Minimal slides state for the Library Apply flow (S16). The full
-   * slide-editor surface lands in S17; here we just hold what `Apply
+   * slide-editor surface lands in S18; here we just hold what `Apply
    * This Archetype` regenerated, plus log a one-line message in
    * `appliedSummary` so the user has a confirmation breadcrumb. */
   const [slides, setSlides] = useState<Slide[]>([]);
   const [appliedSummary, setAppliedSummary] = useState<string | null>(null);
+
+  /* Section navigation state (S17). `navSection` drives the left-rail
+   * content panel + the center-pane view (center-pane wiring lands
+   * post-Track-V; for S17 the rail content is the deliverable). */
+  const [navSection, setNavSection] = useState<NavSection>("pitch");
+  const [activeFrameworks, setActiveFrameworks] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [activeDoc, setActiveDoc] = useState<ActiveDoc | null>(null);
+  const [activePlanIdx, setActivePlanIdx] = useState<number>(0);
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [planConfidences] = useState<number[]>(
+    () => Array.from<number>({ length: PLAN_SECTIONS.length }).fill(0),
+  );
+  const [docCompletions] = useState<Record<string, number>>(() => ({}));
 
   const handleApplyArchetype = (
     archetype: ScoredArchetype | ScoredTemplate,
@@ -88,9 +117,31 @@ export default function HomePage() {
     const fresh = generateSlidesForArchetype(archetype);
     setSlides(fresh);
     setAppliedSummary(
-      `Applied "${archetype.name}" — ${fresh.length} slides regenerated. Editor lands in Session 17.`,
+      `Applied "${archetype.name}" — ${fresh.length} slides regenerated. Editor lands in Session 18.`,
     );
   };
+
+  const toggleFramework = useCallback((id: number) => {
+    setActiveFrameworks((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleCategory = useCallback((key: string) => {
+    setExpandedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const handleSelectDoc = useCallback((category: string, doc: string) => {
+    setActiveDoc({ category, doc });
+  }, []);
 
   const inspectorTabs = useMemo<InspectorTab[]>(
     () => [
@@ -151,9 +202,61 @@ export default function HomePage() {
       }
       rail={
         <RailLeft>
+          {/* S17 — Section nav drives the conditional rail content below
+           * + (post-Track-V) the center-pane view. */}
+          <SectionNav
+            active={navSection}
+            onChange={setNavSection}
+            counts={{
+              pitch: slides.length,
+              plan: PLAN_SECTIONS.length,
+              documents: TOTAL_DOC_COUNT,
+            }}
+          />
+
+          {/* Section-specific content. */}
+          {navSection === "pitch" && (
+            <FrameworksPanel
+              active={activeFrameworks}
+              onToggle={toggleFramework}
+            />
+          )}
+          {navSection === "plan" && (
+            <PlanSectionNav
+              active={activePlanIdx}
+              onSelect={setActivePlanIdx}
+              confidences={planConfidences}
+            />
+          )}
+          {navSection === "documents" && (
+            <DocumentTree
+              expanded={expandedCats}
+              onToggleCategory={toggleCategory}
+              activeDoc={activeDoc}
+              onSelectDoc={handleSelectDoc}
+              completions={docCompletions}
+            />
+          )}
+          {navSection === "general" && (
+            <div
+              style={{
+                padding: 12,
+                borderRadius: "var(--radius-md)",
+                border: "1px dashed var(--border-default)",
+                color: "var(--fg-tertiary)",
+                fontSize: "var(--text-xs)",
+              }}
+            >
+              General mode — freeform draft + quick actions land in the
+              center pane (Session 18).
+            </div>
+          )}
+
+          {/* Quick links to other surfaces (preserved from S14). */}
           <div
             style={{
               padding: "8px 4px",
+              marginTop: 8,
               fontFamily: "var(--font-mono)",
               fontSize: "var(--text-2xs)",
               color: "var(--fg-tertiary)",
@@ -161,7 +264,7 @@ export default function HomePage() {
               textTransform: "uppercase",
             }}
           >
-            Surfaces
+            Other surfaces
           </div>
           {RAIL_LINKS.map((link) => (
             <a
@@ -169,13 +272,13 @@ export default function HomePage() {
               href={link.href}
               style={{
                 display: "block",
-                padding: "10px 12px",
-                borderRadius: "var(--radius-md)",
+                padding: "8px 10px",
+                borderRadius: "var(--radius-sm)",
                 border: "1px solid var(--border-subtle)",
                 background: "var(--surface-1)",
                 color: "var(--fg-primary)",
                 textDecoration: "none",
-                fontSize: "var(--text-sm)",
+                fontSize: "var(--text-xs)",
                 fontWeight: 500,
                 transition:
                   "background var(--duration-micro) var(--ease-out-quart), border-color var(--duration-micro) var(--ease-out-quart)",
@@ -184,8 +287,8 @@ export default function HomePage() {
               <div>{link.label}</div>
               <div
                 style={{
-                  marginTop: 4,
-                  fontSize: "var(--text-xs)",
+                  marginTop: 2,
+                  fontSize: "var(--text-2xs)",
                   color: "var(--fg-tertiary)",
                   fontWeight: 400,
                 }}
