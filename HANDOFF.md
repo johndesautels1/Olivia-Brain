@@ -1,42 +1,233 @@
 # OLIVIA BRAIN — NEXT AGENT HANDOFF
 
-**Updated:** 2026-05-07 (end of batch S18-S22)
+**Updated:** 2026-05-07 (end of batch S23–S27)
 **GitHub:** https://github.com/johndesautels1/Olivia-Brain
 **Local:** `D:\Olivia Brain`
-**HEAD:** `b30ea00` on `main` (post-batch-S18-S22 handoff)
-**State:** **Track C CLOSED (6/6 ✅) + Track V 3/9 ✅.** Studio Olivia workbench is feature-complete (workspace shell + 5 primitives + Library scoring + Section nav + Right-pane tabs + Polish). Track V (LTM Valuation Engine Port) opened: V1 schema (6 valuation models + SQL migration) + V2 types/bridge (`CompanyValuationInput` 60+ fields + `buildValuationInput`) + V3 engine math (10 methods + 3 V4 stochastic deps pulled forward). **223/223 tests passing**, typecheck clean. Vercel deploy queued.
-
-**OLIVIA NORTH STAR locked 2026-05-07** at `docs/OLIVIA_NORTH_STAR.md` — the single question every commit must answer yes to ("are we making her the world's most advanced agentic CIO across Florida real estate / international relocation / London tech / two-city comparison mini-apps / heart-health recovery / London transit?"). **Read first every session before any other doc.**
-
-**Plan locked 2026-05-07** — Track V (~9 sessions, 3 done), Track Q (Quantara 56-field paragraphical intake, 7 sessions), Track P (Deal Protection gap-closures, 7 sessions). Track O Session O1 (Composio) pulls forward ahead of Q. June 8 reframed as DEMO target, not full ship. ~63 remaining sessions at ~4 sessions/day ≈ 3 weeks. Memory: `project_june_8_demo_strategy`, `project_track_v_ltm_valuation_port`, `feedback_4_sessions_per_day_pace`, `reference_olivia_north_star`, `feedback_olivia_brain_batch_session_pattern`, `feedback_olivia_brain_end_of_batch_handoff_protocol`. Full session-by-session breakdown in `docs/BUILD_SEQUENCE.md`.
-
-**Resume at Session 23 = Track V row V4 — stochastic + sensitivity port:** sensitivity.ts, hybrid.ts, kde.ts, market-comps-seed.ts, war-room-calendar.ts + LTM `__tests__/` port (engine, edge-cases, performance, security-rng, market-comps-seed, valuation-clock, e2e-pipeline). Per BUILD_SEQUENCE Track V row V4. Note: 3 of the originally-V4-scoped files (real-options, real-options-compound, monte-carlo) already landed in V3 because engine.ts depends on them — V4 has less to do than originally scoped.
-
-**Batch authorization status:** No batch is currently authorized. Per `feedback_olivia_brain_batch_session_pattern` memory, the next agent batches only when the user explicitly says (e.g. *"build S23-S27, your judgment on minor decisions, stop on blockers"*). Default is one-task-at-a-time.
-
-**Working tree:** clean post-handoff-commit. All commits pushed to `origin/main`. **Vercel build green.**
-
-> The previous version of this file (post-Session-11 era) is preserved in git history. This file replaces it with the current post-Session-12 state. The session series captured here (Sessions 1–12) is documented in detail in `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Parts 10–19.
+**HEAD:** `edb195a` on `main` (Track V Session V8 — ValuationWorkbench + 31 zone components)
+**State:** **Track V 8/9 ✅.** Valuation engine, agents, API routes, and workbench UI all ported. Next session = S28 / **V9** — port the five War Room / Deal Room components currently shimmed by `_v9-placeholders.tsx` and close Track V.
+**Tests:** 368/368 across 24 suites. **Typecheck:** clean. **Vercel:** post-S26 build broke on Next 16 async-params strictness; **fixed in V8 (`edb195a`)** — verify the next Vercel deploy succeeds.
 
 ---
 
-## REPO LOCATIONS
+## 0 · READ FIRST — non-skippable
+
+**Past Claude sessions (including the agent that handed THIS file to you) skipped one or more of the docs below and rebuilt the wrong thing.** That stops here. Read every doc on this list **before** any tool call beyond `git status`.
+
+1. **`~/CLAUDE.md`** — auto-loaded. Master rules. Includes the `UserCompanyDeadline` privacy contract, "stop means stop," the "no local builds" rule, the "minimize tool calls" rule, and the LTM read-only boundary.
+2. **Memory files** — auto-loaded. Index at `~/.claude/projects/C--Users-broke/memory/MEMORY.md`. The **load-bearing** ones for valuation work: `feedback_world_class_standard`, `feedback_olivia_brain_batch_session_pattern`, `feedback_olivia_brain_end_of_batch_handoff_protocol`, `project_ltm_types_no_speculative_generalization`, `project_track_v_ltm_valuation_port`, `feedback_commit_push_no_prompt`.
+3. **`HANDOFF.md`** (this file) — read in full.
+4. **`docs/OLIVIA_NORTH_STAR.md`** — the single question every commit must answer **yes** to. Locked 2026-05-07.
+5. **`docs/00_PRODUCT_TRUTH.md`** — bicycle-wheel architecture, product hierarchy, "all data passes through Olivia." Eternal source of truth; overrides every other doc.
+6. **`docs/01_UI_DESIGN_SYSTEM.md`** — Aurum + Aether tokens, LCH color, modular workspace, WCAG 2.2 AA + APCA, Vercel rules. Every UI conforms.
+7. **`docs/BOOTSTRAP.md`** — implementation context, sacred files list, standing rules.
+8. **`docs/BUILD_SEQUENCE.md`** — find the row labelled `**V9**` under "Track V — LTM Valuation Engine Port (Sessions V1–V9)."
+9. **`docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md`** — read **Parts 30–34** for what just shipped (the S23–S27 batch you're picking up after).
+
+If you've never read `00_PRODUCT_TRUTH.md` or `OLIVIA_NORTH_STAR.md` in this session, **stop and read them now.** They are not optional context.
+
+---
+
+## 1 · Resume point — Session 28 = Track V V9
+
+Per `docs/BUILD_SEQUENCE.md` Track V row V9:
+
+> **WarRoom + DealRoomSimulator + AcquisitionMirror.** Port: `WarRoom.tsx`, `WarRoomSession.tsx`, `WarRoomTranscript.tsx`, `WarRoomBriefing.tsx`, `WarRoomDocumentBridge.tsx`, `DealRoomSimulator.tsx`, `AcquisitionMirror.tsx`, `NegotiationAnchorCard.tsx`. Wire `negotiationSummary` bidirectional link from `ValuationRun` → `DealRoomSession`. Add `STUDIO_PORT_MANIFEST.md` § M (Valuation subsystem inventory). **Track V CLOSED.**
+
+### Files V8 left as placeholders that V9 must replace
+
+These five files in `src/components/valuation/` are currently re-export shims pointing at `_v9-placeholders.tsx`. **Replace them with the real LTM ports.** `ValuationWorkbench` already imports them; do not change V8 call sites.
+
+| OB file (currently shim) | LTM source to copy |
+|---|---|
+| `WarRoom.tsx` | `D:\London-Tech-Map\src\components\valuation\WarRoom.tsx` |
+| `DealRoomSimulator.tsx` | `D:\London-Tech-Map\src\components\valuation\DealRoomSimulator.tsx` |
+| `AcquisitionMirror.tsx` | `D:\London-Tech-Map\src\components\valuation\AcquisitionMirror.tsx` |
+| `NegotiationAnchorCard.tsx` | `D:\London-Tech-Map\src\components\valuation\NegotiationAnchorCard.tsx` (must keep exporting `interface ChallengeResponse` — V8 imports it) |
+| `EquityWaterfall.tsx` | `D:\London-Tech-Map\src\components\valuation\EquityWaterfall.tsx` |
+
+Plus the rest of the War Room family (not yet in OB):
+
+| OB destination | LTM source |
+|---|---|
+| `src/components/valuation/WarRoomSession.tsx` | `D:\London-Tech-Map\src\components\valuation\WarRoomSession.tsx` |
+| `src/components/valuation/WarRoomTranscript.tsx` | `D:\London-Tech-Map\src\components\valuation\WarRoomTranscript.tsx` |
+| `src/components/valuation/WarRoomBriefing.tsx` | `D:\London-Tech-Map\src\components\valuation\WarRoomBriefing.tsx` |
+| `src/components/valuation/WarRoomDocumentBridge.tsx` | `D:\London-Tech-Map\src\components\valuation\WarRoomDocumentBridge.tsx` |
+| `src/components/valuation/war-room-utils.ts` | `D:\London-Tech-Map\src\components\valuation\war-room-utils.ts` |
+
+After porting, **delete `src/components/valuation/_v9-placeholders.tsx`** — it has no consumers once the real components ship.
+
+### Bidirectional `negotiationSummary` link
+
+V9 spec: "Wire `negotiationSummary` bidirectional link from `ValuationRun` → `DealRoomSession`." `ValuationRun.dealRoomSessions` already exists (V1 schema); the GET `[runId]` route already builds a `negotiationSummary` from the latest session (`src/app/api/valuation/[runId]/route.ts:498-521`). Confirm that War Room writes flow back into the existing `negotiationSummary` shape; extend `dashboard-types.ts` only if a real gap exists.
+
+### Track close-out artifact
+
+Append `STUDIO_PORT_MANIFEST.md` § **M — Valuation subsystem inventory** mirroring the shape of § J (Map) and § L (Calendar). Include the V8 + V9 file inventory + adaptations + LTM weakness IDs touched.
+
+---
+
+## 2 · Working directive (carried over from the user)
+
+The user authorised batches via `feedback_olivia_brain_batch_session_pattern`. Default is one task at a time. **For S23–S27 the user explicitly directed:**
+
+> *"Build the next 5 sessions in parallel, stop with each session so we can assure no typescript errors. You are commanded to code to best coding practices and minimize tool uses and get going."*
+
+Translation in practice (this batch validated the pattern):
+
+- **Sequential per session, parallel within a session.** Tools that don't depend on each other (parallel reads of LTM source files, the PowerShell mass-replace) ran in single tool calls. Inside each session the work was: copy → adapt → typecheck → tests → commit + push → next session.
+- **Typecheck-gated stop after each.** Every session ended with `npm run typecheck` clean and `npm test` green before the commit. **No exception is acceptable.** If typecheck fails, fix the root cause; do not push the session.
+- **Minimize tool calls.** PowerShell mass-replaces beat dozens of `Edit` calls when the patterns are mechanical. Per-component hand-edits when the structure is unique. Do not call `find` / `grep` to "double-check" something the canonical doc already says (CLAUDE.md rule).
+- **Per-session feat commits + per-session SESSION_LOG entries batched into a single end-of-batch docs commit.** S23–S27 produced commits `6fbeb25`, `4274f61`, `b53abea`, `56c735e`, `edb195a` then this docs commit.
+- **End-of-batch handoff is mandatory.** This file is the artifact. Per memory `feedback_olivia_brain_end_of_batch_handoff_protocol`: announce "preparing the handoff," update HANDOFF.md, push as the **last** commit of the batch.
+
+If the user has not pre-authorised a new batch when you start, **default is one task at a time — wait for instructions before chaining sessions.**
+
+---
+
+## 3 · Gotchas this batch surfaced — do not rediscover
+
+These are the things that bit S23–S27. Bake them into your mental model before you touch code.
+
+### 3.1 LTM is not always self-consistent
+
+- **`e2e-pipeline.test.ts` and `security-rng.test.ts` in LTM `__tests__/` reference `src/lib/export/{csv-json-export, timeline-export, sanitize}` modules that LTM never shipped.** Verified via `find`. They will defer indefinitely unless V9 (or a follow-up) adds the export utilities. Do not attempt to "fix" by stubbing — that's a band-aid.
+- **`session2.test.ts` in LTM is a top-level imperative dev script** (top-level `console.log` + `throw`), not a vitest suite. V4 wrapped it in `describe`/`it` so vitest picks it up. If you encounter similar LTM dev scripts, do the same — preserve the validation logic, add the test runner hooks.
+
+### 3.2 Generated Prisma client can disagree with `schema.prisma`
+
+`node_modules/.prisma/client/index.d.ts` may include columns the live `prisma/schema.prisma` doesn't have (this batch hit this on `DealRoomSession.companyName` etc.). **Trust `schema.prisma`.** The next `prisma generate` will resolve the divergence. If a route is writing to a column the schema lacks, drop the column from the route; do not add the column to the schema unless that's what you actually intend.
+
+### 3.3 PowerShell + bracketed path segments
+
+Dynamic Next.js segments like `src/app/api/valuation/[runId]` need **`-LiteralPath`** in PowerShell `Copy-Item` / `Get-Content` / `Set-Content`. Without it the brackets get treated as a glob and your operation silently no-ops on the file you cared about. The `[runId]/route.ts` file went missing once for exactly this reason — a `find` listing was the only way to spot it.
+
+### 3.4 Next.js 16 async route params
+
+```ts
+// ❌ Next 15 / LTM shape — Next 16 rejects this
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { runId: string } },
+) {
+  const { runId } = params;
+}
+
+// ✅ Next 16 contract — applied to [runId]/route.ts in V8 commit edb195a
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ runId: string }> },
+) {
+  const { runId } = await params;
+}
+```
+
+Apply this to **every** dynamic-segment route you port. If you see Vercel's build worker complain about `RouteHandlerConfig`, this is the fix.
+
+### 3.5 Bicycle-wheel boundary on cristiano.ts and run/route.ts
+
+When porting LTM code that imports `prisma.organization`, `prisma.document`, `prisma.userProfile`, or `prisma.analysisResult`: those models do not exist in OB and (per memory `project_ltm_types_no_speculative_generalization`) **must not be added speculatively.** Two correct adaptations:
+
+1. **Push the dependency out** via an injected callback (e.g. `LoadCandidateOrgsFn` in `cristiano.ts`). The caller — running embedded in LTM or routing through the UKP bridge — supplies the data.
+2. **Return an empty / null result** with a comment naming the future track that wires it (e.g. `gatherDocuments` in `run/route.ts`). The downstream code degrades gracefully; the cascade extraction agents fall back to bridge-only inputs.
+
+Either is fine. **Adding LTM models to `prisma/schema.prisma` is not.**
+
+### 3.6 LTM Clerk auth pattern → OB stub
+
+LTM routes universally use:
+
+```ts
+import { auth } from "@clerk/nextjs/server";
+const { userId } = auth();
+const profile = await prisma.userProfile.findUnique({
+  where: { clerkUserId: userId },
+  select: { id: true },
+});
+if (!profile) return NextResponse.json({ error: "No profile found" }, { status: 404 });
+```
+
+In OB you replace it with:
+
+```ts
+import { getAuthSession } from "@/lib/auth/session";
+const { userId } = await getAuthSession();
+if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const profile = { id: userId };
+```
+
+PowerShell mass-replaces handle this — see V7 commit (`56c735e`) for the regex patterns. `userId` IS the profile id directly in OB. When Clerk lands in F18, the body of `getAuthSession()` becomes the real Clerk call and route code stays identical.
+
+### 3.7 Tier gate stub pattern
+
+`src/lib/require-tier.ts` exposes the same `requireTier` / `tierAtLeast` / `getUserTier` / `PlanTier` / `TierCheckResult` contract LTM uses. **Pre-Clerk every authenticated caller passes as `executive`-tier.** F18 swaps the body for a real Prisma planTier lookup. Route code never changes.
+
+---
+
+## 4 · Outstanding state
+
+### 4.1 Stash held for review
+
+Branch `main` working tree is clean except a stash carrying an uncommitted edit to `docs/00_PRODUCT_TRUTH.md`:
+
+```
+stash@{0}: On main: uncommitted PRODUCT_TRUTH §5.1 — held for review
+```
+
+The stash is the **§5.1 "Olivia's agentic critical-date pipeline (added 2026-05-04)"** section — the privacy contract that mirrors `~/CLAUDE.md`'s top-priority `UserCompanyDeadline` rule. It was in the working tree when this conversation started and the previous agent's "Working tree clean" claim was wrong. The user told me to stash rather than commit; resolution is **the user's call** when they're ready. To inspect or apply:
+
+```powershell
+git -C "D:\Olivia Brain" stash show -p stash@{0}     # see the diff
+git -C "D:\Olivia Brain" stash apply stash@{0}        # restore to working tree (keeps the stash)
+git -C "D:\Olivia Brain" stash drop stash@{0}         # discard
+```
+
+Do not commit it without checking with the user first.
+
+### 4.2 Operator actions still owed (unchanged from prior handoffs)
+
+| Action | When | Why |
+|---|---|---|
+| **Apply C3 SQL migration** — paste `prisma/sql/02-add-voice-olivia-foundation.sql` into Supabase SQL Editor and Run. | Before C4 routes write to voice/olivia tables | 9 new tables: `olivia_*` + `voice_*`. |
+| **Apply V1 SQL migration** — paste `prisma/sql/03-add-valuation-foundation.sql` into Supabase SQL Editor and Run. | Before V7 routes (now live post-V8) write to valuation tables | 6 new tables: `valuation_subjects`, `valuation_runs`, `valuation_sensitivities`, `financial_snapshots`, `deal_room_sessions`, `deal_room_messages`. |
+| `STUB_USER_ID` env var (Preview only, never Production) | Before testing C4 / V7 routes in Preview | Stub auth reads it. |
+| Twilio + ElevenLabs + Resend + Google/Outlook OAuth + Tavily + OpenAI keys | Per the table in the previous handoff (still applicable) | Every external integration. **Sensitive, Production + Preview only** per `~/CLAUDE.md`. |
+| `match_calendar_memory()` PostgreSQL function | When calendar memory becomes a user-facing feature | C2 falls back to empty array + console warning until then. (W-014.) |
+
+### 4.3 Active weaknesses (carried)
+
+| ID | What | Where to close |
+|---|---|---|
+| W-013 | Calendar UI Tailwind/styling fidelity gap | Track C polish (revisit after Track V close) |
+| W-014 | `match_calendar_memory()` not installed in Supabase | Operator action above |
+| W-015 | `lib/auth/session.ts` is a Clerk stub | Track F Session 18 |
+| W-016 | `lib/system-alerts.ts` console-only stub (no SystemAlert model) | Future track that needs system alerts |
+
+V8 did not introduce new W-IDs. V9 will not either if it sticks to the spec.
+
+### 4.4 LTM tests still deferred
+
+`src/lib/valuation/__tests__/e2e-pipeline.test.ts` and `security-rng.test.ts` were dropped in V4 because they import LTM-only `src/lib/export/{csv-json-export, timeline-export, sanitize}` modules **which LTM itself never shipped.** Re-port them only after the export utilities exist (no obvious owner; not in the V9 spec). Until then the deferral is the correct posture per `feedback_world_class_standard` ("no band-aids").
+
+---
+
+## 5 · Repo locations
 
 | Repo | Path | Status |
-|------|------|--------|
-| **Olivia Brain (this — your working repo)** | `D:\Olivia Brain` | Current. HEAD will be the post-Session-13 docs commit. |
+|---|---|---|
+| **Olivia Brain (this — your working repo)** | `D:\Olivia Brain` | HEAD `edb195a` post this handoff commit. |
 | **GitHub** | https://github.com/johndesautels1/Olivia-Brain | up to date with `main` |
 | London Tech Map (LTM) | `D:\London-Tech-Map` | **READ-ONLY.** Copy components OUT; never edit, rename, delete, or move ANY LTM file. |
-| Studio Olivia prototypes | `D:\Studio-Olivia` | **REFERENCE ONLY.** The 95 KB GrandMaster JSX is the design north star — don't import its code. |
-| Clues Main (cluesintelligence vision docs) | `D:\Clues Main` | Docs canonical. Code is way behind — don't trust the code. |
-| Questionnaire engine | private GitHub `johndesautels1/clues-questionnaire-engine` | Current truth for cluesintelligence. Local `D:\clues-questionnaire-engine` is STALE (different computer). |
+| Studio Olivia prototypes | `D:\Studio-Olivia` | **REFERENCE ONLY.** |
+| Clues Main vision docs | `D:\Clues Main` | Docs canonical; code stale. |
+| Questionnaire engine | private GitHub `johndesautels1/clues-questionnaire-engine` | Current truth for cluesintelligence. |
 
 ---
 
-## ABSOLUTE RULES (do not violate)
+## 6 · Absolute rules (do not violate)
 
-1. **LTM is read-only.** Never edit, rename, delete, or move any file in `D:\London-Tech-Map`. Copy out (Read + Grep + `Copy-Item`); never modify the source.
-2. **No band-aids.** No `force-dynamic` workarounds, no `// hack` comments, no `@ts-ignore`, no Suspense wrappers used as a workaround. Find and fix the root cause. When work cannot meet the bar in the time available, **raise the conflict, never silently lower the bar**.
+1. **LTM is read-only.** Never edit, rename, delete, or move any file in `D:\London-Tech-Map`.
+2. **No band-aids.** No `force-dynamic`, no `// hack`, no `@ts-ignore`, no Suspense wrappers used as a workaround. Find and fix the root cause; when work cannot meet the bar, raise the conflict — never silently lower the bar.
 3. **Verify before claiming done.** `npm test` and `npm run typecheck` must both pass before any commit.
 4. **Lockfile in same commit as `package.json`.** Always.
 5. **Commit + push together.** Vercel deploys from git. Local commits do nothing.
@@ -44,196 +235,102 @@
 7. **AbortSignal + timeout on every network call.** No exceptions.
 8. **PII never enters spans, traces, or logs.** Only metadata.
 9. **JSDoc on every exported symbol.** Class headers describe reliability guarantees.
-10. **One task at a time.** After completing each session's deliverable, stop and check in with the user.
+10. **One task at a time** unless the user explicitly authorises a batch.
 11. **NEVER run local builds** (`npm run build`, `next build`). Vercel handles that. `npm run typecheck` and `npm test` are allowed.
-12. **All architecture and README docs must continue to be updated and committed** to reflect every change. (User words 2026-05-03: "all the architecture and readme docs must continue to be updated to reflect these changes and commited.")
+12. **All architecture and README docs commit alongside code changes** that change them.
+13. **STOP means STOP.** "Stop" / "halt" / "wait" / "hold on" / "pause" — in any casing or typo — immediately ceases all tool calls and execution. No completing the current step. (Top-priority rule from `~/CLAUDE.md`.)
 
 Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into every session" + `~/CLAUDE.md`.
 
 ---
 
-## READ ORDER (every new session, in this exact sequence)
-
-1. **`~/CLAUDE.md`** — auto-loaded by Claude Code. Master project rules. Includes: never set secret env vars to "All Environments" in Vercel; never run local builds; minimize tool calls; LTM read-only; STOP means STOP.
-2. **Memory files** — auto-loaded by Claude. They live at `~/.claude/projects/C--Users-broke/memory/` (13 files indexed in `MEMORY.md`). The 5 most-load-bearing for this work are listed in § Memories below.
-3. **`docs/OLIVIA_NORTH_STAR.md`** — the single question every commit must answer yes to. Six product surfaces, three modes, bicycle-wheel hub. **Locked 2026-05-07; read this before any other doc.** Short on purpose.
-4. **`docs/00_PRODUCT_TRUTH.md`** — eternal source of truth for the entire CLUES product universe. Bicycle-wheel architecture; product hierarchy; Olivia is the brain at the hub. Past sessions ignored this for 30+ conversations — DON'T.
-5. **`docs/01_UI_DESIGN_SYSTEM.md`** — universal dark-mode design language. Aurum + Aether tokens, LCH color space, modular workspace, multi-agent visualization, WCAG 2.2 AA + APCA, Vercel AGENTS.md rules.
-6. **`docs/03_BRAIN_ENRICHMENT_ENGINE.md`** — universal auto-enrichment primitive (B1–B7).
-7. **`docs/04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md`** — flagship architecture (L0–L10). Subject-to-change banner.
-8. **`docs/BUILD_SEQUENCE.md`** — session-by-session deliverables. **Find your current track + session row.** Tracks A–F (Olivia core + clueslondon ship), G–K (cascade + agents + multi-tenant + verticals + hardening), Track Calendar (C1–C6), Track N (Visual Manifestation N1–N5), Track O (Weakness Closure O1–O5), Track L (cluesintelligence Unification, post-clueslondon).
-9. **`docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md`** — Parts 1–15. **Read the most recent Part for what just shipped + decisions + Session N+1 handoff.** Currently Part 15 = Session 8 = Track Calendar C1 done.
-10. **`docs/STUDIO_PORT_MANIFEST.md`** — per-subsystem port inventory + adaptations + post-mortem sections. § A–I = pre-pivot Studio plans (still valid for Track B Documents post-Clerk). § J = Map subsystem (ported Session 7). § K = Documents subsystem entanglement post-mortem (must read before any documents-port attempt — Clerk strategy required first). § L will be added in Track Calendar C6.
-11. **`README.md`** — Visual Manifestation Stack (Tier 1–4 APIs, Gamma is partner not competitor) + Weakness Backlog (W-001 through W-012, append-only).
-
-**Skip in normal sessions** (large, lookup-only): `docs/MERGE_INVENTORY.md` (233-row capability matrix), the 95 KB `StudioOliviaGrandMaster (2).jsx` (use design doc instead), `docs/architecture-historical/V_*.md`.
-
----
-
-## WHERE YOU ARE NOW (post-Session 8)
-
-### What's working end-to-end
-
-| Path | What |
-|------|------|
-| `/test-avatar` | Click **Start Live Avatar** → click **Speak** → Olivia lip-syncs (Sessions 1–2). Type into "Talk to Olivia" → cascade walks → reply → ElevenLabs PCM → lip-syncs (Sessions 4–6). Gated by `ADMIN_API_KEY` (passed via `?key=` or pasted in input). |
-| `/api/olivia/chat` | Production chat endpoint. Cascade-routed (Anthropic → OpenAI → Google → Grok → Perplexity → Mistral → Groq → Tavily → Opus judge). Persists turns. Full `attempts` trail in metadata. Mock-mode degrades gracefully when no provider keys set. |
-| `/api/olivia/liveavatar` + `/speak` | LiveKit room + ElevenLabs PCM bridge. Admin-key gated until Track F Session 18 (Clerk). |
-| **Bridge providers** | `OliviaSelfProvider` + `LtmKnowledgeProvider` registered with 76 tests + full UKP contract. |
-| `/map` | Map UI shell ported byte-for-byte from LTM (Session 7). 3-tier vendor fallback: Google Maps 3D → Google Maps standard → Mapbox → "API key required" message. **Renders empty until per-spoke adapter feeds data** (Track J) — by design. **Visual fidelity gap** (W-011 + W-012) — Olivia Brain has no Tailwind; LTM map files use 223+ Tailwind classes that are inert. Resolution in Track C UI rebuild. |
-
-### What just shipped this session series (Sessions 1–8)
-
-- **Sessions 1–6** (commits pre-`c109d0f`): LiveAvatar pipeline, bridge providers, chat brain v1 (single-provider), chat brain v2 (cascade-routed), `/test-avatar` end-to-end smoke flow. **94/94 tests passing.**
-- **Session 7** (commits `faa8ab1`, `991f411`, `55ff466`, `76c3fb0`, `c86e24f`): Pivoted from documents-engine port (entanglement post-mortem in `STUDIO_PORT_MANIFEST.md` § K) to **LTM map port byte-for-byte** (28 files, 6,107 LOC). Added Track N (Visual Manifestation, N1–N5) + Track O (Weakness Closure, O1–O5). Added W-008 through W-010 + later W-011/W-012 (Tailwind + token divergence).
-- **Session 8** (commits `ecfb38b`, `49ed993`, `1986edf`): Added Track Calendar (6 sessions C1–C6) for calendar + voice + email/call/share infrastructure. **C1 foundation shipped:** 14 calendar Prisma models + 15 enums (schema validates clean; Prisma client generated), `lib/video/embeddings.ts` ported byte-for-byte, 8 npm packages installed (FullCalendar suite + react-international-phone + rrule). 94/94 tests still passing. Schema adaptations: `cuid → UUID`, `userProfileId → userId`, LTM-domain FKs dropped, DealRoom dropped (real-estate spoke), Event-family not ported. **`lib/queries/calendar.ts` port DEFERRED to C2** — discovery surfaced 93 LTM-domain references requiring engine-aware adaptation, not the originally-scoped mechanical rename.
-- **Session 9** (commits `948f6ed`, `95526a1`): **Track Calendar C2 calendar engine + queries shipped.** `src/lib/queries/calendar.ts` (1130 lines, all `userProfileId → userId` + LTM-domain selects stripped + `getMergedCalendarView` dropped). `src/lib/calendar/*` (16 of 19 files: 7 byte-for-byte, 6 with userId rename, 3 modified — olivia-guardrails minus DB call, proximity-cluster trimmed to haversineKm, index.ts barrel adjusted). 3 LTM files intentionally NOT ported (document-aware, founder-journey, workflow-generator) — defer to dependency tracks (Documents post-Clerk; AnalysisResult Track L). `src/lib/olivia/tools.ts` calendar slice ported with 2 tools (`get_user_calendar` adapted, `web_search` byte-for-byte); the other 22 LTM tools defer to C3/C4/Track L. **94/94 tests still passing. Typecheck clean.** New weakness W-014 logged (`match_calendar_memory()` SQL function not installed — graceful degradation in place).
-- **Session 10** (commits `4291a39`, `273b242`): **Track Calendar C3 voice + olivia models + engine shipped.** 9 voice/olivia Prisma models added to schema.prisma (OliviaConversation, OliviaMessage, OliviaPresentation, OliviaConsent, OliviaGuardrail, OliviaUserMemory, VoiceConversation, VoiceContact, VoiceActionItem) with same C1/C2 adaptations + the deferred `voiceConversations` reverse relation on CalendarEntry wired. SQL migration generated via `prisma migrate diff` at `prisma/sql/02-add-voice-olivia-foundation.sql` (10.5 KB). 4 voice lib files ported (3 byte-for-byte: voice-conversation/document/prompts; 1 with userId rename: voice-memory). `tools.ts` extended with `get_user_memory` + `save_user_memory` tools + `hasLearningConsent` helper (now 4 tools). `olivia-guardrails.ts` DB integration restored (OliviaGuardrail model now exists). `chat.ts` slim slice ported (createConversation / getConversationHistory / getConversationMessages only — `processOliviaMessage` deferred per HANDOFF gotcha analysis). **`knowledge-base.ts` NOT ported** — no in-scope C3 consumer; deferred to future track. **94/94 tests still passing. Typecheck clean.**
-- **Session 11** (commits `1657fe2`, `278a4f9`): **Track Calendar C4 voice/email/call/sms/WhatsApp routes shipped.** 19 of 21 LTM routes ported (call ×10, calls ×2, voice ×3, email/sms/whatsapp ×3, conversations/[id]/email ×1). 2 routes intentionally deferred: `voice/to-document` + `voice/to-package` (depend on Document/Package models not in Olivia Brain). **Auth: Option B chosen** — `lib/auth/session.ts` Clerk stub (`getAuthSession()` reads `STUB_USER_ID` env in dev/preview, throws in production). One-line swap when Clerk lands in Track F Session 18. Tracked as W-015. Supporting libs ported: `lib/twilio/client.ts` (coexists with pre-existing server.ts), `lib/elevenlabs/client.ts` (coexists with pre-existing voice/elevenlabs.ts), `lib/email/resend.ts` + `resend` npm installed. 4 routes had `prisma.userProfile.findUnique({ clerkUserId })` lookups dropped (userId IS Clerk user ID directly). **94/94 tests still passing. Typecheck clean.**
-- **Session 12** (commit `cb678b7` + `715aac4` docs): **Track Calendar C5 calendar UI + 18 of 24 API routes shipped.** 15 calendar UI components ported byte-for-byte (`AgendaRail`, `CalendarEntryModal`, `CalendarNotepad`, `CalendarView`, `ConfirmationChip`, `EventStatusWidget`, `FloatingCalendarWidget`, `FocusMode`, `InsightsPanel`, `OliviaPanel`, `PrepTaskList`, `SyncPanel`, `TabbedAgendaView`, `VoiceInput`, `index`) + 3 supporting (`components/tools/useDraggable`, `components/olivia/OliviaConsentModal`, `lib/mobile-keyboard`). 18 routes: `entries` (with ecosystem-events `prisma.event.findMany` block dropped), `prep-tasks`, `attendees` (linkedPersonId dropped), `analytics`, `memory`, `notes`, `olivia`, `plan`, `travel`, `sync` root + 5 sub-routes (google/outlook callbacks drop UserProfile lookup; calendly drops email-based UserProfile lookup → matches via CalendarSyncAccount.providerEmail), `cron/calendar-sync`, `cron/calendar-plan`, plus added `app/api/olivia/consent` (required by OliviaConsentModal). **6 routes intentionally deferred:** journey + workflow (AnalysisResult), documents (Document), nearby (Organization+Event), events ical/rsvp (Event/EventRsvp), videos/calendar (Video). **Adaptations:** PowerShell bulk script for `userProfileId → userId` (~140 occurrences), 10 `prisma.userProfile.findUnique` lookups dropped, `linkedOrg`/`linkedEventId`/`linkedPersonId` references dropped from entries/attendees/prep-tasks/CalendarView/TabbedAgendaView. **`lib/system-alerts.ts`** console-only stub (SystemAlert model not in OB schema; **W-016**). **Tailwind/styling caveat carries forward (W-013).** Deps: `react-datepicker` + `@types/react-datepicker` installed. **94/94 tests still passing. Typecheck clean.**
-- **Session 13** (commit `4bdb08a` + `c25bbfc` docs): **Track Calendar C6 — app routes + smoke tests + docs. CLOSES Track Calendar.** Ported `app/calendar/page.tsx` (server-component shell, title swapped to "Calendar — Olivia Brain") + `app/calendar/CalendarPageClient.tsx` byte-for-byte (1265 LOC: OCC theater + My Calendar tab + Notes tab + agenda modal + focus-mode + GDPR consent flow + conversation history dropdown + transcript download/email/read-aloud) + `OliviaDisplayScreen.tsx` byte-for-byte (696 LOC; deps already in OB — `OliviaVideoAvatar`, `InsightsPanel`, `OliviaPanel`). 3 Vitest smoke tests / 6 cases (`__tests__/{CalendarView,CalendarNotepad,CalendarEntryModal}.test.tsx`) using `@vitest-environment jsdom` magic comment with mocks for FullCalendar (+ 4 plugins), `react-datepicker` (lazy import), `react-international-phone` (PhoneInput + style.css), `@googlemaps/js-api-loader`, and a `window.matchMedia` stub in `beforeAll`. Test deps installed (devDependencies + lockfile in same commit): `@testing-library/react`, `@testing-library/dom`, `@testing-library/jest-dom`, `jsdom`. STUDIO_PORT_MANIFEST §L (Calendar + voice subsystem inventory; same shape as §J Map subsystem) appended. **No new W-IDs.** **100/100 tests passing. Typecheck clean.** **All 6 Track Calendar sessions ✅, track CLOSED.**
-- **Session 14** (commit `21fbecf` + `2cab220` docs): **Track C opens — three-region shell + Aurum/Aether design system + Tailwind v4.** Decision locked (per founder Q on portability 2026-05-03): **tokens-as-substrate** (CSS custom properties) + Tailwind v4 utilities + inline styles for shell chrome — all three styling approaches consume the same canonical token primitives. Aurum gold (`#C4A96A`) overrides the Studio prototype's `C.accent` orange (`#FF8C00`); `01_UI_DESIGN_SYSTEM.md` is authoritative. **Shipped:** `src/styles/tokens.css` (canonical Aurum + Aether ladder, LCH with sRGB fallbacks, backward-compat aliases, Tailwind `@theme` block); `src/styles/base.css` (a11y primitives — `:focus-visible`, `touch-action: manipulation`, 16px input floor, `overscroll-behavior: contain`, skip-to-content, `prefers-reduced-motion`, 44×44 touch targets, forced-colors); `src/lib/theme/generate.ts` (white-label primitive — pure function, 230 lines); `src/components/workspace/{WorkspaceShell,Header,RailLeft,Inspector,Center}.tsx`; `src/components/primitives/AvatarOrb.tsx` (placeholder; full impl S15); `/` mounts the shell with placeholder region content; Phase-1 readiness UI relocated to `/admin/phase1`; `vitest.setup.ts` registers `@testing-library/react` cleanup globally. **Resolves W-011 + W-012 + W-013.** **134/134 tests passing** (94 baseline + 6 calendar smoke + 12 theme generator + 11 AvatarOrb + 11 workspace shell). Typecheck clean.
-- **Session 15** (commit `22f1454` + this docs commit): **Track C — five reusable primitives.** `AvatarOrb` (full impl, surface contract preserved from S14; **Cristiano gold-saturated transition** § 6.3 — `intent="judge"` + `state="speaking"` → `data-cristiano="true"` + 1s gold swell; **council mode** § 6.4 — `subAgents={[...]}` orbits coloured dots per agent kind: Olivia/Cristiano aurum, Research aether, Persona mint, Math sky, Multilingual coral-mute; LiveAvatar `lazy()` + `Suspense` mounts only at size 240 OR explicit `hasVideo`). `Badge` (color-tiered percent pill, 4 tiers via `data-badge-tier`: high mint / medium amber / low coral / empty fg-disabled). `CompletionRing` (SVG progress, same 4 tiers via `data-ring-tier`, `role="progressbar"` + `aria-valuenow`). `ConsensusDots` (5 dots, single `role="img"` with descriptive label so screen readers don't count individual dots). `DeckDetailModal` (Radix Dialog — focus-trap + return-focus + Esc-to-close + ARIA all handled by Radix per § 8.3; renders category chip + stage + ConsensusDots + score Badge + name + tag + Insight + Fit + Match Reasons + Olivia Action + gradient Apply CTA; custom `applyLabel` for non-pitch contexts). Old `src/components/pitch/{Badge,CompletionRing}` paths now thin re-export shims (canonical impls in `primitives/`; no internal imports use legacy paths). `@radix-ui/react-dialog ^1.1.15` installed. **47 new unit tests** (10 Badge + 11 CompletionRing + 8 ConsensusDots + 9 DeckDetailModal + 8 AvatarOrb additions). **180/180 total tests passing**. Typecheck clean.
-
----
-
-## WHERE TO RESUME — Session 16 = Track C, Session 11 in original numbering (Library tab + DeckDetailModal interaction)
-
-**Spec:** `docs/BUILD_SEQUENCE.md` Track C row labelled `**11**`.
-
-### Session 16 deliverable — Library tab + scoring + Apply flow
-
-Per BUILD_SEQUENCE Track C row 11:
-
-> Library + DeckDetailModal interaction. 75 archetypes + 12 templates from the prototype's static data, scored by `scoreDecks` / `scoreTemplates`. Apply-archetype regenerates slides. Real backend, not stubbed Anthropic calls.
-
-**Critical context from S15 (the primitives are in place):**
-
-- `DeckDetailModal` exports the canonical surface contract (`Deck`, `DeckDetailModalProps`). It already renders the full prototype payload — S16 just feeds it data + wires the Apply handler.
-- `Badge` + `ConsensusDots` are token-aware primitives — Library cards consume them directly.
-- `Inspector` (S14) has a `library` tab slot already wired in `/`'s page. S16 fills its body.
-
-### Steps for Session 16
-
-1. **Read in order**: this file → `docs/SESSION_LOG_…` Part 22 (Session 15 details) → `docs/BUILD_SEQUENCE.md` Track C row `**11**` → `docs/STUDIO_OLIVIA_DESIGN.md` § 2.5 (Library tab spec) + § 8 #4 (Library scoring with reasons).
-2. **Lift archetype + template data** from `D:\Studio-Olivia\StudioOliviaGrandMaster (2).jsx` into `src/lib/studio/archetypes.ts` + `src/lib/studio/templates.ts`. Strict TypeScript types — no inline arrays. 75 archetypes + 12 templates per the prototype.
-3. **Implement scoring helpers** as pure functions: `scoreDecks(deck, deckConfig)` + `scoreTemplates(template, deckConfig)` → `{ score, reasons }`. Standalone tested helpers in `src/lib/studio/scoring.ts`.
-4. **Build the Library tab body component** at `src/components/studio/LibraryTab.tsx`. Search input + Decks/Plans toggle + relevance line ("X archetypes · Stage/Industry relevance") + scrollable card list (Studio prototype § 2.5 spec — 3px left bar in category color, name, category pill, stage, ConsensusDots, optional `raised` chip, 2-line clamped insight, big mono score number).
-5. **Wire the click → DeckDetailModal flow.** Selected card sets local state; passing the deck to `DeckDetailModal` opens it. `onApply` regenerates slides (S16 may stub the slide-state slot — S17 likely owns the slide engine wiring).
-6. **Replace the placeholder Library tab body** in `src/app/page.tsx`. The Library inspector tab now mounts `LibraryTab`.
-7. **Vitest unit tests:** scoring helpers (pure-function determinism + per-input edge cases); `LibraryTab` smoke (search filter, toggle, click → modal).
-8. **Verify**: `npm run typecheck` clean, `npm test` ~210+ passing.
-9. **Commit + push** code (`feat(studio): Track C Session 16 — Library tab + scoring + Apply flow`) + docs (`docs: close Track C Session 16`).
-
-### Anticipated gotchas for Session 16
-
-- **Static data sources from the prototype.** The 95 KB single-file JSX has the archetype + template arrays inline. Lift them carefully — preserve all 75 + 12 entries with their full payloads (consensus dots, scores, raised, insight, fit, matchReasons).
-- **Scoring math must match the prototype.** `scoreDecks` interpolates stage / industry / goal / tone match; `scoreTemplates` is similar. Translate the prototype's logic literally; pure functions; unit-test edges.
-- **Apply flow needs a slides state slot.** Decision: land the slide-state model now (S16) or defer to S17 (Section nav + document tree). Recommend S16 lands a minimal `slides: Slide[]` state in the Studio context provider; S17 fills in the per-section editor.
-- **The Library card's left bar uses a category-specific color.** Map category strings to canonical token names (no raw hex). Add a `category` → `--aurum-primary` / `--aether-primary` / `--mint-up` / etc. lookup in `src/lib/studio/category-colors.ts`.
-- **`DeckDetailModal` is already done in S15** — don't rebuild it. S16 just feeds it the selected deck.
-
----
-
-## OPERATOR ACTIONS NEEDED (you, not the agent)
-
-| Action | When | Why |
-|--------|------|-----|
-| ~~**Apply C1 migration to DB**~~ | DONE 2026-05-03 (Option B — Supabase SQL Editor paste). Calendar tables exist in dev DB. | — |
-| **Apply C3 migration to DB** — paste contents of `prisma/sql/02-add-voice-olivia-foundation.sql` into Supabase SQL Editor and Run (Option B path, identical workflow to C1). | Before any of C4's routes start writing to voice/olivia tables | Schema-in-code → DB tables. 9 new tables: olivia_conversations, olivia_messages, olivia_presentations, olivia_consents, olivia_guardrails, olivia_user_memories, voice_conversations, voice_contacts, voice_action_items. |
-| **Apply V1 migration to DB** — paste `prisma/sql/03-add-valuation-foundation.sql` into Supabase SQL Editor and Run (Option B path, identical to C1+C3). | Before any V7 valuation API routes write to the new tables | 6 new valuation-domain tables: valuation_subjects, valuation_runs, valuation_sensitivities, financial_snapshots, deal_room_sessions, deal_room_messages. |
-| Set `STUB_USER_ID` env var in Vercel (Preview only) | Before testing C4 routes in Preview | The `lib/auth/session.ts` stub reads this. Set it to any string (e.g., `clerk_user_dev_001`). Throws clearly if unset. **NOT in Production** — production refuses to run the stub at all (W-015). |
-| Set Twilio env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`) in Vercel | Before C4 routes go live | Twilio call lifecycle + webhook signature verification. **Sensitive, Production + Preview only.** Add to `env.ts` when wired. |
-| Set ElevenLabs env vars (`ELEVENLABS_API_KEY`, `ELEVENLABS_OLIVIA_VOICE_ID`) | Before any voice TTS feature goes live | Used by `/api/olivia/voice` + `/api/olivia/call/audio` for ElevenLabs audio generation. **Sensitive, Production + Preview only.** |
-| Set `RESEND_API_KEY` (optional) | Before email features go live | `/api/olivia/email` and `/api/olivia/conversations/[id]/email` use Resend. Graceful skip + console warning if missing. **Sensitive, Production + Preview only.** |
-| Set `NEXT_PUBLIC_GOOGLE_MAPS_KEY` + `NEXT_PUBLIC_MAPBOX_TOKEN` in Vercel | Whenever you want the `/map` route to actually render | Without keys, map page shows "API key required" message. NEXT_PUBLIC_* uses **All Environments** per `~/CLAUDE.md`. Map clicks 404 to `/directory/{id}` and `/videos/{id}` since Olivia Brain has no such routes — see W-008. |
-| Set `OPENAI_API_KEY` if not already | Before running calendar memory features (C5+) | `lib/video/embeddings.ts` uses it for vector embeddings. Marked **Sensitive**, **Production + Preview only**. |
-| Install `match_calendar_memory()` PostgreSQL function in Supabase | When calendar memory becomes a user-facing feature (likely C5/C6) | C2's `searchCalendarMemory()` calls it via raw SQL. Currently degrades to empty array + console warning. **W-014** in README. LTM reference body in `D:\London-Tech-Map\prisma\sql\`. |
-| Set Google OAuth + Outlook OAuth keys (`GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `MICROSOFT_CALENDAR_CLIENT_ID`, `MICROSOFT_CALENDAR_CLIENT_SECRET`, `CALENDAR_ENCRYPTION_KEY`, `NEXT_PUBLIC_APP_URL`) | Before C5's calendar UI tries to OAuth | Calendar sync (`google-sync.ts` / `outlook-sync.ts` already ported in C2) needs these for OAuth flows. Not yet declared in `env.ts`. Add when C5 wires the API routes. **Sensitive, Production + Preview only.** |
-| Set `TAVILY_API_KEY` | Before web_search tool is useful | C2's tools.ts has `web_search` that calls Tavily. Without the key, returns "Web search is not configured" gracefully. **Sensitive, Production + Preview only.** |
-
----
-
-## MEMORIES YOU'LL FIND (auto-loaded, in `~/.claude/projects/C--Users-broke/memory/`)
-
-These ARE the architectural decisions that took multiple painful conversations to lock. **Trust them — don't re-derive.**
-
-| Memory | What it locks |
-|--------|---------------|
-| `feedback_world_class_standard` | 12-row standard table; no band-aids; root-cause every failure. |
-| `feedback_gamma_is_partner` | Gamma is Olivia's presentation runtime. **Never** frame it as competition. Integrate via Gamma API + Gamma MCP. Closest peers for clueslondon are Pitch.com, Tome, Beautiful.ai, advisory firms. |
-| `feedback_weakness_workflow` | Weaknesses → README + BUILD_SEQUENCE + memories. Doc-discipline rule: ALL architecture docs commit alongside code changes. |
-| `reference_olivia_clues_product_truth` | Pointer to `00_PRODUCT_TRUTH.md`. Bicycle-wheel; clueslondon ship priority 1; cluesintelligence flagship priority 2. |
-| `reference_olivia_ui_design_system` | Pointer to `01_UI_DESIGN_SYSTEM.md`. Aurum + Aether, LCH color space, Linear 3-input theming. |
-| `reference_olivia_brain_enrichment_engine` | Pointers to `03_BRAIN_ENRICHMENT_ENGINE.md` + `04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md`. |
-| `reference_olivia_brain_docs` | Olivia Brain canonical doc set + read order. |
-| `project_ltm_map_calendar_adaptive` | LTM map (24 files, Google Maps + Mapbox dual) + calendar (36 files + full `lib/calendar/`) port byte-for-byte; need adaptive primitives in Studio-Olivia (Track N + Calendar). |
-| `project_olivia_surface_suppression` | When Olivia embeds in a host that already provides a surface (LTM has map + calendar), Olivia hides her own. Mechanism: tenant config `ui.suppressedSurfaces: string[]`. Lands Track I Session 24. |
-| `project_ltm_types_no_speculative_generalization` | Don't refactor `DistrictWithStats`, `MapOrg`, `CalendarEntry`, etc. into generic abstractions speculatively. Wait for second non-LTM consumer (cluesintelligence Track L). Don't stub LTM-specific routes. Don't add LTM Prisma models. |
-
----
-
-## RECENT COMMIT TRAIL (last 24)
+## 7 · Recent commit trail
 
 ```
-<this handoff commit>  docs: end-of-batch handoff S18-S22 — Track C CLOSED + Track V 3/9 ✅
-<docs commit>          docs: close batch S18-S22 — SESSION_LOG Parts 25-29 + judgment-call trail
+<this handoff commit>  docs: end-of-batch handoff S23-S27 — Track V 8/9 ✅ + V9 prep
+edb195a feat(valuation): Track V Session V8 — ValuationWorkbench + 31 zone components
+56c735e feat(valuation): Track V Session V7 — 9 valuation API routes + tier gate
+b53abea feat(valuation): Track V Session V6 — agents 8-14 + Cristiano synergy bridge
+4274f61 feat(valuation): Track V Session V5 — agents 1-7 + cascade-routed LLM adapter
+6fbeb25 feat(valuation): Track V Session V4 — stochastic + sensitivity + war-room calendar
+2653a67 docs: end-of-batch handoff S18-S22 — Track C CLOSED + Track V 3/9 ✅
+b30ea00 docs: close batch S18-S22 — SESSION_LOG Parts 25-29 + handoff state + judgment-call trail
 f40fb1b feat(valuation): Track V Session V3 — engine math port (10 methods)
 9a67f05 feat(valuation): Track V Session V2 — types + bridge port
 ddd3f1b feat(valuation): Track V Session V1 — schema port (6 valuation models)
 9c2f25d feat(studio): Track C Session 19 — polish (J/K keyboard nav + autosave + theme switching)
 98a63d6 feat(studio): Track C Session 18 — right-pane tabs + audit log + theme picker
-75c39a5 feat(studio): Track C Session 17 — section nav + documents tree + frameworks panel + plan section nav
-833ab51 docs: add OLIVIA_NORTH_STAR.md as the first agent read every session
-3142ae8 docs: close Track C Session 16 — Library tab + scoring + Apply flow shipped
-519d4f5 feat(studio): Track C Session 16 — Library tab + scoring + Apply flow
-6c60121 docs: lock Track V (LTM valuation port) + Track Q (Quantara) + Track P (Deal Protection) + June 8 demo strategy
-71c78cc docs: close Track C Session 15 — five reusable primitives shipped
-22f1454 feat(primitives): Track C Session 15 — five reusable primitives + Cristiano transition + council mode
-2cab220 docs: close Track C Session 14 — design system + Tailwind decision + W-011/12/13 ✅
-21fbecf feat(workspace): Track C Session 14 — three-region shell + Aurum/Aether design system + Tailwind v4
-c25bbfc docs: close Track Calendar C6 — Calendar subsystem inventory + Track Calendar ✅
-4bdb08a feat(calendar): Track Calendar C6 — app routes + smoke tests
-715aac4 docs: close Track Calendar C5 — UI + 18 routes done; W-013 + W-016 logged; resume at C6
-cb678b7 feat(calendar): Track Calendar C5 — UI components + calendar API routes
-2a69430 docs: refresh HANDOFF.md HEAD reference for fresh-conversation pickup
-d5fe4c3 fix(map): move next/dynamic out of Server Component (Vercel build fix)
-278a4f9 docs: close Track Calendar C4 — voice/email/call/sms/WhatsApp routes done
-1657fe2 feat(calendar): Track Calendar C4 — voice/email/call/sms/WhatsApp routes
-273b242 docs: close Track Calendar C3 — voice + olivia models + engine done
-4291a39 feat(calendar): Track Calendar C3 — voice + olivia models + engine
 ```
 
 ---
 
-## STRATEGIC PRIORITY (locked 2026-05-03, expanded 2026-05-07)
+## 8 · Strategic priority (locked 2026-05-03, expanded 2026-05-07)
 
 Founder direction: focus on **`clueslondon.com` (priority 1)** and **`cluesintelligence.com` (priority 2 — FLAGSHIP)**. Both ship targets. cluesxscore (priority 3) and white-label Olivia (priority 4) follow.
 
-**June 8 strategy (locked 2026-05-07).** London Tech Show on 2026-06-08 is a **demo target, not a full clueslondon ship**. Olivia Brain becomes the canonical implementation of Studio Olivia + the advanced valuation engine + the new Quantara intake + Deal Protection. LTM stays untouched (read-only standing rule preserved). After Olivia Brain is built, a separate Claude session ports back the new code into LTM to finish LTM. Bicycle-wheel preserved: Olivia is the source of truth, LTM is a consumer.
+**June 8 strategy.** London Tech Show on 2026-06-08 is a **demo target, not a full clueslondon ship.** Olivia Brain becomes the canonical implementation; LTM port-back happens in a separate post-OB Claude session. Bicycle-wheel preserved.
 
-**Pace (locked 2026-05-07).** Founder operates at **~4 sessions/day** with Claude. Remaining work (~70 sessions) takes ~3 weeks at sustained pace.
+**Pace.** Founder operates at ~4 sessions/day. **~58 sessions remain to ship priorities 1–4** (was ~63 at S22 close, ~68 at S17 close).
 
-**Track V/Q/P expansion (locked 2026-05-07).** LTM's far-superior valuation system clones into Olivia Brain as **Track V — LTM Valuation Engine Port** (9 sessions, ~93 files: 24 valuation libs + 14 agents + 9 API routes + 39 UI components + Cristiano 2-pass + 4 Prisma models + 2 valuation-context DealRoom models). Then **Track Q — Quantara Paragraphical Intake** (7 sessions, 56-field metamorphic form persisting to existing `ValuationSubject` JSON columns) and **Track P — Deal Protection Engine + Gap Closures** (7 sessions, 6 gap-closures: Smart Score with bands, clause classifier, London Investor Reputation DB, multi-round dilution, band-specific emails, plus negotiation rehearsal + versioning + multi-LLM consensus). Track O Session O1 (Composio) pulls forward ahead of Q so auto-fill works day 1. Track L (cluesintelligence Unification) shrinks from ~15–20 to ~10 sessions because Track Q builds the paragraphical-questionnaire primitive Track L needs. **Full session-by-session breakdown in `docs/BUILD_SEQUENCE.md`.**
+**Tracks remaining after V9:**
 
-**Sessions 1–17 done. ~68 remaining** (was ~69 at S16-close, less the now-shipped S17). Track Calendar **CLOSED** (all 6 of 6 sessions ✅). Track C **Sessions 14–17 ✅** (4 of 6 — design substrate + workspace shell + five primitives + Library tab/scoring/Apply + section nav/docs tree/frameworks/plan nav). W-011 / W-012 / W-013 closed. **Next: Track C Session 18 — Right-pane tabs (Olivia / Preview / Themes / Audit) wired to backends + audit log mechanism + center-pane views.** Track V begins after Track C closes (~Session 20).
+- Track O Session O1 (Composio dispatch) — pulled forward ahead of Track Q.
+- Track Q (Quantara paragraphical intake, Q1–Q7).
+- Track P (Deal Protection + gap closures, P1–P7).
+- Track D (Studio ↔ brain wiring, S15–S16 in original numbering).
+- Track E (voice input, S17).
+- Track F (Clerk auth, S18).
+- Track G (cascade orchestrator port, S19–S20).
+- Track H (agents consolidation, S21–S23).
+- Track I (multi-tenant + adaptive surface suppression, S24).
+- Track J (vertical adapters, S25–S26).
+- Track K (hardening + launch prep, S27–S29).
+- Launch (S30) on or about 2026-06-02.
+- Track N (Visual Manifestation, N1–N5).
+- Track O O2–O5 (weakness closure).
+- Track L (cluesintelligence Unification, post-clueslondon, ~10 sessions).
+
+Full session-by-session breakdown: `docs/BUILD_SEQUENCE.md`.
 
 ---
 
-## START SEQUENCE (next session)
+## 9 · Memories you'll find auto-loaded
+
+| Memory | What it locks |
+|---|---|
+| `feedback_world_class_standard` | 12-row standard table; no band-aids; root-cause every failure. |
+| `feedback_olivia_brain_batch_session_pattern` | OB-only batch mode (sequential without check-ins, per-session commits) when user pre-authorises — e.g. "build S28–S33." |
+| `feedback_olivia_brain_end_of_batch_handoff_protocol` | At end of each OB batch, ANNOUNCE "preparing the handoff" + update HANDOFF.md + push as the LAST commit. |
+| `feedback_commit_push_no_prompt` | In OB / LTM repos, every code fix is `git add && commit && push` in the same turn. Don't ask permission per commit. |
+| `project_ltm_types_no_speculative_generalization` | Don't add LTM Prisma models to OB. Don't stub LTM-specific routes. Wait for a real second consumer or push the dependency out via injection. |
+| `project_track_v_ltm_valuation_port` | Track V scope: 9 sessions, ~93 files. V8 is the workbench surface; V9 is War Room close-out. |
+| `project_olivia_surface_suppression` | When Olivia embeds in a host that already provides a surface (LTM has map + calendar), Olivia hides her own. Lands Track I S24. |
+| `feedback_deadline_privacy` | `UserCompanyDeadline` is OWNED by `UserCompanyDeadline`, NOT `UserCompanyProfile`. `loadCompanyProfile` selector and `/directory` consumer must never project deadline columns. |
+| `feedback_4_sessions_per_day_pace` | ~4 sessions/day; ~3 weeks to finish priorities 1–4. |
+| `reference_olivia_north_star` | Pointer to `OLIVIA_NORTH_STAR.md`. |
+| `reference_olivia_clues_product_truth` | Pointer to `00_PRODUCT_TRUTH.md`. |
+| `reference_olivia_ui_design_system` | Pointer to `01_UI_DESIGN_SYSTEM.md`. |
+| `reference_olivia_brain_enrichment_engine` | Pointer to `03_BRAIN_ENRICHMENT_ENGINE.md` + `04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md`. |
+| `reference_olivia_brain_docs` | Olivia Brain canonical doc set + read order. |
+
+---
+
+## 10 · Start sequence (next session)
 
 ```bash
 cd "D:\Olivia Brain"
-git status                                    # should be clean, on main, up to date with origin/main
-git log --oneline -5                          # confirm HEAD is at the post-Session-11 docs commit
+git status                                    # should report 1 stash, working tree clean otherwise
+git log --oneline -8                          # confirm HEAD is the post-S23-S27 docs commit
 ```
 
 Then in Claude Code:
-1. Read this file (`HANDOFF.md`).
-2. Read `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Part 22 for Session 15 details (five primitives + Cristiano transition + council mode + DeckDetailModal contract).
-3. Read `docs/BUILD_SEQUENCE.md` Track C row `**11**` for Session 16's Library-tab spec.
-4. Read `docs/STUDIO_OLIVIA_DESIGN.md` § 2.5 (Library tab spec) + § 8 #4 (Library scoring with reasons).
-5. Open `D:\Studio-Olivia\StudioOliviaGrandMaster (2).jsx` in **read-only** mode to inventory the 75 archetypes + 12 plan templates + the scoring math.
-6. Begin Session 16 by lifting the static archetype + template arrays into typed modules (`src/lib/studio/archetypes.ts` + `src/lib/studio/templates.ts`), then the scoring helpers, then the `LibraryTab` component, then wire it into the Inspector library tab + the existing `DeckDetailModal`.
 
-**Standing rule reminder:** stop after Session 16's deliverable lands. Track C is 6 sessions (S14–S19); confirm with the user before starting S17. Update docs alongside the code commit per the doc-discipline rule.
+1. **Read every doc in §0 above. Do not skip.**
+2. Read `docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` Parts 30–34 for what just shipped + the judgment-call trail.
+3. Read `docs/BUILD_SEQUENCE.md` Track V row **V9** for Session 28's deliverable + exit criterion.
+4. Read `docs/STUDIO_PORT_MANIFEST.md` § J + § L (Map and Calendar inventories) — § M will be appended in V9 in the same shape.
+5. Open `D:\London-Tech-Map\src\components\valuation\` in **read-only** mode to inventory the WarRoom family + DealRoomSimulator + AcquisitionMirror + EquityWaterfall + war-room-utils.ts.
+6. Begin Session 28 by replacing the five `_v9-placeholders.tsx`-backed shims with real LTM ports, then port the rest of the WarRoom family, then wire `negotiationSummary` bidirectional, then append `STUDIO_PORT_MANIFEST.md` § M.
+7. Confirm the Vercel build is green on the post-`edb195a` deploy. If it's not, the failure is almost certainly NOT in V9 territory — it's a leftover from V8 that needs surfacing before V9 starts.
+
+**Standing rule reminder:** stop after V9's deliverable lands. Track V closes at V9 — confirm with the user before opening Track O / Q / P. Update docs alongside the code commit per the doc-discipline rule.
