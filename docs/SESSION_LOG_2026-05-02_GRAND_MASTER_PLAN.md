@@ -1173,3 +1173,70 @@ Per `BUILD_SEQUENCE.md` Track C row 12: four-button section nav (Pitch / Plan / 
 ### Build status at session-16 close
 
 **Green.** Test: **197/197** passing. Typecheck: clean. Track C: **3 of 6 sessions ✅** (S14 + S15 + S16 done; S17–S19 remain). ~69 sessions remain to ship priorities 1–4 (was ~70 before S16).
+
+---
+
+## Part 24 — Session 17 (Track C internal session 4)
+
+**Locked 2026-05-07.** Section nav + documents tree + frameworks panel + plan section nav shipped. HEAD `75c39a5`. **207/207 tests passing**, typecheck clean.
+
+North-star alignment: S17 advances Olivia toward "agentic-powered Chief Intelligence Officer" by giving her the structural pivot — she now switches between Pitch / Plan / Documents / General contexts and surfaces the right contextual content per section without losing place. This is the navigational backbone the bicycle-wheel architecture needs (one shell, multiple expert modes).
+
+### What shipped (11 files, +1162 / -10 LOC)
+
+| File | LOC | Role |
+|---|---|---|
+| `src/lib/studio/doc-categories.ts` | 145 | `DOC_CATEGORIES` — 10 categories, ~65 docs total. Lifted from prototype line 11 byte-for-byte. Plus `TOTAL_DOC_COUNT` derived constant. |
+| `src/lib/studio/plan-sections.ts` | 39 | `PLAN_SECTIONS` — 16 entries (Executive Summary → London Ecosystem Fit). Lifted from prototype line 12. |
+| `src/lib/studio/frameworks.ts` | 56 | `FRAMEWORKS` — 14 entries. Raw hex `color` field **dropped** per design system § 1.6; colors derived at render time via `frameworkCategoryToken(cat)`. |
+| `src/lib/studio/slide-meta.ts` | 47 | `SLIDE_META` — 17 slide types (16 prototype + DETAIL fallback) with icon + canonical Aurum/Aether token. Drives slide-card editor (S18+) and Pitch section icons. |
+| `src/lib/studio/types.ts` | +13 | `NavSection` (`"pitch" \| "plan" \| "documents" \| "general"`) + `ActiveDoc` (`{ category, doc }`) types added. |
+| `src/components/studio/SectionNav.tsx` | 122 | 4-button vertical toggle. Counts via prop (pitch=slides.length, plan=16, documents=65). Active gets aurum-mute fill + aurum border + `aria-current="page"`. |
+| `src/components/studio/DocumentTree.tsx` | 162 | 10 collapsible categories with chevron rotation animation. Each row → button with chevron + emoji + title + count. Expanded categories reveal nested doc rows with `CompletionRing(value=pct)` + name. Active doc gets aurum-mute background + aurum border. ARIA tree role + `aria-expanded` + `aria-selected`. |
+| `src/components/studio/FrameworksPanel.tsx` | 132 | 14 toggleable framework rows. Active → category-token-colored 8-px dot + bold name + confidence number on right. Inactive → muted dot + neutral name. `aria-pressed` reflects toggle state. |
+| `src/components/studio/PlanSectionNav.tsx` | 102 | 16 plan sections with `Badge(value=conf, size="sm")` per row. Active gets aurum-mute fill + `aria-current="page"`. |
+| `src/components/studio/__tests__/section-rail.test.tsx` | 138 | **10 tests:** SectionNav (renders 4 + counts; aria-current + onChange), FrameworksPanel (renders 14; toggle id; conf-only-on-active), PlanSectionNav (renders 16; onSelect index), DocumentTree (renders 10 + counts; expand reveals docs + onSelectDoc; toggle category). |
+| `src/app/page.tsx` (modified) | +88 | 5 new `useState` slots (`navSection`, `activeFrameworks`, `activeDoc`, `activePlanIdx`, `expandedCats`) + readonly `planConfidences` + `docCompletions` placeholder state + 3 `useCallback` handlers (`toggleFramework`, `toggleCategory`, `handleSelectDoc`). RailLeft body now: SectionNav + conditional content per `navSection` + preserved "Other surfaces" quick-links list (smaller font, tighter padding). |
+
+### Decisions
+
+- **"Other surfaces" quick-links preserved at bottom of rail.** Per the user's no-rollback standing rule, S14's placeholder list (Calendar, Map, Live Avatar, Admin, Phase-1 Status) is **demoted but not removed**. Smaller font, tighter padding, headed "Other surfaces". The new SectionNav-driven content sits above it and dominates. If/when this becomes friction, raise it before deleting.
+- **Raw hex dropped at the data layer for Frameworks + SLIDE_META.** Earlier ports kept raw hex in data files because "data, not styling." S17 corrects course — `cat`-derived tokens make the data file design-system-conformant by construction. Pattern carries to all future port-from-prototype work.
+- **`Set<T>` state with functional setState** for `activeFrameworks` + `expandedCats`. Functional updates (`setX(prev => new Set(prev))`) avoid stale-closure bugs that bite class-component-trained eyes. Wrapped in `useCallback` so child components don't re-render on parent state churn.
+- **`activeDoc` is `{ category, doc } | null`** — single-doc selection. Multi-doc tab editing is a future track; S17 establishes the contract.
+- **Default `navSection = "pitch"`** because Pitch is the primary Library destination + what investors see first + what Olivia's archetype-application flow generates. Pivoting from S16's `activeTab = "library"` (right pane) — both default to surfaces that demonstrate the most-baked S16 capability.
+- **`planConfidences` + `docCompletions` as readonly state** for S17. UI responds correctly to populated values (CompletionRing tier rules carry from S15); the values themselves arrive when the chat brain wires up (S18) and engine ports (Track V).
+- **General-mode rail content is a labelled stub.** Center-pane "freeform draft + quick actions" view lands in S18 alongside the Olivia tab chat-brain wiring.
+- **Single combined test file** for the four S17 components (`section-rail.test.tsx`). Compactness — these surfaces are simpler than S16's scoring math, so 10 tests across 4 components reads cleaner than four 2-3-test files.
+
+### Verification
+
+- `npm run typecheck` — clean. (One mid-flight error caught + fixed: `CompletionRing` prop is `value`, not `pct` — design doc had stale name.)
+- `npm test` — **207/207 passing** (197 baseline + 10 new section-rail tests). No regressions.
+- LTM source unchanged.
+- All commits pushed to `origin/main`.
+
+### Where Session 18 picks up
+
+**Track C — Session 18 (Track C internal session 5):** Right-pane tabs wired to backends + audit log mechanism + center-pane views.
+
+Per `BUILD_SEQUENCE.md` Track C row 13: Olivia tab uses the chat brain from Track A (`/api/olivia/chat` already wired); Audit tab queries an audit log; Preview tab shows current slide/plan content; Themes tab renders 5 theme cards. S18 is the integration session — connects S17's nav state to real content + connects Inspector tabs to live data.
+
+**S18 deliverables (anticipated):**
+
+1. **Olivia tab** — Inspector body for `id: "olivia"` becomes a live chat composer wired to `/api/olivia/chat` (existing route from Sessions 4–6). Persona-driven prompts; pulls `navSection` + `slides.length` + active frameworks into context.
+2. **Audit tab** — new `auditLog: AuditEntry[]` state (`{ time, text }`); every state-changing action pushes an entry; Inspector audit body renders the list newest-first capped at 50.
+3. **Preview tab** — new Inspector tab; light-theme inverted pane (`#FAFBFC` / `#111827` — only place in app where dark gives way per § 8 #7); shows current slide content (or current plan section content) as print-ready render.
+4. **Themes tab** — new Inspector tab; renders 5 `THEMES` cards (Canary-Sapphire / Gherkin-Polished / Barbican-Raw / Battersea-Resilient / Shard-Ambitious); click sets `outputTheme` state.
+5. **Center-pane views** — minimal wiring: Pitch view shows slide list (S16 generated); Plan view shows the active `PLAN_SECTIONS[activePlanIdx]` title + textarea; Documents view shows active `activeDoc.doc` title + textarea (stub); General shows freeform textarea + quick actions.
+
+**Anticipated S18 gotchas:**
+
+- **Audit log push points proliferate.** Every handler in `page.tsx` (apply archetype, toggle framework, select doc, toggle category, change section, select plan section) needs to push an audit entry. Centralise in a `useAudit()` hook so push sites stay clean.
+- **Olivia tab's prompt context is the whole workspace.** The system prompt should interpolate `navSection`, current slide/plan/doc, persona, and active frameworks. Keep the prompt builder in `src/lib/studio/prompt.ts` as a pure function so tests can verify the structure.
+- **Themes static const** — lift `THEMES` from prototype line 6 (already in our context — 5 entries with `accent`, `primary`, `surface`, `icon`, `desc`). Same color-token migration pattern applies (drop raw hex; map theme name → token set).
+- **Preview-tab inversion is the design's only light-mode surface.** Use a scoped `<div>` with explicit `background: #FAFBFC; color: #111827` (or canonical tokens if the design system gains a `--print-bg` / `--print-fg` later) — don't try to override OB tokens globally.
+
+### Build status at session-17 close
+
+**Green.** Test: **207/207** passing. Typecheck: clean. Track C: **4 of 6 sessions ✅** (S14 + S15 + S16 + S17 done; S18–S19 remain). ~68 sessions remain to ship priorities 1–4 (was ~69 before S17).

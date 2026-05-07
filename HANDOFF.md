@@ -1,12 +1,14 @@
 # OLIVIA BRAIN — NEXT AGENT HANDOFF
 
 **Updated:** 2026-05-07
-**HEAD:** `519d4f5` on `main` (will advance one commit when this docs update lands)
-**State:** **Track C — Session 16 ✅.** Library tab + scoring + Apply flow shipped. 75 deck archetypes + 12 plan templates lifted byte-for-byte from the prototype (`D:\Studio-Olivia\StudioOliviaGrandMaster (2).jsx`); pure-function scoring helpers (`scoreDecks` / `scoreTemplates` / `applyLibraryFilter` / `industryToCategory`) tested deterministically (17 new); 9-category color mapping to Aurum/Aether tokens (no raw hex); slide generator (`generateSlidesForArchetype`) drives Apply flow; `LibraryTab.tsx` (search + Decks/Plans toggle + relevance line + scored card list + DeckDetailModal click) mounted in Inspector library tab; `slides` state in `page.tsx` holds Apply output with aether-toned confirmation breadcrumb in the center pane. **197/197 tests passing**, typecheck clean.
+**HEAD:** `75c39a5` on `main` (will advance one commit when this docs update lands)
+**State:** **Track C — Session 17 ✅.** Section nav + Documents tree + Frameworks panel + Plan section nav shipped. 4 new typed data modules (`DOC_CATEGORIES` 10 cats / ~65 docs, `PLAN_SECTIONS` 16, `FRAMEWORKS` 14, `SLIDE_META` 17) + 4 new UI components (`SectionNav`, `DocumentTree`, `FrameworksPanel`, `PlanSectionNav`) + `NavSection`/`ActiveDoc` types + 5 new `useState` slots in `page.tsx` driving conditional left-rail content per section + preserved "Other surfaces" quick-links list at bottom. Olivia now switches Pitch/Plan/Documents/General contexts cleanly — the navigational backbone the bicycle-wheel architecture needs. **207/207 tests passing**, typecheck clean.
 
-**Plan locked 2026-05-07** — Track V (LTM Valuation Engine Port, 9 sessions, ~93 files cloning LTM's full valuation surface), Track Q (Quantara 56-field paragraphical intake, 7 sessions), Track P (Deal Protection gap-closures, 7 sessions). Track O Session O1 (Composio) pulls forward ahead of Q. June 8 reframed as DEMO target, not full ship. ~70 remaining sessions at ~4 sessions/day ≈ 3 weeks. Memory: `project_june_8_demo_strategy`, `project_track_v_ltm_valuation_port`, `feedback_4_sessions_per_day_pace`. Full session-by-session breakdown in `docs/BUILD_SEQUENCE.md`.
+**OLIVIA NORTH STAR locked 2026-05-07** at `docs/OLIVIA_NORTH_STAR.md` — the single question every commit must answer yes to ("are we making her the world's most advanced agentic CIO across Florida real estate / international relocation / London tech / two-city comparison mini-apps / heart-health recovery / London transit?"). **Read first every session before any other doc.**
 
-**Resume at Session 17 = Track C, Session 12 in original numbering: Section nav (Pitch / Plan / Documents / General) + Documents tree (10 categories, ~65 docs) + Frameworks panel (14 frameworks) + Plan section nav (16 sections).** Per BUILD_SEQUENCE Track C row 12.
+**Plan locked 2026-05-07** — Track V (LTM Valuation Engine Port, 9 sessions, ~93 files cloning LTM's full valuation surface), Track Q (Quantara 56-field paragraphical intake, 7 sessions), Track P (Deal Protection gap-closures, 7 sessions). Track O Session O1 (Composio) pulls forward ahead of Q. June 8 reframed as DEMO target, not full ship. ~70 remaining sessions at ~4 sessions/day ≈ 3 weeks. Memory: `project_june_8_demo_strategy`, `project_track_v_ltm_valuation_port`, `feedback_4_sessions_per_day_pace`, `reference_olivia_north_star`. Full session-by-session breakdown in `docs/BUILD_SEQUENCE.md`.
+
+**Resume at Session 18 = Track C, Session 13 in original numbering: Right-pane tabs (Olivia / Preview / Themes / Audit) wired to backends + audit log mechanism + center-pane views.** Per BUILD_SEQUENCE Track C row 13.
 
 **Working tree:** clean post-docs-commit. All commits pushed to `origin/main`. **Vercel build green.**
 
@@ -166,10 +168,13 @@ These ARE the architectural decisions that took multiple painful conversations t
 
 ---
 
-## RECENT COMMIT TRAIL (last 16)
+## RECENT COMMIT TRAIL (last 18)
 
 ```
-<this docs commit>  docs: close Track C Session 16 — Library tab + scoring + Apply flow shipped
+<this docs commit>  docs: close Track C Session 17 — section nav + docs tree + frameworks panel + plan section nav
+75c39a5 feat(studio): Track C Session 17 — section nav + documents tree + frameworks panel + plan section nav
+833ab51 docs: add OLIVIA_NORTH_STAR.md as the first agent read every session
+3142ae8 docs: close Track C Session 16 — Library tab + scoring + Apply flow shipped
 519d4f5 feat(studio): Track C Session 16 — Library tab + scoring + Apply flow
 6c60121 docs: lock Track V (LTM valuation port) + Track Q (Quantara) + Track P (Deal Protection) + June 8 demo strategy
 71c78cc docs: close Track C Session 15 — five reusable primitives shipped
@@ -200,7 +205,7 @@ Founder direction: focus on **`clueslondon.com` (priority 1)** and **`cluesintel
 
 **Track V/Q/P expansion (locked 2026-05-07).** LTM's far-superior valuation system clones into Olivia Brain as **Track V — LTM Valuation Engine Port** (9 sessions, ~93 files: 24 valuation libs + 14 agents + 9 API routes + 39 UI components + Cristiano 2-pass + 4 Prisma models + 2 valuation-context DealRoom models). Then **Track Q — Quantara Paragraphical Intake** (7 sessions, 56-field metamorphic form persisting to existing `ValuationSubject` JSON columns) and **Track P — Deal Protection Engine + Gap Closures** (7 sessions, 6 gap-closures: Smart Score with bands, clause classifier, London Investor Reputation DB, multi-round dilution, band-specific emails, plus negotiation rehearsal + versioning + multi-LLM consensus). Track O Session O1 (Composio) pulls forward ahead of Q so auto-fill works day 1. Track L (cluesintelligence Unification) shrinks from ~15–20 to ~10 sessions because Track Q builds the paragraphical-questionnaire primitive Track L needs. **Full session-by-session breakdown in `docs/BUILD_SEQUENCE.md`.**
 
-**Sessions 1–16 done. ~69 remaining** (was ~70 at S15-close, less the now-shipped S16). Track Calendar **CLOSED** (all 6 of 6 sessions ✅). Track C **Sessions 14–16 ✅** (3 of 6 — design substrate + workspace shell + five primitives + Library tab/scoring/Apply). W-011 / W-012 / W-013 closed. **Next: Track C Session 17 — Section nav (Pitch / Plan / Documents / General) + Documents tree + Frameworks panel + Plan section nav.** Track V begins after Track C closes (~Session 20).
+**Sessions 1–17 done. ~68 remaining** (was ~69 at S16-close, less the now-shipped S17). Track Calendar **CLOSED** (all 6 of 6 sessions ✅). Track C **Sessions 14–17 ✅** (4 of 6 — design substrate + workspace shell + five primitives + Library tab/scoring/Apply + section nav/docs tree/frameworks/plan nav). W-011 / W-012 / W-013 closed. **Next: Track C Session 18 — Right-pane tabs (Olivia / Preview / Themes / Audit) wired to backends + audit log mechanism + center-pane views.** Track V begins after Track C closes (~Session 20).
 
 ---
 
