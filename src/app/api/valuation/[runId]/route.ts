@@ -33,7 +33,7 @@ import type {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { runId: string } },
+  { params }: { params: Promise<{ runId: string }> },
 ) {
   const limited = rateLimit(request, {
     limit: 10,
@@ -50,7 +50,7 @@ export async function DELETE(
 
     const profile = { id: userId };
 
-    const { runId } = params;
+    const { runId } = await params;
     if (!runId) {
       return NextResponse.json(
         { error: "Missing runId parameter" },
@@ -131,7 +131,7 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { runId: string } },
+  { params }: { params: Promise<{ runId: string }> },
 ) {
   const limited = rateLimit(request, {
     limit: 20,
@@ -148,7 +148,7 @@ export async function PATCH(
 
     const profile = { id: userId };
 
-    const { runId } = params;
+    const { runId } = await params;
     if (!runId) {
       return NextResponse.json(
         { error: "Missing runId parameter" },
@@ -213,7 +213,7 @@ export async function PATCH(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { runId: string } },
+  { params }: { params: Promise<{ runId: string }> },
 ) {
   const limited = rateLimit(request, {
     limit: 30,
@@ -230,7 +230,7 @@ export async function GET(
 
     const profile = { id: userId };
 
-    const { runId } = params;
+    const { runId } = await params;
     if (!runId) {
       return NextResponse.json(
         { error: "Missing runId parameter" },
