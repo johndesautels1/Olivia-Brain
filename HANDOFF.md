@@ -17,17 +17,19 @@
 | **GitHub** | https://github.com/johndesautels1/Olivia-Brain |
 | **Local working dir** | `D:\Olivia Brain` |
 | **Default branch** | `main` |
-| **Code HEAD before this docs commit** | `7e4d356` (O1 rebuild) |
-| **HEAD after this docs commit** | will be the `git push` immediately after this doc lands |
+| **Code HEAD (Q1)** | `75c3b5d` (Q1 — 56-field Quantara schema) |
+| **Docs HEAD before this handoff commit** | `5f4ceb0` (Q1 SESSION_LOG + BUILD_SEQUENCE) |
+| **HEAD after this handoff commit** | will be the `git push` immediately after this doc lands |
 | **LTM repo (READ-ONLY — port FROM, never edit)** | `D:\London-Tech-Map` |
+| **LTM source-of-truth for Quantara fields** | `D:\London-Tech-Map\public\assets\founder-valuation-form.html` (1762 LOC HTML mockup, never built into LTM React) + `D:\London-Tech-Map\docs\TIER_SYSTEM.md` §"56-FIELD VALUATION INTAKE FORM" |
 | **Studio Olivia prototypes (REFERENCE ONLY)** | `D:\Studio-Olivia` |
 | **Clues Main vision docs** | `D:\Clues Main` |
-| **Questionnaire engine repo (canonical for Q track)** | https://github.com/johndesautels1/clues-questionnaire-engine (private) |
+| **Questionnaire engine repo (canonical for Track L cluesintelligence, NOT Track Q)** | https://github.com/johndesautels1/clues-questionnaire-engine (private). 2,486 RELOCATION questions across 10 life domains + 12 Bayesian dimensions. **Different app from Quantara** — see § 1 + gotcha § 3.12. |
 | **Other CLUES product repos** | `clues-property-search`, `Heart-Recovery-Calender`, `lifescore-study` (per `00_PRODUCT_TRUTH.md`) |
 
-**Updated:** 2026-05-07 (end of batch — O1 rebuild — W-001 CLOSED)
-**State:** Track O Session O1 ✅ (W-001 closed via LTM-first audit). Track V remains 9/9 ✅. Tests 385/385 across 26 suites. Typecheck clean.
-**Next session:** Track Q Session Q1 — 56-field Quantara schema design + form scaffold.
+**Updated:** 2026-05-07 (end of batch — Q1 — Track Q 1/7 ✅)
+**State:** Track Q Session Q1 ✅ (56-field Quantara schema canonicalized in OB; LTM stays read-only). Track O Session O1 ✅. Track V remains 9/9 ✅. Tests **427/427 across 28 suites** (was 385/26 at O1 close — +42 new Quantara tests). Typecheck clean.
+**Next session:** Track Q Session Q2 — Form UI (non-metamorphic baseline). Port the LTM `founder-valuation-form.html` layout to React + Aurum/Aether tokens (replacing the cyan branding); render all 56 fields; live data-completeness % bar; "Field N of 56" progress chip; save to `ValuationSubject` works.
 
 ---
 
@@ -41,7 +43,7 @@ After reading you will run an LTM audit (gotcha §3.10) before any new code.
 |---|---|---|---|
 | 1 | `~/CLAUDE.md` (`C:\Users\broke\CLAUDE.md`) | 262 | Master rules. UserCompanyDeadline privacy contract. "STOP means STOP." No-local-builds. Minimize-tool-calls. LTM read-only boundary. NEVER set secret env vars to "All Environments". |
 | 2 | `~/.claude/projects/C--Users-broke/memory/MEMORY.md` + every memory file it indexes | 16 + indexed files | Auto-loaded user/feedback/project/reference memory. Load-bearing for Q1: `feedback_world_class_standard`, `feedback_olivia_brain_batch_session_pattern`, `feedback_olivia_brain_end_of_batch_handoff_protocol`, `feedback_commit_push_no_prompt`, `project_ltm_types_no_speculative_generalization`. |
-| 3 | `D:\Olivia Brain\HANDOFF.md` (this file) | 366 | Read in full. |
+| 3 | `D:\Olivia Brain\HANDOFF.md` (this file) | 412 | Read in full. |
 | 4 | `D:\Olivia Brain\README.md` | 283 | Repo-level overview, Protected Repo Boundaries. |
 | 5 | `D:\Olivia Brain\BATTLE_PLAN.md` | 366 | Active battle plan. |
 | 6 | `D:\Olivia Brain\OLIVIA_BUILD_STATE.md` | 198 | Build state snapshot. |
@@ -65,7 +67,7 @@ After reading you will run an LTM audit (gotcha §3.10) before any new code.
 | 24 | `D:\Olivia Brain\docs\final-stack.md` | 141 | Final stack. |
 | 25 | `D:\Olivia Brain\docs\london-calendar-adapter-contract.md` | 274 | London calendar adapter contract. |
 | 26 | `D:\Olivia Brain\docs\olivia-core-architecture.md` | 135 | Olivia core architecture. |
-| 27 | `D:\Olivia Brain\docs\SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` | 1614 | **READ PARTS 30–36** at minimum (V4–V9 + O1). Earlier parts are background. |
+| 27 | `D:\Olivia Brain\docs\SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md` | 1671 | **READ PARTS 30–37** at minimum (V4–V9 + O1 + Q1). Earlier parts are background. |
 
 **Total: ~11,000 lines.** At ~500 lines/min reading speed that's ~22 minutes. **Do it.**
 
@@ -98,51 +100,51 @@ Quoting the user verbatim:
    - **LTM lacks it entirely** → OB-original is correct. Document why in commit message + handoff.
 5. **Failure to audit = the session gets reverted.** The user has committed to this. Non-negotiable.
 
-The previous agent in this very conversation skipped step 1 for O1 and built a fresh Companies House client when LTM had a 358-line production one (`lib/companies-house/client.ts`). It cost a revert + rebuild. **Don't repeat it.**
+**Two prior failures both fixed in-session — for reference:**
+
+- The O1 attempt skipped step 1 and built a fresh Companies House client when LTM had a 358-line production one (`lib/companies-house/client.ts`). Cost: revert + rebuild.
+- The Q1 first plan-presentation read the wrong canonical source — treated the private `clues-questionnaire-engine` repo as the authority for the 56-field Quantara intake. **It is not.** The user corrected: *"the clues questionnaire engine and its 2500 questions plus or minus has nothing to do with london-tech-map and its 56 critical financial questions two different apps two different purposes we are training olivia on both."* The audit was retargeted to LTM `D:\London-Tech-Map\public\assets\founder-valuation-form.html` BEFORE any code shipped. **Cost: zero — caught at the plan stage.** See gotcha § 3.12 below.
 
 ---
 
-## 2 · Resume point — Session 30 = Track Q Session Q1
+## 2 · Resume point — Session 31 = Track Q Session Q2
 
-Per `D:\Olivia Brain\docs\BUILD_SEQUENCE.md` Track Q row Q1 (~line 148):
+Per `D:\Olivia Brain\docs\BUILD_SEQUENCE.md` Track Q row Q2 (~line 149):
 
-> **Q1 — 56-field schema design + form scaffold.** Define the canonical 56-field set as Zod schemas in `src/lib/quantara/schema.ts` (sectioned: Core Financials, Ownership/Cap Table, Market, Team/Founder, IP, Vertical-Specific). Each field: type, validation, weight (critical=3 / important=2 / helpful=1), section, description, investor-class relevance flags. Map every field to its destination JSON column on `ValuationSubject` (most map directly; net-new fields go to a `quantaraJson` extension column added in this session).
+> **Q2 — Form UI (non-metamorphic baseline).** Port the Quantara HTML wireframe layout (3-pane: sidebar progress + main form + Olivia copilot) to React + Aurum/Aether tokens (no cyan branding). Build form with all 56 fields rendered. Live data-completeness % bar. "Field N of 56" progress chip.
 >
-> **Exit criterion:** All 56 fields defined + typed + tested for round-trip into `ValuationSubject`. Cap-table fields validate (e.g., total shares > 0). Field-validation suite added to `npm test`. Typecheck clean.
+> **Exit criterion:** `/founder-intake` route renders the full 56-field form. Save to `ValuationSubject` works. Typecheck clean.
 
-### Before scaffolding Q1 — REQUIRED LTM AUDIT
+### What Q1 shipped (HEAD = `75c3b5d` for code, docs at `5f4ceb0` + this handoff)
+
+- **`src/lib/quantara/`** (8 files) — types, sections, schema, field-mapping, index, 2 test suites. 56 `QuantaraFieldDefinition` records keyed by `f1`..`f56` with immutable `field_map_key` (`QUANT_<FIN|CAP|FND|CRR|TRC|MKT|IPM|TEM|RSK|GRW|PRJ|STR>_NNN`), Zod schemas, weights, section + investor-class relevance.
+- **12-section catalog** (Core Financials 14 · Capital Structure 4 · Funding History 3 · Current Round 2 · Traction 6 · Market 4 · IP & Moat 6 · Team 5 · Risk 3 · Growth Levers 4 · Projections 4 · Strategic 1 = **56 ✓**).
+- **Destination split** — 13 fields metric-wrapped into existing engine JSON columns (engine bridge from Track V V2 untouched), 36 fields land in new `quantaraJson` column on `ValuationSubject`.
+- **Round-trip helpers** — `quantaraToValuationSubject`, `valuationSubjectToQuantara`, `mergeQuantaraIntoSubject` (preserves untouched JSON-column subkeys for partial-save flows).
+- **Prisma schema** — added `quantaraJson Json?` column with JSDoc-listed subkeys.
+- **SQL migration** — `prisma/sql/04-add-quantara-foundation.sql` (single additive `ALTER TABLE`).
+- **Tests** — 42 new (29 schema + 13 round-trip). All 427/427 passing across 28 suites. Typecheck clean.
+
+### Before scaffolding Q2 — REQUIRED LTM AUDIT
 
 | Source to inspect | Why |
 |---|---|
-| `johndesautels1/clues-questionnaire-engine` repo (private GitHub) | **Canonical truth for the 56-field shape.** Q is also the cluesintelligence questionnaire primitive Track L will reuse. The schema must mirror this engine. |
-| `D:\London-Tech-Map\src\lib\` — grep for `quantara`, `questionnaire`, `intake`, `founder-intake` | Any LTM-side schema scaffolding. |
-| `D:\London-Tech-Map\prisma\schema.prisma` | Any pre-existing `ValuationSubject` JSON-column structure to match. |
-| `D:\Olivia Brain\src\lib\clues-intelligence\` | OB may already host pieces of the questionnaire engine. |
-| `D:\Olivia Brain\docs\04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md` | The flagship plan — required reading for Q track. |
-| `D:\Olivia Brain\docs\CLUES_INTELLIGENCE_ARCHITECTURE.md` | Architecture detail — 590 lines. |
+| `D:\London-Tech-Map\public\assets\founder-valuation-form.html` (1762 LOC) | **Canonical visual + structural reference for the form.** The HTML mockup is design-locked but never built into LTM React — OB is canonical implementation per June-8-demo strategy. Q2 mirrors the 3-pane layout (left sidebar progress / main form / right Olivia + valuation preview), the section dividers, the section completeness chips. **REPLACE the cyan-400 brand accent** with Aurum gold per `01_UI_DESIGN_SYSTEM.md`. |
+| `D:\Olivia Brain\src\lib\quantara/*` | The Q1 schema + sections + field-mapping. Q2 imports these — do not redefine. |
+| `D:\Olivia Brain\src\components\workspace/*` (S14 shell) + `src\components\primitives/*` (S15 primitives) | The Aurum/Aether shell and primitives Q2 mounts inside. AvatarOrb + Badge + CompletionRing etc. are already shipped — reuse, do not rebuild. |
+| `D:\Olivia Brain\src\styles\tokens.css` | The canonical Aurum + Aether token set Q2 styling consumes. |
 
 **Expected outcomes:**
 
-- If `clues-questionnaire-engine` has the 56-field Zod schema → **PORT byte-for-byte**. Document the source commit in the OB commit message.
-- If LTM has matching shapes → port from there.
-- Only build OB-original where neither source has the capability. Document.
+- Q2 builds NEW React components (no port — LTM's HTML is mockup-only). Components live in `src/components/quantara/` mirroring the LTM section structure.
+- The `/founder-intake` route is NEW under `src/app/founder-intake/`.
+- Save flow uses Prisma against the existing `ValuationSubject` model + the `quantaraJson` column from Q1.
 
-### What needs to land in Q1
-
-| File | Role |
-|---|---|
-| `src/lib/quantara/schema.ts` (PORTED if available, else NEW) | Canonical 56-field Zod schema. |
-| `src/lib/quantara/sections.ts` (NEW) | Section catalog. |
-| `src/lib/quantara/field-mapping.ts` (NEW) | Maps each field → its `ValuationSubject` JSON column. |
-| `prisma/schema.prisma` (MODIFY) | Add `quantaraJson` column. |
-| `prisma/sql/04-add-quantara-foundation.sql` (NEW) | Migration via `prisma migrate diff` for operator paste-into-Supabase. |
-| `src/lib/quantara/__tests__/schema.test.ts` + `round-trip.test.ts` (NEW) | Validation + round-trip into ValuationSubject JSON columns. |
-
-### Operator actions Q1 will surface
+### Operator actions still owed (Q1)
 
 | Action | When | Why |
 |---|---|---|
-| Apply Q1 SQL migration (`prisma/sql/04-add-quantara-foundation.sql`) | After Q1 commit lands | Adds `quantaraJson` column to `ValuationSubject`. |
+| **Apply Q1 SQL migration** — `prisma/sql/04-add-quantara-foundation.sql` | Before Q2 routes write to `ValuationSubject.quantaraJson` | Adds the new column. Single `ALTER TABLE`. Operator path: paste into Supabase SQL Editor + Run (Option B, identical to V1's `03-add-valuation-foundation.sql`). |
 
 ---
 
@@ -216,6 +218,17 @@ Failure to audit = revert. Non-negotiable.
 
 The BUILD_SEQUENCE row's wording can understate what's already built in OB. Inventory both LTM AND OB before building.
 
+### 3.12 The `clues-questionnaire-engine` repo is NOT the canonical for Track Q (Q1 lesson)
+
+**Track Q (Quantara) and `clues-questionnaire-engine` are different apps.** This caused a wrong-target audit at Q1's first plan-presentation:
+
+- **Quantara** (this repo, `src/lib/quantara/`) = the **56-field founder-valuation financial intake form** for `clueslondon.com`. Source-of-truth: `D:\London-Tech-Map\public\assets\founder-valuation-form.html` (1762 LOC mockup) + `D:\London-Tech-Map\docs\TIER_SYSTEM.md` §"56-FIELD VALUATION INTAKE FORM". Feeds the LTM-ported valuation engine.
+- **`clues-questionnaire-engine`** (private GitHub) = the **2,486-question relocation questionnaire** for `cluesintelligence.com`. 10 life-domain sections, 12 Bayesian scoring dimensions. Feeds the Track L (cluesintelligence) flagship — not Track Q.
+
+The earlier handoff text framed `clues-questionnaire-engine` as "canonical for Q track" — that was wrong. Track L will reuse Quantara's primitives (the `field_map_key` pattern, Zod schema discipline, section catalog), but the field SET is different by orders of magnitude. The user's framing 2026-05-07 is canonical: *"two different apps two different purposes we are training olivia on both."*
+
+**Implication for future agents:** when a Q-track session asks for a "questionnaire primitive," do not auto-port from `clues-questionnaire-engine` — its 2,486 relocation questions are not the LTM founder-valuation 56. Audit the LTM HTML mockup + `TIER_SYSTEM.md` first.
+
 ---
 
 ## 4 · Outstanding state
@@ -232,6 +245,7 @@ The §5.1 "Olivia's agentic critical-date pipeline" section. User's call when re
 
 | Action | When | Why |
 |---|---|---|
+| **Apply Q1 SQL migration** — `prisma/sql/04-add-quantara-foundation.sql` | Before Q2 routes write to `ValuationSubject.quantaraJson` | Single additive `ALTER TABLE` adding the `quantaraJson JSONB` column. |
 | **Apply C3 SQL migration** — `prisma/sql/02-add-voice-olivia-foundation.sql` | Before C4 routes write to voice/olivia tables | 9 tables. |
 | **Apply V1 SQL migration** — `prisma/sql/03-add-valuation-foundation.sql` | Before V7 routes write to valuation tables | 6 tables. |
 | `STUB_USER_ID` env var (Preview only, never Production) | Before testing C4 / V7 / V9 / O1 routes in Preview | Stub auth reads it. |
@@ -239,7 +253,6 @@ The §5.1 "Olivia's agentic critical-date pipeline" section. User's call when re
 | `STRIPE_API_KEY`, `GITHUB_TOKEN`, `LINKEDIN_API_KEY`, `QUICKBOOKS_API_KEY`, `XERO_API_KEY`, `COMPANIES_HOUSE_API_KEY` (Sensitive, Production + Preview) | When Q3 ships, OR earlier for real-mode dev | Each integration mock-degrades when absent. |
 | Twilio + ElevenLabs + Resend + Google/Outlook OAuth + Tavily + OpenAI keys | Per earlier handoff tables | Every external integration. **Sensitive, Production + Preview only.** |
 | `match_calendar_memory()` PostgreSQL function | When calendar memory becomes user-facing | (W-014.) |
-| **Q1 will surface:** `quantaraJson` column migration to `ValuationSubject` | After Q1 commit lands | New JSON extension column. |
 
 ### 4.3 Active weaknesses
 
@@ -305,7 +318,11 @@ Full standing rules: `docs/BUILD_SEQUENCE.md` § "Standing rules carried into ev
 ## 7 · Recent commit trail
 
 ```
-<this handoff commit>  docs: end-of-batch handoff O1 rebuild — mandatory readme list + LTM-first command
+<this handoff commit>  docs: end-of-batch handoff Q1 — Track Q 1/7 ✅ + Q2 prep
+5f4ceb0 docs: Track Q Session Q1 — SESSION_LOG Part 37 + BUILD_SEQUENCE Q1 ✅
+75c3b5d feat(quantara): Track Q Session Q1 — 56-field schema + ValuationSubject round-trip
+189c675 docs: handoff — mandatory readme list (27 docs, ~11K lines) + LTM-first command + full repo paths
+7e183a4 docs: end-of-batch handoff O1 rebuild — W-001 CLOSED via LTM-first audit + Q1 prep
 7e4d356 feat(tools): Track O Session O1 rebuild — Composio dispatch + LTM-ported Companies House client + 6 net-new Q3 integrations (W-001 closed)
 96975e4 Revert "feat(tools): Track O Session O1 — Composio dispatch + 7 read-only integrations (W-001 closed)"
 dba6d1e Revert "docs: end-of-batch handoff O1 — W-001 CLOSED + Q1 prep"
@@ -326,11 +343,11 @@ Founder direction: **`clueslondon.com` (priority 1)** + **`cluesintelligence.com
 
 **June 8 strategy.** London Tech Show on 2026-06-08 is a **demo target, not a full clueslondon ship.** Olivia Brain is the canonical implementation; LTM port-back happens in a separate post-OB session.
 
-**Pace.** ~4 sessions/day. **~56 sessions remain to ship priorities 1–4.**
+**Pace.** ~4 sessions/day. **~55 sessions remain to ship priorities 1–4** (was ~56 at O1 close; -1 for Q1).
 
 **Tracks remaining:**
 
-- **Next: Track Q (Quantara, Q1–Q7).** Q1 = schema design.
+- **Next: Track Q (Quantara, Q2–Q7).** Q1 ✅ closed. Q2 = form UI.
 - Track P (Deal Protection + gap closures, P1–P7).
 - Track D (Studio ↔ brain wiring).
 - Track E (voice input, S17).
@@ -375,19 +392,21 @@ Full session-by-session breakdown: `D:\Olivia Brain\docs\BUILD_SEQUENCE.md`.
 ```bash
 cd "D:\Olivia Brain"
 git status                                    # should report 1 stash, working tree clean
-git log --oneline -10                         # confirm HEAD is the post-O1-rebuild docs commit
+git log --oneline -10                         # HEAD is the post-Q1 handoff commit
 ```
 
 Then in Claude Code, in this order — no skipping:
 
 1. **Read every line of every doc in §0.** All 27 entries. ~11,000 lines. ~22 minutes. **The user has explicitly stated that prior agents skip these. Don't be one of them.**
-2. **Internally answer the bicycle-wheel question:** what is the `clues-questionnaire-engine` repo's current shape? What does LTM's `prisma/schema.prisma` say about `ValuationSubject` JSON columns? What does `04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md` say about the questionnaire architecture?
-3. **Run the LTM audit per §1 + §3.10.** Inspect every candidate source. Decide port vs. build per the bicycle-wheel rule. **Document the audit + decision in the Q1 commit message** — use the table format from SESSION_LOG Part 36.
-4. Confirm Vercel build is green on the post-`7e4d356` deploy.
-5. Begin Session 30: scaffold (or PORT) `src/lib/quantara/{schema,sections,field-mapping}.ts`, add the `quantaraJson` Prisma column + migration, write the schema + round-trip tests.
-6. Typecheck + tests gate before commit.
-7. Commit + push as one feat commit. Then end-of-batch handoff per the protocol (announce, update HANDOFF.md, last commit of the batch).
+2. **Internally answer the bicycle-wheel question for Q2:** what does the LTM `founder-valuation-form.html` mockup look like (3-pane layout, section dividers, completeness chips, "Olivia Online" status, "Let Olivia complete the rest" button, live valuation preview)? Which OB primitives (`AvatarOrb`, `Badge`, `CompletionRing`, `WorkspaceShell` from S14/S15) does Q2 mount inside? What Aurum/Aether tokens replace the form's cyan-400?
+3. **Run the LTM audit per §1 + §3.10.** Q2 builds NEW React (no port — LTM mockup is HTML-only). Document: "LTM has the design, OB builds the implementation." Match the section structure of `founder-valuation-form.html` byte-for-byte at the layout level; replace the brand palette per `01_UI_DESIGN_SYSTEM.md`.
+4. **Re-read § 3.12 of this file.** The `clues-questionnaire-engine` is for Track L, not Track Q. Don't confuse the two.
+5. Confirm Vercel build is green on the post-`75c3b5d` deploy.
+6. **Confirm Q1 SQL migration applied to Supabase** — check `valuation_subjects` table for the new `quantaraJson` column. If absent, apply `prisma/sql/04-add-quantara-foundation.sql` first; Q2 routes need the column.
+7. Begin Session 31: scaffold `src/components/quantara/` (12 section components mirroring the LTM form's section structure) + `src/app/founder-intake/page.tsx` route + save flow against `ValuationSubject` using the round-trip helpers from `src/lib/quantara/field-mapping.ts`. Live data-completeness % bar driven off `QUANTARA_FIELDS` weights. "Field N of 56" progress chip. Aurum/Aether tokens, no raw hex.
+8. Typecheck + tests gate before commit.
+9. Commit + push as one feat commit. Then end-of-batch handoff per the protocol (announce, update HANDOFF.md, last commit of the batch).
 
-**Standing rule reminder:** stop after Q1's deliverable lands. Q2-Q7 each need their own user pre-authorisation before chaining.
+**Standing rule reminder:** stop after Q2's deliverable lands. Q3-Q7 each need their own user pre-authorisation before chaining.
 
-**The user's standard:** *"It sounds to me like you don't give a flying fuck and do a half ass job"* — that was the last agent's review for skipping the audit. Don't earn it.
+**The user's standard:** *"It sounds to me like you don't give a flying fuck and do a half ass job"* — that was a prior agent's review for skipping the audit. Don't earn it.
