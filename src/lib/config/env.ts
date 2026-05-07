@@ -87,6 +87,18 @@ const serverEnvSchema = z.object({
   COHERE_API_KEY: optionalSecret,
   JINA_API_KEY: optionalSecret,
   COMPOSIO_API_KEY: optionalSecret,
+
+  // Q3 Composio read-only integrations (Track O Session O1).
+  // Each falls back to a deterministic mock-mode response when the key is
+  // absent so Q3's "Let Olivia complete the rest" UI ships day 1 without
+  // gating on operator key provisioning.
+  STRIPE_API_KEY: optionalSecret,
+  GITHUB_TOKEN: optionalSecret,
+  LINKEDIN_API_KEY: optionalSecret,
+  QUICKBOOKS_API_KEY: optionalSecret,
+  XERO_API_KEY: optionalSecret,
+  COMPANIES_HOUSE_API_KEY: optionalSecret,
+
   NYLAS_API_KEY: optionalSecret,
   RESEND_API_KEY: optionalSecret,
   INSTANTLY_API_KEY: optionalSecret,
