@@ -181,11 +181,17 @@ d5fe4c3 fix(map): move next/dynamic out of Server Component (Vercel build fix)
 
 ---
 
-## STRATEGIC PRIORITY (locked 2026-05-03)
+## STRATEGIC PRIORITY (locked 2026-05-03, expanded 2026-05-07)
 
-Founder direction: focus on **`clueslondon.com` (priority 1)** and **`cluesintelligence.com` (priority 2 — FLAGSHIP)**. Both ship targets. cluesxscore (priority 3) and white-label Olivia (priority 4) follow. Path 2 from the Sessions-to-Finish accounting was chosen (ship both flagships even if past 2026-06-02). ~60 sessions to finish priorities 1–4.
+Founder direction: focus on **`clueslondon.com` (priority 1)** and **`cluesintelligence.com` (priority 2 — FLAGSHIP)**. Both ship targets. cluesxscore (priority 3) and white-label Olivia (priority 4) follow.
 
-**Sessions 1–15 done. ~45 remaining.** Track Calendar **CLOSED** (all 6 of 6 sessions ✅). Track C **Sessions 14–15 ✅** (2 of 6 — design substrate + workspace shell + five primitives). W-011 / W-012 / W-013 closed. **Next: Track C Session 16 — Library tab + DeckDetailModal interaction (75 archetypes + 12 templates + scoring + Apply flow).**
+**June 8 strategy (locked 2026-05-07).** London Tech Show on 2026-06-08 is a **demo target, not a full clueslondon ship**. Olivia Brain becomes the canonical implementation of Studio Olivia + the advanced valuation engine + the new Quantara intake + Deal Protection. LTM stays untouched (read-only standing rule preserved). After Olivia Brain is built, a separate Claude session ports back the new code into LTM to finish LTM. Bicycle-wheel preserved: Olivia is the source of truth, LTM is a consumer.
+
+**Pace (locked 2026-05-07).** Founder operates at **~4 sessions/day** with Claude. Remaining work (~70 sessions) takes ~3 weeks at sustained pace.
+
+**Track V/Q/P expansion (locked 2026-05-07).** LTM's far-superior valuation system clones into Olivia Brain as **Track V — LTM Valuation Engine Port** (9 sessions, ~93 files: 24 valuation libs + 14 agents + 9 API routes + 39 UI components + Cristiano 2-pass + 4 Prisma models + 2 valuation-context DealRoom models). Then **Track Q — Quantara Paragraphical Intake** (7 sessions, 56-field metamorphic form persisting to existing `ValuationSubject` JSON columns) and **Track P — Deal Protection Engine + Gap Closures** (7 sessions, 6 gap-closures: Smart Score with bands, clause classifier, London Investor Reputation DB, multi-round dilution, band-specific emails, plus negotiation rehearsal + versioning + multi-LLM consensus). Track O Session O1 (Composio) pulls forward ahead of Q so auto-fill works day 1. Track L (cluesintelligence Unification) shrinks from ~15–20 to ~10 sessions because Track Q builds the paragraphical-questionnaire primitive Track L needs. **Full session-by-session breakdown in `docs/BUILD_SEQUENCE.md`.**
+
+**Sessions 1–15 done. ~70 remaining** (was ~45 before V/Q/P expansion). Track Calendar **CLOSED** (all 6 of 6 sessions ✅). Track C **Sessions 14–15 ✅** (2 of 6 — design substrate + workspace shell + five primitives). W-011 / W-012 / W-013 closed. **Next: Track C Session 16 — Library tab + DeckDetailModal interaction (75 archetypes + 12 templates + scoring + Apply flow).** Track V begins after Track C closes (~Session 20).
 
 ---
 
