@@ -39,6 +39,10 @@ export {
   type IntakeSupplementaryFieldProps,
 } from "./IntakeSupplementaryField";
 export {
+  IntakeVerticalBlock,
+  type IntakeVerticalBlockProps,
+} from "./IntakeVerticalBlock";
+export {
   IntakeSidebar,
   type IntakeSidebarProps,
   type AutoFillState,

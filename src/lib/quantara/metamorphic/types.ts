@@ -89,33 +89,39 @@ export type SupplementaryFieldWeight = 1 | 2 | 3;
  * UI hides this field but does not delete the stored value (round-trip
  * preservation).
  */
-export interface SupplementaryFieldDefinition<TValue = unknown> {
+/**
+ * Structural render shape — the property set every metamorphic field
+ * (Q5 supplementary + Q6 vertical) exposes for the shared
+ * `IntakeSupplementaryField` renderer. The renderer reads only these
+ * properties; both `SupplementaryFieldDefinition` (round axis) and
+ * `VerticalFieldDefinition` (vertical axis) extend this shape.
+ *
+ * `id` is intentionally typed as `string` here (not a discriminated
+ * union of `SupplementaryFieldId | VerticalFieldId`) — the renderer
+ * uses it only for the radio-group `name` attribute, where a stable
+ * string is sufficient.
+ */
+export interface MetamorphicFieldShape {
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+  readonly hint?: string;
+  readonly control: SupplementaryControlKind;
+  readonly unitLabel?: string;
+  readonly step?: number;
+  readonly options?: ReadonlyArray<{ readonly value: string; readonly label: string }>;
+}
+
+export interface SupplementaryFieldDefinition<TValue = unknown>
+  extends MetamorphicFieldShape {
   /** Stable id; matches `s${number}`. */
   readonly id: SupplementaryFieldId;
   /** Round type this field belongs to. */
   readonly roundType: TargetRoundType;
   /** Persistent storage subkey under `quantaraJson.supplementary[roundType]`. */
   readonly subkey: string;
-  /** Human-readable label. */
-  readonly label: string;
-  /** Long-form description; surfaced as helper text in the supplementary block. */
-  readonly description: string;
-  /** Optional secondary hint. */
-  readonly hint?: string;
   /** Importance weight — feeds the supplementary-completeness summary. */
   readonly weight: SupplementaryFieldWeight;
-  /** Render control kind. */
-  readonly control: SupplementaryControlKind;
-  /** Right-side unit label (e.g. `GBP`, `%`, `months`). */
-  readonly unitLabel?: string;
-  /** Numeric `step` attribute. */
-  readonly step?: number;
-  /**
-   * Inline option list for `select-enum` / `multi-select-enum` controls.
-   * Each entry's `value` is what's persisted; `label` is what's rendered.
-   * Ignored for non-select controls.
-   */
-  readonly options?: ReadonlyArray<{ readonly value: string; readonly label: string }>;
   /** Zod schema — single source of truth for runtime validation. */
   readonly schema: z.ZodType<TValue>;
 }

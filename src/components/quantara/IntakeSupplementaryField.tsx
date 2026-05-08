@@ -22,13 +22,16 @@
 
 import { useId, type ChangeEvent } from "react";
 
-import type {
-  SupplementaryFieldDefinition,
-  SupplementaryFieldId,
-} from "@/lib/quantara";
+import type { MetamorphicFieldShape } from "@/lib/quantara";
 
 export interface IntakeSupplementaryFieldProps {
-  field: SupplementaryFieldDefinition;
+  /**
+   * Field descriptor — accepts both `SupplementaryFieldDefinition` (Q5
+   * round-axis) and `VerticalFieldDefinition` (Q6 vertical-axis) via the
+   * shared `MetamorphicFieldShape` structural type. Renderer reads only
+   * the structural properties and is axis-agnostic.
+   */
+  field: MetamorphicFieldShape;
   value: unknown;
   onChange: (next: unknown) => void;
 }
@@ -87,7 +90,10 @@ export function IntakeSupplementaryField({
   const inputId = useId();
   const descId = useId();
   const labelText = field.label;
-  const fieldNameForRadio = `supp-${field.id satisfies SupplementaryFieldId}`;
+  /* Stable radio-group name. Field ids are unique across both Q5
+     supplementary (`s1..s18`) and Q6 vertical (`v1..v20`) namespaces
+     so a single prefix is fine. */
+  const fieldNameForRadio = `metamorphic-${field.id}`;
 
   return (
     <div style={cardStyle}>
@@ -139,7 +145,7 @@ export function IntakeSupplementaryField({
 }
 
 interface ControlRenderArgs {
-  field: SupplementaryFieldDefinition;
+  field: MetamorphicFieldShape;
   value: unknown;
   onChange: (next: unknown) => void;
   inputId: string;

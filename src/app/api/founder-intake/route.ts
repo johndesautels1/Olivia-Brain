@@ -40,16 +40,22 @@ import { getAuthSession } from "@/lib/auth/session";
 import prisma from "@/lib/db/client";
 import { rateLimit } from "@/lib/rate-limit";
 import {
+  QUANTARA_VERTICAL_BY_ID,
   QuantaraValuesSchema,
   SupplementaryValuesSchema,
+  VerticalValuesSchema,
   mergeQuantaraIntoSubject,
   mergeSupplementaryIntoQuantaraJson,
+  mergeVerticalIntoQuantaraJson,
   quantaraToValuationSubject,
   readSupplementaryFromQuantaraJson,
+  readVerticalFromQuantaraJson,
   valuationSubjectToQuantara,
   type QuantaraValuationSubjectShape,
   type QuantaraValues,
   type SupplementaryValues,
+  type VerticalId,
+  type VerticalValues,
 } from "@/lib/quantara";
 
 import { overallCompleteness } from "@/components/quantara/completeness";
@@ -59,6 +65,10 @@ interface PostBody {
   values?: unknown;
   /** Q5 — multi-round supplementary values map. Optional. */
   supplementaryValues?: unknown;
+  /** Q6 — active vertical id (writes to ValuationSubject.sector). Optional. */
+  vertical?: unknown;
+  /** Q6 — multi-vertical schedule values map. Optional. */
+  verticalValues?: unknown;
   subjectId?: unknown;
 }
 
@@ -130,6 +140,31 @@ export async function POST(request: NextRequest) {
     supplementaryParse.data as unknown as SupplementaryValues;
   const hasSupplementary = Object.keys(supplementaryValues).length > 0;
 
+  /* Q6 — vertical + vertical-schedule values. Both optional. The
+     vertical id is whitelisted against the canonical descriptor map
+     so an arbitrary string can never reach `ValuationSubject.sector`
+     via this route. */
+  let vertical: VerticalId | undefined;
+  if (typeof body.vertical === "string" && body.vertical.length > 0) {
+    if (!(body.vertical in QUANTARA_VERTICAL_BY_ID)) {
+      return badRequest(`Invalid vertical: ${body.vertical}`);
+    }
+    vertical = body.vertical as VerticalId;
+  }
+
+  const verticalParse = VerticalValuesSchema.safeParse(
+    body.verticalValues ?? {},
+  );
+  if (!verticalParse.success) {
+    return badRequest(
+      `Invalid verticalValues: ${verticalParse.error.issues
+        .map((i) => `${i.path.join(".")}: ${i.message}`)
+        .join("; ")}`,
+    );
+  }
+  const verticalValues = verticalParse.data as unknown as VerticalValues;
+  const hasVertical = Object.keys(verticalValues).length > 0;
+
   let userId: string;
   try {
     const session = await getAuthSession();
@@ -164,18 +199,31 @@ export async function POST(request: NextRequest) {
          first and supplementary values nest under the
          `supplementary` namespace. Per-round entries don't clobber
          each other (see `mergeSupplementaryIntoQuantaraJson` tests). */
-      const finalQuantaraJson = hasSupplementary
+      let finalQuantaraJson = hasSupplementary
         ? mergeSupplementaryIntoQuantaraJson(
             merged.quantaraJson ?? null,
             supplementaryValues,
           )
         : merged.quantaraJson;
+      /* Q6 — vertical merge runs as a third pass under the `vertical`
+         namespace. Distinct from supplementary, distinct from canonical
+         field subkeys. Per-vertical entries preserve. */
+      if (hasVertical) {
+        finalQuantaraJson = mergeVerticalIntoQuantaraJson(
+          finalQuantaraJson ?? null,
+          verticalValues,
+        );
+      }
       const summary = overallCompleteness(values);
 
       const updated = await prisma.valuationSubject.update({
         where: { id: existing.id },
         data: {
           companyName,
+          /* Q6 — when vertical is supplied, persist to the top-level
+             `sector` column so engine-side queries see it. When not
+             supplied, leave whatever was there (don't clobber with null). */
+          ...(vertical ? { sector: vertical } : {}),
           financialDataJson: asJson(merged.financialDataJson),
           ipDataJson: asJson(merged.ipDataJson),
           marketDataJson: asJson(merged.marketDataJson),
@@ -200,17 +248,25 @@ export async function POST(request: NextRequest) {
     /* Create new — project values directly (no merge target). */
     const projection = quantaraToValuationSubject(values);
     /* Q5 — fold supplementary values into the fresh quantaraJson. */
-    const initialQuantaraJson = hasSupplementary
+    let initialQuantaraJson = hasSupplementary
       ? mergeSupplementaryIntoQuantaraJson(
           projection.quantaraJson ?? null,
           supplementaryValues,
         )
       : projection.quantaraJson;
+    /* Q6 — fold vertical schedule values under the `vertical` namespace. */
+    if (hasVertical) {
+      initialQuantaraJson = mergeVerticalIntoQuantaraJson(
+        initialQuantaraJson ?? null,
+        verticalValues,
+      );
+    }
     const summary = overallCompleteness(values);
     const created = await prisma.valuationSubject.create({
       data: {
         userId,
         companyName,
+        ...(vertical ? { sector: vertical } : {}),
         financialDataJson: asJson(projection.financialDataJson),
         ipDataJson: asJson(projection.ipDataJson),
         marketDataJson: asJson(projection.marketDataJson),
@@ -279,6 +335,8 @@ export async function GET(request: NextRequest) {
         companyName: null,
         values: {},
         supplementaryValues: {},
+        vertical: null,
+        verticalValues: {},
         completenessScore: 0,
       });
     }
@@ -291,12 +349,30 @@ export async function GET(request: NextRequest) {
     const supplementaryValues = readSupplementaryFromQuantaraJson(
       shape.quantaraJson ?? null,
     );
+    /* Q6 — extract per-vertical schedule values from the `vertical`
+       namespace. The vertical id itself comes from the top-level
+       `sector` column. Both empty when the subject was saved before
+       Q6 shipped. */
+    const verticalValues = readVerticalFromQuantaraJson(
+      shape.quantaraJson ?? null,
+    );
+    /* Whitelist sector against the canonical descriptor map so a
+       legacy / freeform sector string doesn't crash the UI when it
+       expects a typed VerticalId. */
+    const verticalCandidate = subject.sector;
+    const vertical: VerticalId | null =
+      typeof verticalCandidate === "string" &&
+      verticalCandidate in QUANTARA_VERTICAL_BY_ID
+        ? (verticalCandidate as VerticalId)
+        : null;
     return NextResponse.json({
       ok: true,
       subjectId: subject.id,
       companyName: subject.companyName,
       values,
       supplementaryValues,
+      vertical,
+      verticalValues,
       completenessScore: Number(subject.completenessScore ?? 0),
     });
   } catch (err) {
@@ -312,6 +388,9 @@ export async function GET(request: NextRequest) {
 const shapeSelect = {
   id: true,
   companyName: true,
+  /* Q6 — sector holds the vertical id; selected so GET can hydrate the
+     form's vertical state and POST's update path can compare. */
+  sector: true,
   financialDataJson: true,
   qualitativeJson: true,
   ipDataJson: true,
@@ -324,6 +403,7 @@ const shapeSelect = {
 interface SubjectRow {
   id: string;
   companyName: string;
+  sector: string | null;
   financialDataJson: unknown;
   qualitativeJson: unknown;
   ipDataJson: unknown;
@@ -336,6 +416,7 @@ interface SubjectRow {
 function toShape(row: SubjectRow): QuantaraValuationSubjectShape {
   return {
     companyName: row.companyName,
+    sector: row.sector,
     financialDataJson: row.financialDataJson as
       | Record<string, unknown>
       | null

@@ -58,6 +58,7 @@ import {
 } from "@/components/workspace";
 import {
   QUANTARA_SECTIONS_BY_ID,
+  QUANTARA_VERTICALS,
   getSectionOrderForRound,
   type QuantaraFieldId,
   type QuantaraSectionId,
@@ -66,6 +67,10 @@ import {
   type SupplementaryValues,
   type SupplementaryValuesForRound,
   type TargetRoundType,
+  type VerticalFieldId,
+  type VerticalId,
+  type VerticalValues,
+  type VerticalValuesForVertical,
 } from "@/lib/quantara";
 import type {
   AutoFillSummary,
@@ -82,6 +87,7 @@ import { IntakeSectionBlock } from "./IntakeSectionBlock";
 import { IntakeSidebar, type AutoFillState } from "./IntakeSidebar";
 import { IntakeSupplementaryBlock } from "./IntakeSupplementaryBlock";
 import { IntakeVerdictPanel } from "./IntakeVerdictPanel";
+import { IntakeVerticalBlock } from "./IntakeVerticalBlock";
 
 export interface IntakeFormProps {
   /** Initial values restored from a previously-saved subject. */
@@ -96,6 +102,17 @@ export interface IntakeFormProps {
    * preserves prior entries.
    */
   initialSupplementaryValues?: SupplementaryValues;
+  /**
+   * Q6 — initial vertical (sector) restored from a previous save.
+   * Persisted to `ValuationSubject.sector`.
+   */
+  initialVertical?: VerticalId;
+  /**
+   * Q6 — initial vertical-specific schedule values restored from a
+   * previous save. Multi-vertical shape: switching the founder's
+   * vertical preserves prior entries (parity with Q5 supplementary).
+   */
+  initialVerticalValues?: VerticalValues;
 }
 
 type SaveState =
@@ -121,6 +138,8 @@ export function IntakeForm({
   initialCompanyName,
   initialSubjectId,
   initialSupplementaryValues,
+  initialVertical,
+  initialVerticalValues,
 }: IntakeFormProps) {
   const [values, setValues] = useState<QuantaraValues>(initialValues ?? {});
   const [companyName, setCompanyName] = useState<string>(
@@ -137,6 +156,21 @@ export function IntakeForm({
    */
   const [supplementaryValues, setSupplementaryValues] =
     useState<SupplementaryValues>(initialSupplementaryValues ?? {});
+  /**
+   * Q6 — active vertical (industry / sector). Drives the
+   * `IntakeVerticalBlock` mount + which schedule renders.
+   * Persisted on save to `ValuationSubject.sector`.
+   */
+  const [vertical, setVertical] = useState<VerticalId | undefined>(
+    initialVertical,
+  );
+  /**
+   * Q6 — multi-vertical values map. Switching verticals swaps which
+   * slot is visible; prior entries persist (parity with supplementary).
+   */
+  const [verticalValues, setVerticalValues] = useState<VerticalValues>(
+    initialVerticalValues ?? {},
+  );
   const [activeSection, setActiveSection] = useState<QuantaraSectionId>(
     "core_financials",
   );
@@ -197,6 +231,12 @@ export function IntakeForm({
     return supplementaryValues[targetRoundType] ?? {};
   }, [supplementaryValues, targetRoundType]);
 
+  /** Q6 — vertical schedule slot for the active vertical (empty when generic / unset). */
+  const activeVerticalValues: VerticalValuesForVertical = useMemo(() => {
+    if (!vertical) return {};
+    return verticalValues[vertical] ?? {};
+  }, [verticalValues, vertical]);
+
   /**
    * Q4 — discrepancy detection. Runs the V5 truth-score-agent (5%
    * match threshold + per-field optimistic/pessimistic directionality)
@@ -241,6 +281,28 @@ export function IntakeForm({
       dismissSuggestion(fieldId);
     },
     [dismissSuggestion],
+  );
+
+  /**
+   * Q6 — update one vertical-schedule field. Writes into
+   * `verticalValues[vertical][fieldId]`. No-op when no non-generic
+   * vertical is selected (the vertical block is hidden in that state).
+   */
+  const handleChangeVertical = useCallback(
+    (fieldId: VerticalFieldId, next: unknown) => {
+      if (!vertical) return;
+      setVerticalValues((prev) => {
+        const prevForVertical: VerticalValuesForVertical = prev[vertical] ?? {};
+        const nextForVertical: VerticalValuesForVertical = { ...prevForVertical };
+        if (next === undefined) {
+          delete nextForVertical[fieldId];
+        } else {
+          nextForVertical[fieldId] = next;
+        }
+        return { ...prev, [vertical]: nextForVertical };
+      });
+    },
+    [vertical],
   );
 
   /**
@@ -438,6 +500,11 @@ export function IntakeForm({
           /* Q5 — full multi-round supplementary map. Server merges per-round
              so partial saves never clobber other rounds' entries. */
           supplementaryValues,
+          /* Q6 — vertical (writes to ValuationSubject.sector) + the
+             multi-vertical schedule values map. Same per-key merge
+             behavior on the server. */
+          vertical,
+          verticalValues,
           subjectId,
         }),
         signal: controller.signal,
@@ -459,7 +526,14 @@ export function IntakeForm({
     } finally {
       clearTimeout(timeout);
     }
-  }, [companyName, subjectId, supplementaryValues, values]);
+  }, [
+    companyName,
+    subjectId,
+    supplementaryValues,
+    values,
+    vertical,
+    verticalValues,
+  ]);
 
   /* Reset the "saved" toast 4s after it lands, mirroring LTM mockup. */
   useEffect(() => {
@@ -603,6 +677,8 @@ export function IntakeForm({
           <FormHero
             companyName={companyName}
             onCompanyNameChange={setCompanyName}
+            vertical={vertical}
+            onVerticalChange={setVertical}
           />
 
           {sectionOrder.map((id) => {
@@ -633,6 +709,15 @@ export function IntakeForm({
             onChange={handleChangeSupplementary}
           />
 
+          {/* Q6 — vertical-specific schedule. Mounts only when a
+              non-generic vertical is selected (`generic` shows nothing
+              by design). Persists per-vertical for switch-back. */}
+          <IntakeVerticalBlock
+            verticalId={vertical}
+            values={activeVerticalValues}
+            onChange={handleChangeVertical}
+          />
+
           <FinalCTA overall={overall} />
         </Center>
       }
@@ -654,9 +739,17 @@ export function IntakeForm({
 interface FormHeroProps {
   companyName: string;
   onCompanyNameChange: (next: string) => void;
+  /** Q6 — active vertical (sector). Drives `IntakeVerticalBlock`. */
+  vertical: VerticalId | undefined;
+  onVerticalChange: (next: VerticalId | undefined) => void;
 }
 
-function FormHero({ companyName, onCompanyNameChange }: FormHeroProps) {
+function FormHero({
+  companyName,
+  onCompanyNameChange,
+  vertical,
+  onVerticalChange,
+}: FormHeroProps) {
   return (
     <div style={{ marginBottom: 40 }}>
       <div
@@ -722,49 +815,105 @@ function FormHero({ companyName, onCompanyNameChange }: FormHeroProps) {
         angel → Series B → strategic buyout.
       </p>
 
-      <div style={{ marginTop: 24, maxWidth: 480 }}>
-        <label
-          htmlFor="quantara-company-name"
-          style={{
-            display: "block",
-            fontFamily: "var(--font-sans)",
-            fontSize: "var(--text-sm)",
-            fontWeight: 500,
-            color: "var(--fg-secondary)",
-            marginBottom: 6,
-          }}
-        >
-          Company name
-          <span
-            aria-hidden="true"
-            style={{ color: "var(--coral-down)", marginLeft: 4 }}
+      <div
+        style={{
+          marginTop: 24,
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 280px)",
+          gap: 16,
+          maxWidth: 800,
+        }}
+      >
+        <div>
+          <label
+            htmlFor="quantara-company-name"
+            style={{
+              display: "block",
+              fontFamily: "var(--font-sans)",
+              fontSize: "var(--text-sm)",
+              fontWeight: 500,
+              color: "var(--fg-secondary)",
+              marginBottom: 6,
+            }}
           >
-            *
-          </span>
-        </label>
-        <input
-          id="quantara-company-name"
-          type="text"
-          value={companyName}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            onCompanyNameChange(e.target.value)
-          }
-          aria-required="true"
-          placeholder="e.g. Quantara Ltd"
-          style={{
-            width: "100%",
-            padding: "12px 16px",
-            background: "var(--canvas-recess)",
-            border: "1px solid var(--border-default)",
-            borderRadius: "var(--radius-lg)",
-            color: "var(--fg-primary)",
-            fontFamily: "var(--font-sans)",
-            fontSize: "var(--text-md)",
-            fontWeight: 500,
-            outline: "none",
-            touchAction: "manipulation",
-          }}
-        />
+            Company name
+            <span
+              aria-hidden="true"
+              style={{ color: "var(--coral-down)", marginLeft: 4 }}
+            >
+              *
+            </span>
+          </label>
+          <input
+            id="quantara-company-name"
+            type="text"
+            value={companyName}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              onCompanyNameChange(e.target.value)
+            }
+            aria-required="true"
+            placeholder="e.g. Quantara Ltd"
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              background: "var(--canvas-recess)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-lg)",
+              color: "var(--fg-primary)",
+              fontFamily: "var(--font-sans)",
+              fontSize: "var(--text-md)",
+              fontWeight: 500,
+              outline: "none",
+              touchAction: "manipulation",
+            }}
+          />
+        </div>
+
+        {/* Q6 — vertical selector. Drives the vertical-schedule block.
+            "Generic / Other" hides the block (no schedule). */}
+        <div>
+          <label
+            htmlFor="quantara-vertical"
+            style={{
+              display: "block",
+              fontFamily: "var(--font-sans)",
+              fontSize: "var(--text-sm)",
+              fontWeight: 500,
+              color: "var(--fg-secondary)",
+              marginBottom: 6,
+            }}
+          >
+            Vertical
+          </label>
+          <select
+            id="quantara-vertical"
+            value={vertical ?? ""}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+              const v = e.target.value;
+              onVerticalChange(v === "" ? undefined : (v as VerticalId));
+            }}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              background: "var(--canvas-recess)",
+              border: "1px solid var(--border-default)",
+              borderRadius: "var(--radius-lg)",
+              color: "var(--fg-primary)",
+              fontFamily: "var(--font-sans)",
+              fontSize: "var(--text-md)",
+              fontWeight: 500,
+              outline: "none",
+              touchAction: "manipulation",
+            }}
+          >
+            <option value="">Select vertical…</option>
+            {QUANTARA_VERTICALS.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );

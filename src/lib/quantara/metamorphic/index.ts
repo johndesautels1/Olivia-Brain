@@ -12,6 +12,7 @@ export {
   type SupplementaryFieldDefinition,
   type SupplementaryValuesForRound,
   type SupplementaryValues,
+  type MetamorphicFieldShape,
   QUANTARA_SUPPLEMENTARY_FIELD_COUNT,
 } from './types';
 
@@ -47,3 +48,32 @@ export {
   readSupplementaryFromQuantaraJson,
   mergeSupplementaryIntoQuantaraJson,
 } from './supplementary-mapping';
+
+export {
+  type VerticalId,
+  type VerticalFieldId,
+  type VerticalDescriptor,
+  type VerticalFieldDefinition,
+  type VerticalValuesForVertical,
+  type VerticalValues,
+  QUANTARA_VERTICAL_COUNT,
+  QUANTARA_VERTICAL_FIELD_COUNT,
+} from './vertical-types';
+
+export {
+  QUANTARA_VERTICALS,
+  QUANTARA_VERTICAL_BY_ID,
+  QUANTARA_VERTICAL_FIELDS,
+  QUANTARA_VERTICAL_FIELDS_BY_ID,
+  VerticalValuesSchema,
+  buildVerticalValuesSchema,
+  getVerticalFieldsForVertical,
+} from './vertical-schedules';
+
+export {
+  QUANTARA_VERTICAL_NAMESPACE,
+  verticalToJson,
+  verticalFromJson,
+  readVerticalFromQuantaraJson,
+  mergeVerticalIntoQuantaraJson,
+} from './vertical-mapping';
