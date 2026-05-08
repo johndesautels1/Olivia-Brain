@@ -2,8 +2,8 @@
 
 > **Snapshot of every shipped capability + the remaining roadmap.**
 >
-> Last refreshed: **2026-05-08** at HEAD `6840302` (post-P5 feat commit). **Track Q closed; Track P 5/7 ✅.**
-> Test gate: **814/814 across 66 suites**. Typecheck: **clean**.
+> Last refreshed: **2026-05-08** at HEAD `1f082a0` (post-P6 feat commit). **Track Q closed; Track P 6/7 ✅.**
+> Test gate: **839/839 across 70 suites**. Typecheck: **clean**.
 >
 > This file is a snapshot — refresh it at end of each batch (after the SESSION_LOG entry lands) so the next session opens to a current view of the codebase. It's a complement to `BUILD_SEQUENCE.md` (which is the session-by-session plan) and `HANDOFF.md` (which is the resume-point doc).
 
@@ -115,7 +115,7 @@
 | **`/api/admin/*`** | 8 | `agents/[agentId]`, `agents/run`, `approvals`, `integrations`, `integrations/test`, `memory`, `migrations`, `toggles` |
 | **`/api/pitch/*`** | 6 | `archetypes`, `templates`, `analyze`, `chat`, `draft`, `optimize` |
 | **`/api/founder-intake/*`** (Q2 + Q3 + Q7) | 4 | `POST/GET /api/founder-intake`, `POST /api/founder-intake/auto-fill`, `POST /api/founder-intake/voice-extract`, `POST/GET /api/founder-intake/personas` |
-| **`/api/deal-protection/*`** (P3+P4+P5) | 4 | `POST /api/deal-protection/analyze` (P3+P4); `POST /api/deal-protection/investor-submission` (P4); `POST /api/deal-protection/dilution` — stateless multi-round dilution projection (P5); `POST /api/deal-protection/email-draft` — band-tuned founder reply email (P5) |
+| **`/api/deal-protection/*`** (P3+P4+P5+P6) | 6 | `POST/GET /api/deal-protection/analyze` (P3+P4 + P6 GET extension for list/single); `POST /api/deal-protection/investor-submission` (P4); `POST /api/deal-protection/dilution` (P5); `POST /api/deal-protection/email-draft` (P5); `POST/GET /api/deal-protection/counter-draft` (P6 — generate + list versioned counters); `GET/PATCH /api/deal-protection/counter-draft/[id]` (P6 — single fetch + founderNotes edit) |
 | **`/api/admin/investors/*`** (P4) | 4 | `GET/POST /api/admin/investors`, `PATCH/DELETE /api/admin/investors/[id]`, `POST /api/admin/investors/seed`, `GET/PATCH /api/admin/investors/moderation` |
 | **`/api/avatar/*`** | 3 | Generate, status, session create/manage |
 | **`/api/realtime/*`** | 3 | Status, session create, WebRTC credentials |
@@ -199,7 +199,7 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 | Track | Sessions remaining | Scope summary |
 |---|---|---|
 | **Track Q (Quantara)** — Q5 → Q7 | **3** | Q5 investor-class metamorphic UI · Q6 vertical-specific schedules (AI/SaaS, HealthTech, ClimateTech, PropTech) · Q7 voice-first paragraphical capture + persona generation |
-| **Track P (Deal Protection)** — P6 → P7 | **2** | WarRoom integration + counter term sheet · negotiation rehearsal + versioning + multi-LLM consensus (P1+P2+P3+P4+P5 ✅) |
+| **Track P (Deal Protection)** — P7 | **1** | Negotiation rehearsal + term sheet versioning + multi-LLM consensus (P1+P2+P3+P4+P5+P6 ✅) — closes Track P |
 | **Track D (Studio↔Brain wiring)** — S15-S16 | **2** | Re-point Studio "Ask Olivia / Analyze / Optimize" to OB cascade |
 | **Track E (Voice input, S17)** | **1** | Voice-driven Studio capture |
 | **Track F (Clerk auth, S18)** | **1** | Replace `getAuthSession` stub with real Clerk — closes W-015 |
@@ -223,11 +223,11 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 
 | Metric | Value |
 |---|---|
-| **Sessions complete** | 40 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P5) |
-| **Sessions remaining (priorities 1-4 + Track L)** | **~45** |
+| **Sessions complete** | 41 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P6) |
+| **Sessions remaining (priorities 1-4 + Track L)** | **~44** |
 | **Total sessions in plan** | ~85 |
-| **% complete** | ~47% by session count |
-| **Tests passing** | 814/814 across 66 suites |
+| **% complete** | ~48% by session count |
+| **Tests passing** | 839/839 across 70 suites |
 | **Typecheck** | clean |
 | **Open weaknesses** | 4 (W-013/14/15/16) |
 | **Library subsystems** | 50 (43 shipped, 1 LTM-ported, 2 partial, 3 stub, 1 pending) |

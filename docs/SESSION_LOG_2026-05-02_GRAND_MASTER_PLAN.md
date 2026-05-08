@@ -2456,3 +2456,78 @@ The carry-forward operator actions remain:
 2. Apply the seed via `prisma/sql/seed-investor-reputations.sql` (or `POST /api/admin/investors/seed`) once 06 lands (P4).
 
 **Next session:** **Track P Session P6 — WarRoom integration + counter term sheet auto-draft.** New tab in WarRoom (ported in V9) that mounts the deal-protection report. Counter term sheet auto-drafted into Document Library — Deal Protection drafts the redlined counter document the founder sends back. Cross-doc inheritance: `ValuationSubject` data fills the counter automatically. Per BUILD_SEQUENCE Track P row P6.
+
+---
+
+## Part 49 — 2026-05-08 — Track P Session P6: WarRoom Deal Protection panel + counter term sheet auto-draft
+
+**HEAD before:** `4b304d6` (post-P5 docs — 814/814 across 66 suites). **HEAD after P6 code:** `1f082a0`. **HEAD after P6 docs:** (this commit). **Tests:** 814/814 → **839/839** across **66 → 70 suites** (+25 new across 4 new suites). Typecheck clean.
+
+### What ships
+
+#### A. CounterTermSheet Prisma model + migration 07
+
+New `counter_term_sheets` table — append-only with per-analysis `versionNumber` so the founder's negotiation history is auditable. Cascading delete from `deal_analyses`. Two indexes: `(userId, generatedAt)` for cross-deal listing and `(dealAnalysisId, versionNumber)` for per-analysis version lookup. `redlinedMarkdown` is the rendered blob the founder copies into their email / lawyer's redlines; `changesJson` holds the structured per-clause record array for side-by-side UI rendering. `founderNotes` is editable post-draft (only field that's mutable on a persisted row). Migration body pasted inline in this session per the inline-SQL rule.
+
+The full Documents subsystem (LTM Studio v1 ~22,700 LOC) is NOT shipped in P6 — the BUILD_SEQUENCE Track P row P6 mention of "Document Library" is satisfied by this purpose-built `CounterTermSheet` table. The Documents track folds counter drafts into the unified Document model later when it lands.
+
+#### B. Counter-draft library (`counter-term-sheet*.ts`)
+
+Four focused files matching the P5/Q7 structural pattern:
+
+| File | Surface |
+|---|---|
+| `counter-term-sheet-types.ts` | `CounterChange` (one redline = clauseType + originalText + counterText + rationale), `CounterDraftPayload` (preamble + changes + closing), `CounterDraftResult` (extends payload with markdown + cascade trail), Zod schemas with strict length bounds (`PREAMBLE_MIN/MAX=40/1500`, `CLOSING_MIN/MAX=20/1000`, `CHANGES_MIN/MAX=1/25`), `CounterDraftPostBodySchema` for route validation. |
+| `counter-term-sheet-prompts.ts` | `buildCounterDraftPrompt` — Sonnet via `intent: "operations"`. Embeds the band's tone descriptor (red = no negotiation hook; orange/yellow/blue/green progressively warmer), the per-clause analyses (sorted by toxicity desc, capped at `CHANGES_MAX`), and cross-doc context (companyName / sector / recipient / round summary). Strict JSON output contract. |
+| `counter-term-sheet-templates.ts` | `renderTemplateCounterDraft` — deterministic per-band fallback. Pulls counter language directly from the P2 `founderFriendlyAlternative` field (no fabrication). Skips low-severity clauses (acceptable as-drafted). Falls back to a procedural placeholder when no actionable clauses exist. Per-band `buildPreamble` + `buildClosing` helpers — red gets no "happy to discuss" softener; green expresses readiness for definitive docs. |
+| `counter-term-sheet.ts` | `generateCounterDraft` orchestrator + `renderCounterMarkdown` (preamble → `## Redlines` header → per-change `### N. <ClauseType>` blocks with `**Original:**` / `**Counter:**` / `**Rationale:**` → closing). Three soft-failure modes (matches Q7/P2/P3/P5): cascade mock-mode → template; JSON parse failure → template; Zod schema rejection → template. |
+
+#### C. API routes (3 new + extended GET on existing analyze route)
+
+| Route | Methods | Behaviour |
+|---|---|---|
+| `/api/deal-protection/counter-draft` | POST | Generate + persist new draft with auto-incremented `versionNumber`. **Cross-doc inheritance:** loads parent ValuationSubject + DealAnalysis in one Prisma query so the orchestrator gets company / sector / round context without an extra round trip. 5/min rate limit. |
+| `/api/deal-protection/counter-draft` | GET | List drafts for `?dealAnalysisId=…` (required). Verifies the analysis belongs to the caller before exposing its drafts. 60/min rate limit. |
+| `/api/deal-protection/counter-draft/[id]` | GET | Single draft fetch (own-row only). 60/min. |
+| `/api/deal-protection/counter-draft/[id]` | PATCH | Update `founderNotes` and/or `isArchived`. The redline body itself is **immutable** — regenerate to make a new version. 30/min. |
+| `/api/deal-protection/analyze` | GET (NEW) | Extended P3's POST-only route. Supports `?id=…` (single analysis) or `?subjectId=…` (list latest 20 for a subject). Verifies own-row before exposing. 60/min. The WarRoom panel uses `?subjectId=…` to find the latest analysis. |
+
+All routes use the `getAuthSession()` stub (W-015), consistent with the rest of `/api/deal-protection/*`.
+
+#### D. WarRoom Deal Protection panel
+
+`WarRoomDealProtection.tsx` — self-contained client component. Accepts `valuationSubjectId` + `companyName` + optional `recipientName` / `founderName`. On mount: fetches latest DealAnalysis for the subject, then fetches counter drafts for that analysis, selects the most-recent draft. Renders a two-column layout — left column shows smart score + band + critical issues + counter-draft list; right column shows the selected draft's redlined markdown in a scrollable `<pre>`. The "Generate counter draft / Generate new version" button POSTs to the new counter-draft route and prepends the new draft to the list.
+
+**WarRoom integration**: `WarRoom.tsx` gains an optional `valuationSubjectId?: string` prop, threaded through to `WarRoomBriefing.tsx` which mounts the panel as a new "Section 9 (P6): Deal Protection panel" between the existing Section 8 (Comparable Transactions) and the footer. The integration is purely additive — when the prop is absent, WarRoom behaves exactly as before, so nothing in V9's transcript / session / negotiation flows changes.
+
+Visual styling is deliberately minimal — uses inline styles + Aurum/Aether CSS variables directly. Track C will polish per W-013 alongside the other LTM-port surfaces.
+
+### Tests (25 new across 4 new suites)
+
+- **`counter-term-sheet-templates.test.ts`** (11 cases) — band-tuned tone for all 5 bands (regex match on preamble language); red closing has no negotiation hook; green closing references definitive docs; skips low-severity clauses; sorts changes by toxicity desc; procedural placeholder when no actionable clauses; markdown render shape (preamble + Redlines header + change blocks + closing).
+- **`counter-term-sheet.test.ts`** (6 cases) — happy path with `runtimeMode='live'` + parsed payload + markdown render; mock-mode fallback; invalid-JSON fallback; schema-rejection fallback (preamble too short); markdown shape preserves order; cascade attempts trail forwarded.
+- **`counter-draft route.test.ts`** (7 cases) — module surfaces (4 routes — POST/GET on collection + GET/PATCH on `[id]`); POST validation (invalid JSON, missing dealAnalysisId); GET validation (missing dealAnalysisId); PATCH validation (empty body, unparseable body).
+- **`war-room-deal-protection.test.ts`** (1 case) — module-import smoke (matches the workbench.test.ts pattern; render-level assertions land manually against the mounted briefing).
+
+### Decisions / judgment-call trail
+
+1. **Dedicated `CounterTermSheet` model (vs columns on DealAnalysis or full Documents subsystem).** Versioning needs a 1:N relationship — adding columns on DealAnalysis would force overwrite-on-regenerate or a new analysis row per draft, both wrong. The full Documents subsystem (~22,700 LOC of LTM Studio v1) is out of scope for P6; a purpose-built table satisfies the BUILD_SEQUENCE exit criterion. Documents track folds this in later.
+2. **Append-only with `versionNumber` (vs editable rows).** Founders iterate counters as the negotiation evolves; deleting a prior version would lose the audit trail. The redline body is immutable post-persistence — only `founderNotes` and `isArchived` are mutable.
+3. **Counter language pulled from P2 `founderFriendlyAlternative` in template fallback (vs LLM fabrication in mock mode).** The deterministic path is anchored in real classifier output — no fabricated redlines. This matches the founder's expectation that mock-mode produces conservative, defensible content.
+4. **Cross-doc inheritance via Prisma JOIN at generation time (vs caching subject context on DealAnalysis).** The single Prisma query (`include: { valuationSubject: { select: { companyName, sector } } }`) is cheap and ensures the orchestrator always uses the latest subject metadata. Caching would invalidate on every subject edit.
+5. **`/api/deal-protection/analyze` GET extension (vs separate `/analyses` route).** GET on an existing POST-only resource is the standard REST shape. Adding a separate route would have been needless surface duplication.
+6. **WarRoom panel as a new Section 9 in the briefing (vs a true tab system).** WarRoom is mode-based (Briefing ↔ Session), not tab-based. Refactoring to add a tab system would be invasive; adding a new section to the briefing matches the existing UI vocabulary and is purely additive (zero change when `valuationSubjectId` is absent).
+7. **Two-column panel layout (left: report + draft list; right: selected redline).** Founders read the report and the redline together; splitting into two panels would force tab-switching. Track C will refine the visual; the layout itself is correct.
+8. **Defensive Prisma row narrowing in routes (`Decimal`-or-number, `Array.isArray` JSON checks).** Prisma's generated types are stable, but the route's serialization to JSON for the client must coerce `Decimal` to `number` and validate JSON columns — wrapping these in named helpers makes the contract clear and reusable across the analyze + counter-draft routes.
+9. **Circular-import resolution by removing redundant re-export.** `counter-term-sheet-templates.ts` originally re-exported `renderCounterMarkdown` from `counter-term-sheet.ts` for convenience; that created a circular import that broke under Vitest's transform. Resolved by removing the re-export — consumers import `renderCounterMarkdown` directly from `counter-term-sheet.ts`. Cleaner module graph; identical surface for callers.
+
+### Build status at session-P6 close
+
+**Green.** Tests: **839/839** across **70 suites** (+25 new). Typecheck: clean. **Track P 6/7 ✅.**
+
+### Operator actions surfaced
+
+1. **(NEW for P6)** Apply `prisma/sql/07-add-counter-term-sheets.sql` to Supabase before counter drafts can persist. SQL was printed inline in the chat at file-creation time per `feedback_inline_sql_migrations`.
+2. Carry-forward (unchanged): apply migration 06 + run the investor seed once 06 lands.
+
+**Next session:** **Track P Session P7 — Negotiation rehearsal + term sheet versioning + multi-LLM consensus.** Three new modes: (1) Rehearsal — Olivia role-plays the investor pushing back on the founder's counter-proposal so founder can practice; (2) Versioning — V1 → V2 → V3 tracked over time, Olivia flags new red flags + re-scores; (3) Consensus — for high-stakes offers (>£5M, buyout), same offer through Sonnet + GPT-5.4 + Gemini + Grok in parallel, Opus renders consensus + dissent breakdown. **Track P CLOSED** at P7 end.
