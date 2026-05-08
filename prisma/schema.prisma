@@ -1644,6 +1644,9 @@ model ValuationSubject {
 
   valuationRuns      ValuationRun[]
   financialSnapshots FinancialSnapshot[]
+  /// Q7 — cascade-synthesized founder + company personas keyed off this subject.
+  founderPersonas    FounderPersona[]
+  companyPersonas    CompanyPersona[]
 
   @@index([userId, createdAt])
   @@index([analysisResultId])
@@ -1784,4 +1787,100 @@ model DealRoomMessage {
 
   @@index([dealRoomSessionId, createdAt])
   @@map("deal_room_messages")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QUANTARA Q7 — PERSONA SYNTHESIS (cascade-derived founder + company personas)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// At 100% Quantara completeness the founder can request persona synthesis
+// from the Q7 cascade. Output is two coherent records — a FounderPersona
+// (team / risk / projections / strategic + Q5 supplementary) and a
+// CompanyPersona (financials / market / IP / capital + Q6 vertical
+// schedule). Both are read by downstream consumers (Pitch Deck Studio,
+// Business Plan generator, Marketing) when those tracks land.
+//
+// Synthesis runs through `runModelCascade` with `intent: "questionnaire"`
+// so Gemini extracts → Sonnet evaluates → Opus would judge if requested.
+// Regeneration is manual (button in the form) until Brain Enrichment
+// Engine wires automatic invalidation; new entries are appended (not
+// overwritten) so downstream consumers can compare versions.
+
+/// Cascade-synthesized founder persona. Built from the Quantara intake's
+/// team + risk + projections + strategic sections plus the round-axis
+/// supplementary entries. Read by downstream consumers (Pitch Deck Studio,
+/// Business Plan generator, Marketing — when those tracks land) to anchor
+/// founder-narrative-driven content. Regeneration is manual; new entries
+/// are appended (not overwritten) so the founder can compare versions.
+model FounderPersona {
+  id                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Owner — references Clerk user ID directly (parity with the rest of OB).
+  userId             String @db.Uuid
+  /// Source subject. Cascading delete so personas don't orphan a
+  /// soft-deleted subject.
+  valuationSubjectId String @db.Uuid
+
+  /// One-paragraph summary surfaced in the Olivia inspector tab.
+  summary        String @db.Text
+  /// One-line narrative angle for pitch / business plan introductions.
+  narrativeAngle String @db.Text
+  /// Shape: `{ strengths: string[], workingStyle: string, archetype: string,
+  ///           riskTolerance: "low" | "medium" | "high" }`. JSON so the
+  /// shape can evolve without schema churn.
+  strengthsJson  Json
+  /// Shape: `{ gaps: string[], openQuestions: string[] }`.
+  gapsJson       Json
+  /// Stable schema version — bumped when the synthesis prompt changes
+  /// in a non-additive way. Lets BEE invalidate dependent records when a
+  /// schema-version bump lands (post-Q7).
+  personaSchemaVersion Int  @default(1)
+  /// Cascade trail — which provider produced the synthesis + per-attempt
+  /// durationMs + success flag. Same shape as `conversation_turns.metadata.attempts`.
+  modelTrailJson Json
+  /// "live" | "mock" — surfaces in the UI so the founder knows whether
+  /// the persona was synthesised against real LLMs or the mock-mode
+  /// degraded path.
+  runtimeMode    String
+
+  generatedAt DateTime @default(now())
+  isArchived  Boolean  @default(false)
+
+  valuationSubject ValuationSubject @relation(fields: [valuationSubjectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, generatedAt])
+  @@index([valuationSubjectId, generatedAt])
+  @@map("founder_personas")
+}
+
+/// Cascade-synthesized company persona. Built from the Quantara intake's
+/// financials + market + IP + capital sections plus the vertical-axis
+/// schedule entries. Pairs with FounderPersona — both are produced in the
+/// same synthesis call to keep them coherent.
+model CompanyPersona {
+  id                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String @db.Uuid
+  valuationSubjectId String @db.Uuid
+
+  summary       String @db.Text
+  /// What the company sells, how it makes money, what's unique.
+  positioning   String @db.Text
+  /// "We grew from X to Y because Z" — narrative anchor for decks.
+  tractionStory String @db.Text
+  /// Shape: `{ differentiators: string[], idealCustomer: string,
+  ///           defensibility: string }`. JSON so the shape can evolve.
+  differentiatorsJson Json
+  /// Shape: `{ watchOuts: string[], openQuestions: string[] }`.
+  watchOutsJson       Json
+  personaSchemaVersion Int   @default(1)
+  modelTrailJson      Json
+  runtimeMode         String
+
+  generatedAt DateTime @default(now())
+  isArchived  Boolean  @default(false)
+
+  valuationSubject ValuationSubject @relation(fields: [valuationSubjectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, generatedAt])
+  @@index([valuationSubjectId, generatedAt])
+  @@map("company_personas")
 }

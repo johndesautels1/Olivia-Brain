@@ -88,6 +88,13 @@ import { IntakeSidebar, type AutoFillState } from "./IntakeSidebar";
 import { IntakeSupplementaryBlock } from "./IntakeSupplementaryBlock";
 import { IntakeVerdictPanel } from "./IntakeVerdictPanel";
 import { IntakeVerticalBlock } from "./IntakeVerticalBlock";
+import { PersonaPanel } from "./PersonaPanel";
+import { VoiceCaptureCard } from "./VoiceCaptureCard";
+
+import type {
+  CompanyPersonaPayload,
+  FounderPersonaPayload,
+} from "@/lib/quantara";
 
 export interface IntakeFormProps {
   /** Initial values restored from a previously-saved subject. */
@@ -198,6 +205,22 @@ export function IntakeForm({
   const [autoFillState, setAutoFillState] = useState<AutoFillState>({
     kind: "idle",
   });
+  /**
+   * Q7 — persona synthesis state. `null` = never generated this
+   * session; an object means the most-recent synthesis is in memory
+   * (whether from a fresh POST or an initial GET hydration).
+   */
+  const [personas, setPersonas] = useState<{
+    founder: FounderPersonaPayload;
+    company: CompanyPersonaPayload;
+    runtimeMode: "live" | "mock";
+    generatedAt?: string;
+  } | null>(null);
+  const [personaState, setPersonaState] = useState<
+    | { kind: "idle" }
+    | { kind: "generating" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
 
   const overall = useMemo(() => overallCompleteness(values), [values]);
 
@@ -380,6 +403,95 @@ export function IntakeForm({
     },
     [],
   );
+
+  /**
+   * Q7 — merge cascade-derived voice suggestions into the existing
+   * Q3 suggestion map + persistent API reference. Uses the same merge
+   * rules as auto-fill (per-field overwrite; new run resets prior
+   * dismissals so a fresh utterance can resurface a chip).
+   */
+  const handleVoiceSuggestions = useCallback(
+    (incoming: ReadonlyArray<QuantaraSuggestion>) => {
+      if (incoming.length === 0) return;
+      setSuggestions((prev) => {
+        const next = new Map(prev);
+        for (const s of incoming) next.set(s.fieldId, s);
+        return next;
+      });
+      setApiReferenceValues((prev) => {
+        const next = new Map(prev);
+        for (const s of incoming) next.set(s.fieldId, s);
+        return next;
+      });
+      setDismissedDiscrepancies(new Set());
+    },
+    [],
+  );
+
+  /**
+   * Q7 — generate founder + company personas via cascade synthesis.
+   * Gated server-side on `completenessScore >= 80`; the client
+   * mirrors the gate to avoid dispatching obviously-doomed calls.
+   */
+  const handleGeneratePersonas = useCallback(async () => {
+    if (!subjectId) {
+      setPersonaState({
+        kind: "error",
+        message: "Save the intake first so the cascade has a subject id to anchor on.",
+      });
+      return;
+    }
+    if (overall.percent < 80) {
+      setPersonaState({
+        kind: "error",
+        message: `Persona synthesis unlocks at ≥ 80%. Currently ${overall.percent}%.`,
+      });
+      return;
+    }
+
+    setPersonaState({ kind: "generating" });
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+    try {
+      const res = await fetch("/api/founder-intake/personas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subjectId }),
+        signal: controller.signal,
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        founder?: FounderPersonaPayload & { generatedAt?: string };
+        company?: CompanyPersonaPayload;
+        runtimeMode?: "live" | "mock";
+        error?: string;
+      };
+      if (!res.ok || !data.ok || !data.founder || !data.company) {
+        setPersonaState({
+          kind: "error",
+          message:
+            data.error ?? `Persona synthesis failed (HTTP ${res.status}).`,
+        });
+        return;
+      }
+      setPersonas({
+        founder: data.founder,
+        company: data.company,
+        runtimeMode: data.runtimeMode ?? "mock",
+        generatedAt: data.founder.generatedAt,
+      });
+      setPersonaState({ kind: "idle" });
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Network error during persona synthesis.";
+      setPersonaState({ kind: "error", message });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }, [overall.percent, subjectId]);
 
   const handleTriggerAutoFill = useCallback(async () => {
     setAutoFillState({ kind: "running" });
@@ -661,15 +773,24 @@ export function IntakeForm({
       }
       rail={
         <RailLeft expanded label="Founder intake sections">
-          <IntakeSidebar
-            values={values}
-            overall={overall}
-            activeSection={activeSection}
-            onSelectSection={handleSelectSection}
-            onTriggerOliviaAutofill={handleTriggerAutoFill}
-            autoFillState={autoFillState}
-            suggestionCount={suggestions.size}
-          />
+          <div style={{ display: "grid", gap: 16 }}>
+            <IntakeSidebar
+              values={values}
+              overall={overall}
+              activeSection={activeSection}
+              onSelectSection={handleSelectSection}
+              onTriggerOliviaAutofill={handleTriggerAutoFill}
+              autoFillState={autoFillState}
+              suggestionCount={suggestions.size}
+            />
+            {/* Q7 — voice mode card below the section nav. Reuses the
+                Q3 suggestion map for accept/reject, so the founder's
+                voice utterances flow through the same chips. */}
+            <VoiceCaptureCard
+              values={values}
+              onSuggestions={handleVoiceSuggestions}
+            />
+          </div>
         </RailLeft>
       }
       center={
@@ -718,7 +839,25 @@ export function IntakeForm({
             onChange={handleChangeVertical}
           />
 
-          <FinalCTA overall={overall} />
+          <FinalCTA
+            overall={overall}
+            personaState={personaState}
+            personasGenerated={personas !== null}
+            onGeneratePersonas={handleGeneratePersonas}
+          />
+
+          {/* Q7 — persona panel renders inline below the CTA card after a
+              successful synthesis. Mock-mode runs are visibly labelled
+              so the founder doesn't mistake placeholder copy for live
+              cascade output. */}
+          {personas && (
+            <PersonaPanel
+              founder={personas.founder}
+              company={personas.company}
+              runtimeMode={personas.runtimeMode}
+              generatedAt={personas.generatedAt}
+            />
+          )}
         </Center>
       }
       inspector={
@@ -925,10 +1064,31 @@ function FormHero({
 
 interface FinalCTAProps {
   overall: ReturnType<typeof overallCompleteness>;
+  /** Q7 — current persona-generation state. */
+  personaState:
+    | { kind: "idle" }
+    | { kind: "generating" }
+    | { kind: "error"; message: string };
+  /** Q7 — whether a persona pair already exists this session. Switches
+   *  the button copy from "Generate persona" to "Regenerate persona". */
+  personasGenerated: boolean;
+  /** Q7 — fires when the founder clicks the persona generation button. */
+  onGeneratePersonas: () => void;
 }
 
-function FinalCTA({ overall }: FinalCTAProps) {
+function FinalCTA({
+  overall,
+  personaState,
+  personasGenerated,
+  onGeneratePersonas,
+}: FinalCTAProps) {
   const ready = overall.percent >= 80;
+  const generating = personaState.kind === "generating";
+  const personaLabel = generating
+    ? "Synthesising…"
+    : personasGenerated
+      ? "Regenerate persona"
+      : "Generate persona with Olivia";
   return (
     <section
       style={{
@@ -972,31 +1132,82 @@ function FinalCTA({ overall }: FinalCTAProps) {
             : `Currently ${overall.percent}% complete. The full engine unlocks at ≥ 80% to keep verdict confidence high.`}
         </div>
       </div>
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        title="Wired in Track V workbench (already shipped) — link from this CTA lands in Q3."
-        style={{
-          alignSelf: "flex-start",
-          padding: "14px 32px",
-          background: ready ? "var(--aurum-primary)" : "var(--surface-2)",
-          color: ready ? "var(--fg-on-accent)" : "var(--fg-disabled)",
-          border: ready
-            ? "1px solid var(--aurum-primary)"
-            : "1px solid var(--border-default)",
-          borderRadius: "var(--radius-full)",
-          fontFamily: "var(--font-sans)",
-          fontSize: "var(--text-sm)",
-          fontWeight: 700,
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-          cursor: "not-allowed",
-          opacity: 0.85,
-        }}
-      >
-        Run full valuation + matches
-      </button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          title="Wired in Track V workbench (already shipped) — link from this CTA lands in a follow-up session."
+          style={{
+            padding: "14px 32px",
+            background: ready ? "var(--aurum-primary)" : "var(--surface-2)",
+            color: ready ? "var(--fg-on-accent)" : "var(--fg-disabled)",
+            border: ready
+              ? "1px solid var(--aurum-primary)"
+              : "1px solid var(--border-default)",
+            borderRadius: "var(--radius-full)",
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-sm)",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            cursor: "not-allowed",
+            opacity: 0.85,
+          }}
+        >
+          Run full valuation + matches
+        </button>
+        {/* Q7 — persona generation button. Disabled until ≥ 80%; the
+            server enforces the same gate (422 with score) but the
+            client mirrors it to avoid obviously-doomed dispatches. */}
+        <button
+          type="button"
+          onClick={onGeneratePersonas}
+          disabled={!ready || generating}
+          aria-disabled={!ready || generating}
+          style={{
+            padding: "14px 32px",
+            background: ready
+              ? "var(--aether-mute)"
+              : "var(--surface-2)",
+            color: ready ? "var(--aether-primary)" : "var(--fg-disabled)",
+            border: ready
+              ? "1px solid var(--border-aether)"
+              : "1px solid var(--border-default)",
+            borderRadius: "var(--radius-full)",
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-sm)",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            cursor: !ready || generating ? "not-allowed" : "pointer",
+            opacity: generating ? 0.7 : 1,
+            touchAction: "manipulation",
+            transition:
+              "background var(--duration-default) var(--ease-out-quart), color var(--duration-default) var(--ease-out-quart)",
+          }}
+        >
+          {personaLabel}
+        </button>
+      </div>
+      {personaState.kind === "error" && (
+        <div
+          role="alert"
+          style={{
+            marginTop: 4,
+            padding: "8px 14px",
+            background: "var(--coral-down-mute)",
+            border: "1px solid var(--coral-down)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--coral-down)",
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-xs)",
+            lineHeight: 1.45,
+          }}
+        >
+          {personaState.message}
+        </div>
+      )}
     </section>
   );
 }

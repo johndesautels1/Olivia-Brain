@@ -43,6 +43,15 @@ export {
   type IntakeVerticalBlockProps,
 } from "./IntakeVerticalBlock";
 export {
+  VoiceCaptureCard,
+  type VoiceCaptureCardProps,
+  type VoiceCaptureState,
+} from "./VoiceCaptureCard";
+export {
+  PersonaPanel,
+  type PersonaPanelProps,
+} from "./PersonaPanel";
+export {
   IntakeSidebar,
   type IntakeSidebarProps,
   type AutoFillState,

@@ -103,3 +103,33 @@ export {
   readVerticalFromQuantaraJson,
   mergeVerticalIntoQuantaraJson,
 } from './metamorphic';
+
+export {
+  PERSONA_SCHEMA_VERSION,
+  FOUNDER_ARCHETYPE_VALUES,
+  RISK_TOLERANCE_VALUES,
+  type FounderArchetype,
+  type RiskTolerance,
+  type FounderPersonaPayload,
+  type CompanyPersonaPayload,
+  type PersonaSynthesisAttempt,
+  type PersonaSynthesisResult,
+  type PersonaSynthesisContext,
+  type CombinedPersonaPayload,
+  FounderPersonaPayloadSchema,
+  CompanyPersonaPayloadSchema,
+  CombinedPersonaPayloadSchema,
+  buildPersonaSynthesisPrompt,
+  buildMockPersonaPayload,
+  synthesizePersonas,
+} from './personas';
+
+export {
+  type VoiceExtractionItem,
+  type VoiceExtractionPayload,
+  type VoiceExtractionResult,
+  VoiceExtractionItemSchema,
+  VoiceExtractionPayloadSchema,
+  buildVoiceExtractionPrompt,
+  extractFromTranscript,
+} from './voice';
