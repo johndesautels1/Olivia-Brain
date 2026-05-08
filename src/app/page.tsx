@@ -20,6 +20,11 @@ import {
   type InspectorTab,
 } from "@/components/workspace";
 import { CommandPaletteButton, HomeCenter, LiveAgentStream } from "@/components/home";
+import {
+  CommandPalette,
+  buildCommandRegistry,
+} from "@/components/home/command-palette";
+import { useRouter } from "next/navigation";
 import { LibraryTab } from "@/components/studio/LibraryTab";
 import { SectionNav } from "@/components/studio/SectionNav";
 import { DocumentTree } from "@/components/studio/DocumentTree";
@@ -38,7 +43,13 @@ import {
   STORAGE_KEY,
   type WorkspaceSnapshot,
 } from "@/lib/studio/persistence";
-import { useAutoSave, useHomeDashboard, useKeyboardNav, useScoreChips } from "@/hooks";
+import {
+  useAutoSave,
+  useCommandPalette,
+  useHomeDashboard,
+  useKeyboardNav,
+  useScoreChips,
+} from "@/hooks";
 import type {
   ActiveDoc,
   NavSection,
@@ -118,6 +129,21 @@ export default function HomePage() {
    * Inspector footer (LiveAgentStream) so it doesn't fetch twice. */
   const dashboard = useHomeDashboard();
   const scoreSnap = useScoreChips();
+
+  /* U6 — command palette (⌘K). The hook owns the open/close state and
+   * the global keystroke binding; the registry is rebuilt when its
+   * context shifts so theme/section/tab targets stay live. */
+  const router = useRouter();
+  const palette = useCommandPalette();
+  const focusComposer = useCallback(() => {
+    /* Composer's textarea is the first textarea in the home center —
+     * scroll into view + focus. Cheap query; firing once per command. */
+    const el = document.querySelector<HTMLTextAreaElement>(
+      "form[aria-label='Ask Olivia'] textarea",
+    );
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.focus();
+  }, []);
   const headerScoreChips = useMemo(
     () => [
       {
@@ -301,6 +327,20 @@ export default function HomePage() {
 
   useKeyboardNav({ onNext: handleNext, onPrev: handlePrev });
 
+  /* U6 — build the command-palette registry from the current context. */
+  const paletteCommands = useMemo(
+    () =>
+      buildCommandRegistry({
+        router,
+        setActiveTab,
+        setNavSection: handleNavSection,
+        setTheme: handleThemeSelect,
+        clearAudit: clearAuditLog,
+        focusComposer,
+      }),
+    [router, handleNavSection, handleThemeSelect, clearAuditLog, focusComposer],
+  );
+
   /* U5 — order matters. Olivia chat sits first as the default tab so
    * the protagonist is one tap away. Artifacts replaces "Preview" with
    * the same panel content but the Claude-style framing. */
@@ -355,7 +395,13 @@ export default function HomePage() {
   );
 
   return (
-    <WorkspaceShell
+    <>
+      <CommandPalette
+        open={palette.open}
+        onClose={palette.closePalette}
+        commands={paletteCommands}
+      />
+      <WorkspaceShell
       header={
         <Header
           wordmark="STUDIO OLIVIA"
@@ -363,7 +409,7 @@ export default function HomePage() {
           avatarState={avatarPulse ? "thinking" : "idle"}
           onAvatarClick={() => setAvatarPulse((v) => !v)}
           scoreChips={headerScoreChips}
-          actions={<CommandPaletteButton />}
+          actions={<CommandPaletteButton onOpen={palette.openPalette} />}
         />
       }
       rail={
@@ -486,5 +532,6 @@ export default function HomePage() {
         />
       }
     />
+    </>
   );
 }
