@@ -1647,6 +1647,9 @@ model ValuationSubject {
   /// Q7 — cascade-synthesized founder + company personas keyed off this subject.
   founderPersonas    FounderPersona[]
   companyPersonas    CompanyPersona[]
+  /// P1 — Deal Protection analyses run against this subject. Cascading
+  /// delete so deal histories don't orphan a soft-deleted subject.
+  dealAnalyses       DealAnalysis[]
 
   @@index([userId, createdAt])
   @@index([analysisResultId])
@@ -1883,4 +1886,127 @@ model CompanyPersona {
   @@index([userId, generatedAt])
   @@index([valuationSubjectId, generatedAt])
   @@map("company_personas")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TRACK P — DEAL PROTECTION ENGINE (term-sheet analysis + investor reputation)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// At every funding round, the founder uploads or pastes a term sheet; the
+// Deal Protection cascade returns a smart score (0–100), a band
+// (red/orange/yellow/blue/green), per-clause toxicity, an investor
+// reputation snapshot, plus a band-tailored recommended action.
+//
+// P1 ships the schema + the smart-score module. P2 adds the clause
+// classifier. P3 builds the term-sheet parser + analyze API. P4 seeds
+// + admin-CRUDs the investor reputation table. P5–P7 build dilution
+// projection, email drafts, WarRoom integration, and rehearsal modes.
+
+/// Single Deal Protection run on a term sheet against a valuation subject.
+/// Append-only — re-running on a revised term sheet creates a new row so
+/// the founder can compare versions across negotiation cycles. Cascading
+/// delete from valuation_subjects so analyses don't orphan a soft-deleted
+/// subject.
+model DealAnalysis {
+  id                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Owner — references Clerk user ID directly.
+  userId             String @db.Uuid
+  /// Source subject (the company being valued). Cascading delete.
+  valuationSubjectId String @db.Uuid
+
+  /// 0-100 smart score. Higher = more founder-friendly. P1 ships the
+  /// band/language ladder; P3 wires the cascade-derived score itself.
+  smartScore        Decimal @db.Decimal(5, 2)
+  /// One of: 'red' | 'orange' | 'yellow' | 'blue' | 'green'. Stable
+  /// for the lifetime of the platform — see SMART_BANDS in
+  /// `src/lib/deal-protection/bands.ts`.
+  smartBand         String
+  /// Plain-language summary surfaced to the founder ("This term sheet…").
+  bandLanguage      String  @db.Text
+  /// Recommended action ("walk away" / "negotiate hard" / "sign with edits").
+  recommendedAction String  @db.Text
+  /// Investor signal — what this deal communicates about the investor's
+  /// stance ("Standard Series A terms" vs "Aggressive PIK structure").
+  investorSignal    String  @db.Text
+
+  /// Term-sheet text the analysis ran on. Optional in P1 (the analysis
+  /// can run on structured inputs); P3's parser populates it.
+  termSheetText     String? @db.Text
+  /// Investor names on the deal — for InvestorReputation lookup. Array of
+  /// names; matched case-insensitively against `investor_reputations.name`.
+  investorNamesJson Json?
+  /// Per-clause analysis array — populated by P2 clause classifier.
+  /// Shape: `[{ clauseType, severity, toxicity, founderFriendlyAlternative }]`.
+  clauseAnalysisJson Json?
+  /// 0-1 confidence on the smart score itself, derived from V3
+  /// confidence math. Lower = "review with counsel".
+  confidenceScore   Decimal @db.Decimal(3, 2)
+  /// Cascade trail (provider + model + per-attempt durationMs / success).
+  /// Same shape as `conversation_turns.metadata.attempts`.
+  modelTrailJson    Json?
+  /// "live" | "mock" — surfaces in the UI so a mock-mode run is never
+  /// mistaken for live cascade output.
+  runtimeMode       String  @default("mock")
+
+  generatedAt DateTime @default(now())
+  isArchived  Boolean  @default(false)
+
+  valuationSubject ValuationSubject @relation(fields: [valuationSubjectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, generatedAt])
+  @@index([valuationSubjectId, generatedAt])
+  @@map("deal_analyses")
+}
+
+/// Investor reputation entry. Lookup table seeded with London-ecosystem
+/// data (P4), extended with admin-managed entries and (post-moderation)
+/// founder-submitted ones. P3 reads this when computing smart scores so
+/// the same term sheet from a known-aggressive investor scores worse than
+/// from a known-friendly one.
+model InvestorReputation {
+  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Canonical investor name (e.g. "Atomico", "Octopus Ventures"). Case-
+  /// preserving on display; matched case-insensitively at lookup time.
+  name            String @unique
+  /// Stable lowercase slug for URLs / API lookups.
+  slug            String @unique
+  /// 'angel' | 'vc' | 'private_equity' | 'strategic' | 'family_office' | 'other'.
+  investorType    String
+  /// Geographic focus — free text (e.g. "UK + EU", "Global", "London-only").
+  geographicFocus String?
+  /// Stage focus — array of TargetRoundType values
+  /// (Seed / Series A / Series B / Series C / Growth / Strategic).
+  stageFocusJson  Json?
+  /// Sector focus — array of vertical IDs or free-text sector strings.
+  sectorFocusJson Json?
+
+  /// 0-100 reputation score. Higher = more founder-friendly. Aggregated
+  /// from observed clause toxicity + founder feedback + public deal data.
+  reputationScore Decimal @db.Decimal(5, 2)
+  /// 'red' | 'orange' | 'yellow' | 'blue' | 'green' (same ladder as
+  /// DealAnalysis.smartBand).
+  reputationBand  String
+
+  /// Common patterns this investor has shown — array of strings from a
+  /// stable vocabulary (e.g. 'standard_1x_liq_pref',
+  /// 'aggressive_anti_dilution', 'multi_tranche_milestone_gated').
+  patternsJson    Json?
+  /// Editor's note — plain-text caveat / context / "watch out for X".
+  notes           String? @db.Text
+
+  /// Origin: 'seed' (P4 initial London-ecosystem seed), 'admin' (P4 manual
+  /// entry), 'founder_submitted' (P4 moderation queue path).
+  source          String  @default("seed")
+  /// Whether this entry surfaces in the smart-score lookup. Toggled off
+  /// (rather than archived) when a record is being reviewed but not yet
+  /// removed.
+  isActive        Boolean @default(true)
+  isArchived      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([investorType, isActive])
+  @@index([reputationBand, isActive])
+  @@map("investor_reputations")
 }
