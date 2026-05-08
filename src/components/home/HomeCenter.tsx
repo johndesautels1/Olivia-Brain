@@ -26,6 +26,7 @@ import { HomeComposer } from "./HomeComposer";
 import { ActivityTicker } from "./ActivityTicker";
 import { KpiTileGrid } from "./KpiTileGrid";
 import { RecentWorkStrip } from "./RecentWorkStrip";
+import { SuggestionChips } from "./SuggestionChips";
 import type { AvatarOrbState } from "@/components/primitives";
 import type { Slide } from "@/lib/studio/types";
 import type { DashboardSnap } from "@/hooks";
@@ -51,6 +52,8 @@ export function HomeCenter({
 }: HomeCenterProps) {
   const [chatState, setChatState] = useState<AvatarOrbState>("idle");
   const [lastReply, setLastReply] = useState<string | null>(null);
+  const [seedPrompt, setSeedPrompt] = useState<{ value: string; nonce: number } | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const audit = useCallback(
     (text: string) => onAudit?.(text),
@@ -59,9 +62,15 @@ export function HomeCenter({
 
   const handleReply = useCallback((reply: string) => {
     setLastReply(reply);
+    setHasInteracted(true);
     setChatState("speaking");
     /* Settle to idle after a moment. */
     window.setTimeout(() => setChatState("idle"), 2400);
+  }, []);
+
+  const handleSuggestion = useCallback((prompt: string) => {
+    setSeedPrompt({ value: prompt, nonce: Date.now() });
+    setHasInteracted(true);
   }, []);
 
   const heroState: AvatarOrbState = externalPulse ? "thinking" : chatState;
@@ -82,10 +91,13 @@ export function HomeCenter({
         lastReply={lastReply}
       />
       <ActivityTicker />
+      <SuggestionChips onPick={handleSuggestion} hidden={hasInteracted} />
       <HomeComposer
         onStateChange={setChatState}
         onReply={handleReply}
         onAudit={audit}
+        seedPrompt={seedPrompt}
+        onActiveChange={setHasInteracted}
       />
       <KpiTileGrid data={dashboard?.kpi} />
       <RecentWorkStrip items={dashboard?.recent} loading={!dashboard} />

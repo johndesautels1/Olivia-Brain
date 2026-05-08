@@ -24,12 +24,21 @@ export interface HomeComposerProps {
   onStateChange: (state: AvatarOrbState) => void;
   onReply: (reply: string) => void;
   onAudit?: (text: string) => void;
+  /** Optional external prompt seed (e.g. from suggestion chip click).
+   *  When provided, the composer fills + focuses; the parent should
+   *  pass a stable string per pick (incrementing nonce or uuid). */
+  seedPrompt?: { value: string; nonce: number } | null;
+  /** Fires when the input transitions from empty → non-empty so the
+   *  parent can hide adjacent affordances (suggestion chips). */
+  onActiveChange?: (active: boolean) => void;
 }
 
 export function HomeComposer({
   onStateChange,
   onReply,
   onAudit,
+  seedPrompt,
+  onActiveChange,
 }: HomeComposerProps) {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -37,6 +46,18 @@ export function HomeComposer({
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  /* Seed-prompt → fill + focus when a chip is picked. */
+  useEffect(() => {
+    if (!seedPrompt) return;
+    setInput(seedPrompt.value);
+    /* defer to next frame so the textarea has rendered the new value */
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      el?.focus();
+      el?.setSelectionRange(seedPrompt.value.length, seedPrompt.value.length);
+    });
+  }, [seedPrompt]);
 
   /* Cancel inflight on unmount. */
   useEffect(() => {
@@ -51,6 +72,11 @@ export function HomeComposer({
     const max = 6 * 22;
     el.style.height = `${Math.min(max, el.scrollHeight)}px`;
   }, [input]);
+
+  /* Notify parent on first transition from empty → non-empty. */
+  useEffect(() => {
+    if (input.trim().length > 0) onActiveChange?.(true);
+  }, [input, onActiveChange]);
 
   const send = useCallback(async () => {
     const trimmed = input.trim();
