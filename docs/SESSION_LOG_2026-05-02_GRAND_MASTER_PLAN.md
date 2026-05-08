@@ -1945,3 +1945,79 @@ Coverage spans: per-round buyer mapping correctness, section reorder primary/sec
 | Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase (still owed from Q1) | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Carries forward from Q1 — Q5 reuses the same `quantaraJson` column under a new `supplementary` namespace; no new SQL migration needed for Q5. |
 
 **Next session:** **Track Q Session Q6 — Vertical-specific schedules.** AI/SaaS adds model provenance + training-data fields; HealthTech adds MHRA pathway + clinical data; ClimateTech adds ESG + impact metrics; PropTech adds property data accuracy. Mounts via Q5 metamorphic primitive. Per BUILD_SEQUENCE Track Q row Q6.
+
+---
+
+## Part 42 — 2026-05-08 — Track Q Session Q6: Vertical-specific schedules
+
+**HEAD before:** `7526294` (Q5 docs handoff, 573/573 across 44 suites). **HEAD after Q6 code:** `58fad87`. **HEAD after Q6 docs:** (this commit). **Tests:** 573/573 → **610/610** across **44 → 46 suites** (+37 new across 2 new suites). Typecheck: clean.
+
+### Architectural decision — parallel axis, not extension
+
+Q5 introduced round-axis metamorphism (`f23 → supplementary fields`). Q6 needed a parallel axis driven by industry / sector. Two options were on the table:
+
+1. **Extend Q5's `SupplementaryFieldDefinition`** with an axis discriminator (round vs vertical) so one block + one renderer + one storage namespace handles both.
+2. **Parallel namespace** — separate types, separate catalog, separate storage namespace, separate block; reuse the renderer via a shared structural type.
+
+Chose **option 2**. Rationale: round and vertical are independent — a Series A fintech founder should answer Series A round-specific signals AND a generic-vertical schedule (which is empty by design). Coupling them would force one founder to fill both schedules just because they had a vertical selected. Parallel storage namespaces (`quantaraJson.supplementary[roundType]` vs `quantaraJson.vertical[verticalId]`) keep the axes orthogonal and let either ship/regress without touching the other.
+
+To honor the "extend, don't duplicate" principle from `01_UI_DESIGN_SYSTEM.md` § 12, extracted **`MetamorphicFieldShape`** in `metamorphic/types.ts` as the structural type both axes share. `SupplementaryFieldDefinition` and `VerticalFieldDefinition` both extend it; `IntakeSupplementaryField` (the field renderer shipped in Q5) was generalized to accept either. One renderer, two axes — clean separation without code duplication.
+
+### What ships
+
+**Pure-function vertical primitives** (`src/lib/quantara/metamorphic/`):
+
+| File | Surface |
+|---|---|
+| `types.ts` (extended) | New `MetamorphicFieldShape` structural interface — the shared render contract both axes satisfy. `SupplementaryFieldDefinition` refactored to extend it (zero behavior change; tests still pass). |
+| `vertical-types.ts` | `VerticalId` (`ai_saas | healthtech | climatetech | proptech | generic`), `VerticalFieldId` (`v1..v20`), `VerticalDescriptor`, `VerticalFieldDefinition` extending `MetamorphicFieldShape`, `VerticalValues` (multi-vertical map), `QUANTARA_VERTICAL_COUNT = 5`, `QUANTARA_VERTICAL_FIELD_COUNT = 20`. |
+| `vertical-schedules.ts` | 20-field catalog (5 per non-generic vertical): AI/SaaS — model provenance, training-data provenance, eval framework, hallucination rate %, inference cost per query (£); HealthTech — regulatory pathway (MHRA / FDA 510(k) / FDA De Novo / CE Mark / Class I exempt / not yet), clinical trial stage, peer-reviewed studies (count), reimbursement status, KOL list; ClimateTech — ESG framework alignment (TCFD / SBTi / SASB / GRI / CDP — multi-select), CO₂ abatement per £ revenue, impact methodology, lifecycle assessment status, carbon-accounting tool; PropTech — property data accuracy %, MLS RESO compliance, geographic coverage, monthly transaction volume, refresh cadence (real-time / daily / weekly / monthly). Plus `QUANTARA_VERTICALS` descriptor list, `getVerticalFieldsForVertical`, `buildVerticalValuesSchema`, top-level `VerticalValuesSchema`. Generic is intentional zero-fields. |
+| `vertical-mapping.ts` | `verticalToJson` / `verticalFromJson` — projection to/from `quantaraJson.vertical[verticalId][subkey]`. `mergeVerticalIntoQuantaraJson` does per-vertical merges so partial saves never clobber unrelated verticals. `readVerticalFromQuantaraJson` extracts the namespace from a stored bag. Distinct from supplementary's `supplementary` namespace. |
+| `index.ts` (extended) | Re-exports the vertical surface + `MetamorphicFieldShape`. |
+
+**UI components** (`src/components/quantara/`):
+
+| File | Action | Notes |
+|---|---|---|
+| `IntakeVerticalBlock.tsx` | NEW | Sky-info-tinted block (sky-info = informational per `01_UI_DESIGN_SYSTEM.md` § 1.4 — distinct from Q5's Aether tint). Title "<Vertical> schedule" + count chip + completion ring + 5-field grid. Hides when `verticalId` is undefined OR `generic`. Reuses `IntakeSupplementaryField` for field rendering via the shared `MetamorphicFieldShape`. |
+| `IntakeSupplementaryField.tsx` | MODIFY | Generalized: accepts `MetamorphicFieldShape` instead of the round-axis-only `SupplementaryFieldDefinition`. Radio-group `name` attribute now uses the field's `id` directly (works for both `s1..s18` and `v1..v20`). Zero behavior change for Q5 callers. |
+| `IntakeForm.tsx` | MODIFY | Adds `vertical: VerticalId | undefined` + `verticalValues: VerticalValues` state with multi-vertical preservation. Adds vertical selector in `FormHero` (right of company-name input — two-column grid). Mounts `IntakeVerticalBlock` after `IntakeSupplementaryBlock`. Save flow includes `vertical` + `verticalValues` in POST body. |
+| `index.ts` | MODIFY | Re-exports `IntakeVerticalBlock`. |
+
+**API route** (`src/app/api/founder-intake/route.ts`):
+
+- POST whitelists incoming `vertical` against `QUANTARA_VERTICAL_BY_ID` so a freeform string can never reach `ValuationSubject.sector`. Validates `verticalValues` via `VerticalValuesSchema`. Merges into `quantaraJson.vertical` via `mergeVerticalIntoQuantaraJson` as a third pass (after canonical merge + Q5 supplementary merge). Persists vertical to the top-level `sector` column (already on the Prisma model — no schema change).
+- GET returns `vertical` + `verticalValues` alongside canonical + supplementary. `sector` is whitelisted on read so a legacy freeform sector value doesn't crash the typed UI.
+- `shapeSelect` extended to include `sector`; `SubjectRow` + `toShape` updated.
+
+### Tests
+
+| Suite | New cases |
+|---|---|
+| `metamorphic/__tests__/vertical-schedules.test.ts` | 31 |
+| `components/quantara/__tests__/IntakeForm.vertical.test.tsx` | 6 |
+| **Total** | **37 across 2 new suites** |
+
+Coverage spans: catalog invariants (5 verticals × 5 fields = 20, generic = 0 by design, unique subkeys per vertical, options present on enum controls), Zod validation across all 5 verticals + multi-vertical payload + invalid-enum rejection, projection round-trip across 4 non-generic verticals losslessly, forward-compat unknown-subkey skip, merge preservation of canonical + supplementary + other-vertical entries when writing one vertical, and IntakeForm-level integration covering: hidden-when-no-vertical, hidden-when-generic, mount-on-vertical-set, swap-on-vertical-change, `vertical` + `verticalValues` in POST body distinct from `supplementaryValues`, prior-vertical-preservation on switch-back.
+
+### Decisions / judgment-call trail
+
+1. **Parallel axis, not extension** (covered above).
+2. **Generic = zero fields by design.** A founder choosing "Generic / Other" gets the canonical 56 + Q5 supplementary only. Forces a deliberate vertical choice for those who want vertical-specific signals; doesn't punish the founder who's genuinely cross-vertical.
+3. **`sector` reuses an existing column** — `ValuationSubject.sector: String?` was already on the Prisma model (no Q6 migration). Persisting `VerticalId` strings here means sector's storage is now typed-by-convention; the API route enforces whitelisting on read AND write so legacy freeform values can't break the typed UI.
+4. **Sky-info tint distinguishes the vertical block from Q5's Aether supplementary.** Both are valid semantic accents in `01_UI_DESIGN_SYSTEM.md` § 1.4; using two different tints lets the founder visually distinguish the two metamorphism axes when both are active without introducing a third raw color.
+5. **`MetamorphicFieldShape` shared structural type.** Avoids code duplication on the renderer layer without coupling the two axes' data structures. Either axis can evolve independently (e.g., Q7 voice capture might want axis-specific affordances) by adding axis-specific props to its definition without touching the other.
+6. **Vertical whitelist on the API boundary.** `if (!(body.vertical in QUANTARA_VERTICAL_BY_ID)) return badRequest` — closes a freeform-string write path. Same defensive pattern is repeated on read so legacy data degrades to `null` rather than crashing.
+7. **One-task-at-a-time observed.** Per CLAUDE.md standing rule, Q6 ships before Q7 — checking in with the founder after each Q-row close.
+
+### Build status at session-Q6 close
+
+**Green.** Tests: **610/610** passing across **46 suites** (+37 new across 2 new suites). Typecheck: clean. **Track Q 6/7 ✅.** ~50 sessions remain to ship priorities 1–4.
+
+### Operator actions surfaced
+
+| Action | When | Why |
+|---|---|---|
+| Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase (still owed from Q1) | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Carries forward — Q6 reuses both the existing `quantaraJson` column (under a new `vertical` namespace) AND the existing top-level `sector` column. No new SQL migration needed for Q6. |
+
+**Next session:** **Track Q Session Q7 — Voice-first paragraphical capture + persona generation.** User can speak instead of type; cascade parses utterances into structured fields (same primitive as cluesintelligence questionnaire engine). At 100% completeness, cascade synthesizes `FounderPersona` + `CompanyPersona` records that downstream consumers (Pitch Deck, Business Plan, marketing) read from. **Closes Track Q.** Per BUILD_SEQUENCE Track Q row Q7.
