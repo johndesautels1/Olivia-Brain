@@ -2,8 +2,8 @@
 
 > **Snapshot of every shipped capability + the remaining roadmap.**
 >
-> Last refreshed: **2026-05-08** at HEAD `0d59eb3` (post-Track-B-Session-8d-routes-partial feat commit). **Track Q closed; Track P CLOSED (7/7 ✅); Track F CLOSED (1/1 ✅); Track B Sessions 8 + 8b + 8b-routes + 8b-routes-components + 8d data foundation + 8d-routes (partial) ✅ — W-009 CLOSED + documents data + access layer + 5/14 app routes shipped.** Documents UX rendering chain + write-surface routes + Document/UserProfile Prisma models + real fork logic + 2 OB-adapted query modules + 5 documents app routes (loading, error, new, edit, share) all in place. **What still defers:** 4 heavy app routes (index, [id]/detail, saved, workspace/*) carry forward to **S8d-routes-2**; studio/* defers to **S8c** (depends on PreparationStudio).
-> Test gate: **929/929 across 85 suites**. Typecheck: **clean**.
+> Last refreshed: **2026-05-08** at HEAD `d27ebcb` (end of Track U batch — home page overhaul). **Track U CLOSED (7/7 ✅); Track Q closed; Track P CLOSED (7/7 ✅); Track F CLOSED (1/1 ✅); Track B Sessions 8 + 8b + 8b-routes + 8b-routes-components + 8d data foundation + 8d-routes (partial) ✅.** The home page (`/`) is no longer a Session-14 scaffolding placeholder — it now ships as a voice-first agentic CIO surface (Bond × Bentley × mid-century × Fortune-50 × modern aesthetic): 240px hero AvatarOrb wired to `/api/olivia/chat`, Bloomberg-style live score chips (CSC / AGO / CSR), Linear ⌘K command palette with fzf fuzzy match, mid-century KPI tile grid + Recent Work strip pulling from a single dashboard aggregator, Inspector with Olivia-default tab + Artifacts + LiveAgentStream Devin-style footer, `/voice` Pi-orb full-screen takeover, responsive shell. **What still defers:** 4 heavy Track-B app routes (index, [id]/detail, saved, workspace/*) carry forward to **S8d-routes-2**; studio/* defers to **S8c**.
+> Test gate: **929/929 across 85 suites** (Track U did not add tests for the new home components). Typecheck: **clean** (every U1-U7 commit verified with `npx tsc --noEmit`).
 >
 > This file is a snapshot — refresh it at end of each batch (after the SESSION_LOG entry lands) so the next session opens to a current view of the codebase. It's a complement to `BUILD_SEQUENCE.md` (which is the session-by-session plan) and `HANDOFF.md` (which is the resume-point doc).
 
@@ -37,6 +37,8 @@
 | 22 | **Admin dashboard** | Agent runs management, integration test runner, Mem0 cleanup/decay/embed/sync, Supabase migrations runner, feature toggles, approval queue. |
 | 23 | **Durable execution** | Inngest functions (`/api/inngest`) + Trigger.dev. Action budgets per conversation. Queue + retry. |
 | 24 | **CLUES domain intelligence (embedded)** | 30 paragraphical prompts, 23 modules, ~2,486 questions in fixture data — adaptive engine + scoring engine wiring partial; full Track L unification post-clueslondon. |
+| 25 | **Documents + Packages + Sharing (Track B)** | Document workspace: `Document` + `UserProfile` Prisma models, document blocks (Hero / BarChart / PieChart / ComparisonTable / MetricCards / StatCards / Team/ProductCards / Quote / Callout / Timeline / etc.), bookmarks, packages, sharing (token-based public links + per-share permissions), save-from-template, document quick view, source panel, Olivia workspace panel, OrgMapProvider, print, read-aloud. |
+| 26 | **Home page composition (Track U)** | `/` is now a voice-first agentic CIO surface (Bond × Bentley × mid-century × Fortune-50 × modern). 240px hero `AvatarOrb` (state-reactive idle/listening/thinking/speaking) + Cursor-style composer wired to `/api/olivia/chat` with auto-grow textarea, AbortController, audit, error fallback + `lastReply` blockquote (aurum left-border, italic). Bloomberg-style live score chips in header (CSC / AGO / CSR with tabular-num gold values, polled every 30s from `/api/home/score-chips`). Linear-style ⌘K command palette: glass-backdrop overlay, fzf-style fuzzy match, ~25 commands across 3 groups (actions / navigate / workspace), keyboard-first (↑↓⏎ Esc), global ⌘K binding. Mid-century KPI tile grid (Today / Agents / Next) + Recent Work strip (deal analyses / valuations / docs / decks) with honest empty states, single dashboard fetch via `/api/home/dashboard` (11 parallel Prisma queries in `Promise.allSettled`, 60s polling). Inspector reorg: Olivia chat = default tab, "Preview" reframed as "Artifacts" (Claude pattern), `LiveAgentStream` Devin-style footer renders 3 most-recent items beneath any active tab. `/voice` route is a Pi-orb full-screen takeover (radial-gradient canvas, 88px mic toggle, Esc/Space bindings). Responsive shell via `responsive.css` — inspector hides ≤1280px, rail ≤1024px, KPI tiles stack ≤768px, reduced-motion respected. |
 
 ---
 
@@ -120,6 +122,7 @@
 | **`/api/avatar/*`** | 3 | Generate, status, session create/manage |
 | **`/api/realtime/*`** | 3 | Status, session create, WebRTC credentials |
 | **`/api/voice/*`** | 2 | `synthesize`, `transcribe` |
+| **`/api/home/*`** (Track U) | 2 | `score-chips` (header CSC/AGO/CSR aggregator, U3) · `dashboard` (KPI tiles + recent work, 11-query allSettled aggregator, U4) |
 | **`/api/cron/*`** | 2 | `calendar-plan` (daily brief), `calendar-sync` (Google/Outlook) |
 | **`/api/twilio/*`** | 1 | `voice/inbound` (signature-validated) |
 | **`/api/telephony/*`** | 2 | Status, `sms` (send/receive + opt-in) |
@@ -143,6 +146,7 @@
 | `/calendar` | Personal calendar (voice scheduling + daily briefs + Google/Outlook/Calendly sync) |
 | `/map` | Interactive 28-district London tech map (Google + Mapbox dual-impl) |
 | `/test-avatar` | LiveAvatar lip-sync smoke test |
+| `/voice` 🆕 | **Track U** — Pi-style voice-mode full-screen takeover (240px orb, 88px mic toggle, Esc/Space bindings, radial-gradient canvas) |
 
 ---
 
@@ -160,6 +164,7 @@
 | `olivia/` | 4 | OliviaProvider, OliviaVideoAvatar, OliviaConsentModal, OliviaDisplayScreen |
 | `pitch/` | 2 | Badge + CompletionRing re-exports |
 | (top-level) | 3 | `phase1-studio`, `admin-integrations-dashboard`, `ExternalLinkFrame` |
+| 🆕 `home/` (Track U) | 12 | `HomeCenter` (orchestrates the center pane) · `HomeHero` (240px state-reactive orb + tagline + lastReply blockquote) · `HomeComposer` (Cursor-style chips + chat wiring) · `ActivityTicker` (Bloomberg-style /api/health poll) · `KpiTileGrid` (Today/Agents/Next live tiles) · `RecentWorkStrip` (artifact cards) · `LiveAgentStream` (Devin-style 3-line footer) · `CommandPaletteButton` (header ⌘K entry) · plus `command-palette/` subdir: `CommandPalette` (overlay UI) · `commands.ts` (registry) · `fuzzy.ts` (fzf scoring) |
 
 **~111 component files** plus tests.
 
@@ -198,6 +203,7 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 
 | Track | Sessions remaining | Scope summary |
 |---|---|---|
+| **Track U (Home page overhaul)** — U1 → U7 | **CLOSED** | All 7 sessions ✅. Home page now ships as voice-first agentic CIO surface — strip dev metadata · hero+composer wired to /api/olivia/chat · Bloomberg score chips · live KPI tiles + recent work · Inspector reorg (Olivia default + Artifacts + LiveAgentStream) · ⌘K palette · /voice takeover + responsive. |
 | **Track Q (Quantara)** — Q5 → Q7 | **3** | Q5 investor-class metamorphic UI · Q6 vertical-specific schedules (AI/SaaS, HealthTech, ClimateTech, PropTech) · Q7 voice-first paragraphical capture + persona generation |
 | **Track P (Deal Protection)** | **CLOSED** | All 7 sessions ✅. Olivia Brain offer-evaluation surface complete (P1 schema + Smart Score · P2 clause classifier · P3 parser + analyze API · P4 investor reputation · P5 dilution + email · P6 counter draft + WarRoom panel · P7 rehearsal + versioning + consensus). |
 | **Track D (Studio↔Brain wiring)** — S15-S16 | **2** | Re-point Studio "Ask Olivia / Analyze / Optimize" to OB cascade |
