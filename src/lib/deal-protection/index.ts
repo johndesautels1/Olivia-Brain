@@ -58,3 +58,40 @@ export {
   classifyClause,
   classifyClauses,
 } from './clause-intel';
+
+export {
+  type ParserExtractionStrategy,
+  type TermSheetClause,
+  type TermSheetRoundContext,
+  type TermSheetTerms,
+  CLAUSE_TEXT_CHAR_LIMIT,
+  MIN_HEURISTIC_CLAUSE_COUNT,
+  PARSER_TEXT_CHAR_LIMIT,
+} from './parser-types';
+
+export { type ParseTermSheetOptions, parseTermSheet } from './parser';
+export { buildParserPrompt } from './parser-prompts';
+
+export {
+  type AggregationResult,
+  AGGREGATION_CONSTANTS,
+  CRITICAL_CEILING,
+  CRITICAL_ISSUE_LIMIT,
+  HIGH_CEILING,
+  NEUTRAL_EMPTY_SCORE,
+  aggregateClauseAnalyses,
+  deriveWalkAwayReasons,
+} from './aggregate';
+
+export {
+  type AnalyzeTermSheetOptions,
+  type DealRiskReportPayload,
+  analyzeTermSheet,
+} from './analyze';
+
+export {
+  type CriticalIssue,
+  type DealRiskReport,
+  CONFIDENCE_LIVE,
+  CONFIDENCE_MOCK,
+} from './report-types';
