@@ -1,8 +1,8 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 — extended continuous build batch (Tracks D, E, I, J ALL CLOSED; Track N at 3/5 with N1+N3+N5 shipped; 4 deploy fixes landed).
-> **HEAD:** `0c4ef08` (N5 Gamma manifestation; will move with the next push).
-> Pre-batch tip was `8cacdd8` (Track U handoff docs). This batch added **24 commits** on top.
+> **Last updated:** 2026-05-09 — extended continuous build batch (Tracks D, E, I, J ALL CLOSED; Track N at 3/5 with N1+N3+N5; W-004 closed via O4; 4 deploy fixes; polish wave: SuggestionChips + KeyboardShortcuts).
+> **HEAD:** `f463ebc` (keyboard shortcuts overlay; will move with the next push).
+> Pre-batch tip was `8cacdd8` (Track U handoff docs). This batch added **27 commits** on top.
 
 ---
 
@@ -27,12 +27,15 @@ git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"
 
 ---
 
-## What just shipped — extended continuous batch (24 commits)
+## What just shipped — extended continuous batch (27 commits)
 
 The home page (Track U) was the start. This continuous batch built outward across 4 closed tracks (D, E, I, J) plus partial Track N (3 of 5 manifestation modes), with polish and tests throughout.
 
 | Commit | Track / Session | What landed |
 |---|---|---|
+| `f463ebc` | polish | Keyboard shortcuts overlay (`?` key). Linear-quality. 3 groups × 9 keybinds. |
+| `34384ba` | **O4 Track O** | Citation-first RAG manifestation. ` ```sources ` fence renders as numbered citation strip. **W-004 closed at the manifest layer.** 8 tests. |
+| `f05146f` | docs | Mid-batch refresh capturing J + N5 + tests. |
 | `0c4ef08` | **N5 Track N** | Gamma deck preview cards. ` ```gamma ` fence (bare URL or full JSON `{url,title?,summary?,slides?}`) renders as a card with Open-in-Gamma action. 11 tests. |
 | `403e21d` | **S26 Track J** | HealthTech / ClimateTech / PropTech vertical addenda promoted from draft → final. Each now has a 5-point investor diligence frame (regulatory pathway, framework alignment, data accuracy etc.). Track J ✅ CLOSED. |
 | `2fe471f` | **S25 Track J** | AI/SaaS vertical adapter framework. `lib/orchestration/vertical-adapter.ts` — per-vertical system-prompt addenda + provider preferences + free-form industry detector. Cascade gains `vertical?: VerticalId` input; pitch helpers thread `industry` through. 15 tests. |
@@ -62,6 +65,7 @@ The home page (Track U) was the start. This continuous batch built outward acros
 | **Track E (voice input, S17)** | ✅ CLOSED | `/voice` STT/chat/TTS chain end-to-end. |
 | **Track I (multi-tenant + suppression, S24)** | ✅ CLOSED | Adaptive surface suppression + brand override. |
 | **Track N (visual manifestation, N1+N3+N5 of 5)** | 🟡 partial | N1 manifest contract ✅ + N3 chart manifestation ✅ + N5 Gamma deck preview ✅. **N2 (Mapbox 3D enhancement) and N4 (generative UI / 3D scenes) remaining.** |
+| **Track O (weakness closure)** | 🟡 partial | **O4 ✅** (W-004 citation-first RAG closed at manifest layer). O2 (Patronus eval), O3 (sub-600ms voice latency), O5 (avatar lip-sync) remaining. |
 | **Track J (vertical adapters S25-S26)** | ✅ CLOSED | All 4 verticals final. AI/SaaS + HealthTech + ClimateTech + PropTech each carry a 5-point investor diligence frame in `lib/orchestration/vertical-adapter.ts`. Free-form industry detector + provider preferences + 16 tests. |
 | **Track G (cascade orchestrator port S19-S20)** | 🕗 pending | LTM `lib/cascade/` port + LangGraph wrap. Not started. |
 | **Track H (agents consolidation S21-S23)** | 🕗 pending | LTM 94 named agents port + auto-learning. Not started. |
@@ -88,9 +92,12 @@ src/components/home/reply-renderer/index.ts                      (barrel)
 src/components/home/SuggestionChips.tsx                          (polish)
 src/lib/orchestration/vertical-adapter.ts                        (S25+S26)
 src/lib/orchestration/vertical-adapter.test.ts                   (tests, 16)
+src/components/home/reply-renderer/CitationStrip.tsx             (O4)
+src/components/home/reply-renderer/CitationStrip.test.ts         (tests, 8)
+src/components/home/KeyboardShortcuts.tsx                        (polish)
 ```
 
-**Test additions: 41 new tests this batch (14 + 11 + 16). All passing.**
+**Test additions: 49 new tests this batch (14 chart-spec + 11 GammaCard + 16 vertical-adapter + 8 CitationStrip). All passing.**
 
 ### Modified files this batch
 ```
