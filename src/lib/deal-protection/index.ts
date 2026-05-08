@@ -95,3 +95,36 @@ export {
   CONFIDENCE_LIVE,
   CONFIDENCE_MOCK,
 } from './report-types';
+
+export {
+  type InvestorReputationLookup,
+  type InvestorReputationPatch,
+  type InvestorReputationRecord,
+  type InvestorReputationSource,
+  type InvestorReputationWrite,
+  type InvestorType,
+  INVESTOR_REPUTATION_SOURCES_ORDERED,
+  INVESTOR_TYPES_ORDERED,
+  InvestorReputationPatchSchema,
+  InvestorReputationWriteSchema,
+  toInvestorSlug,
+} from './investor-types';
+
+export { INVESTOR_SEED_DATA } from './investor-seed';
+
+export {
+  type SeedSummary,
+  applyInvestorSeed,
+} from './investor-loader';
+
+export {
+  lookupInvestorReputations,
+  toRecord as toInvestorReputationRecord,
+  type PrismaInvestorReputationRow,
+} from './investor-lookup';
+
+export {
+  REPUTATION_TILT_MAX,
+  applyReputationTilt,
+  computeReputationTilt,
+} from './investor-score-impact';

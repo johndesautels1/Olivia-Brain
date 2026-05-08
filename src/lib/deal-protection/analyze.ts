@@ -17,6 +17,8 @@ import {
   deriveWalkAwayReasons,
 } from './aggregate';
 import { classifyClauses } from './clause-intel';
+import { lookupInvestorReputations } from './investor-lookup';
+import { applyReputationTilt } from './investor-score-impact';
 import { parseTermSheet } from './parser';
 import {
   CONFIDENCE_LIVE,
@@ -64,7 +66,26 @@ export async function analyzeTermSheet(
       });
 
       const aggregate = aggregateClauseAnalyses(classified.analyses);
-      const baseBand: SmartBandRecord = getSmartBandRecord(aggregate.smartScore);
+
+      /* P4 reputation lookup runs in parallel with the rest of the
+         post-classification work — non-blocking: an empty / failed
+         lookup tilts the score by 0 and the analyzer continues. */
+      const reputationLookup = await lookupInvestorReputations(
+        parsed.investorNames,
+      );
+
+      /* Apply the cap-aware reputation tilt. Negative tilt always
+         allowed (a bad investor on a bad deal reinforces the verdict);
+         positive tilt cannot lift past the clause-level severity
+         ceilings. Single dealbreakers stay dealbreakers. */
+      const tiltedScore = applyReputationTilt({
+        aggregatedScore: aggregate.smartScore,
+        tilt: reputationLookup.reputationTilt,
+        hadCriticalCap: aggregate.hadCriticalCap,
+        hadHighCap: aggregate.hadHighCap,
+      });
+
+      const baseBand: SmartBandRecord = getSmartBandRecord(tiltedScore);
 
       let band: SmartBandRecord = baseBand;
       let walkAwayReasons: ReadonlyArray<string> = [];
@@ -94,12 +115,13 @@ export async function analyzeTermSheet(
 
       return {
         valuationSubjectId: opts.valuationSubjectId,
-        smartScore: aggregate.smartScore,
+        smartScore: tiltedScore,
         band,
         clauseAnalyses: classified.analyses,
         criticalIssues: aggregate.criticalIssues,
         walkAwayReasons,
         investorNames: parsed.investorNames,
+        reputationLookup,
         confidenceScore,
         runtimeMode,
         attempts,

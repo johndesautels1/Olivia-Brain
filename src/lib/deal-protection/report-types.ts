@@ -11,6 +11,7 @@ import type {
   ClauseClassificationAttempt,
   ClauseType,
 } from './clause-types';
+import type { InvestorReputationLookup } from './investor-types';
 import type { SmartBandRecord } from './types';
 
 /** A single critical clause called out in the report header. */
@@ -38,6 +39,12 @@ export interface DealRiskReport {
   readonly walkAwayReasons: ReadonlyArray<string>;
   /** Investor names extracted by the parser (for P4 reputation lookup). */
   readonly investorNames: ReadonlyArray<string>;
+  /**
+   * P4 reputation lookup — matched investors + unmatched names + the
+   * applied reputation tilt (-REPUTATION_TILT_MAX … +REPUTATION_TILT_MAX).
+   * Empty matched-list when no parser-extracted name matched a record.
+   */
+  readonly reputationLookup: InvestorReputationLookup;
   /** 0-1 confidence score. */
   readonly confidenceScore: number;
   /** `'live'` iff parser AND classifier both stayed live. */

@@ -16,12 +16,23 @@ import type { TermSheetTerms } from '../parser-types';
 
 vi.mock('../parser', () => ({ parseTermSheet: vi.fn() }));
 vi.mock('../clause-intel', () => ({ classifyClauses: vi.fn() }));
+vi.mock('../investor-lookup', () => ({ lookupInvestorReputations: vi.fn() }));
 
 import { parseTermSheet } from '../parser';
 import { classifyClauses } from '../clause-intel';
+import { lookupInvestorReputations } from '../investor-lookup';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  /* Default lookup: no matched investors, no tilt. Specific tests
+     override this. */
+  vi.mocked(lookupInvestorReputations).mockResolvedValue({
+    extractedNames: [],
+    matched: [],
+    unmatchedNames: [],
+    averageReputationScore: null,
+    reputationTilt: 0,
+  });
 });
 
 afterEach(() => {
@@ -197,6 +208,148 @@ describe('analyzeTermSheet — runtimeMode aggregation', () => {
       conversationId: 'conv-5',
     });
     expect(report.runtimeMode).toBe('mock');
+  });
+});
+
+describe('analyzeTermSheet — reputation tilt', () => {
+  it('applies a positive tilt to the smartScore when matched investors are founder-friendly', async () => {
+    vi.mocked(parseTermSheet).mockResolvedValue(liveTerms());
+    vi.mocked(classifyClauses).mockResolvedValue({
+      analyses: [
+        clauseAnalysis({ severity: 'low', toxicity: 10 }),
+        clauseAnalysis({ severity: 'low', toxicity: 10 }),
+        clauseAnalysis({ severity: 'low', toxicity: 10 }),
+      ],
+      providerId: 'anthropic',
+      modelId: 'claude-sonnet-4-6',
+      runtimeMode: 'live',
+      attempts: [],
+    });
+    /* Mock a high-reputation match → +5 tilt. */
+    vi.mocked(lookupInvestorReputations).mockResolvedValue({
+      extractedNames: ['Atomico'],
+      matched: [
+        {
+          id: 'r1',
+          name: 'Atomico',
+          slug: 'atomico',
+          investorType: 'vc',
+          reputationScore: 85,
+          reputationBand: 'green',
+          source: 'admin',
+          isActive: true,
+          isArchived: false,
+          createdAt: '2026-05-08T00:00:00Z',
+          updatedAt: '2026-05-08T00:00:00Z',
+        },
+      ],
+      unmatchedNames: [],
+      averageReputationScore: 85,
+      reputationTilt: 5,
+    });
+
+    const report = await analyzeTermSheet({
+      valuationSubjectId: SUBJECT_ID,
+      termSheetText: 'sample',
+      conversationId: 'p4-rep-pos',
+    });
+    /* base = 100 - 10 = 90; +5 tilt → 95. */
+    expect(report.smartScore).toBe(95);
+    expect(report.band.band).toBe('green');
+    expect(report.reputationLookup.matched).toHaveLength(1);
+    expect(report.reputationLookup.reputationTilt).toBe(5);
+  });
+
+  it('caps positive tilt below CRITICAL_CEILING when a critical clause is present', async () => {
+    vi.mocked(parseTermSheet).mockResolvedValue(liveTerms());
+    vi.mocked(classifyClauses).mockResolvedValue({
+      analyses: [
+        clauseAnalysis({
+          severity: 'critical',
+          toxicity: 95,
+          clauseType: 'indemnification',
+          summary: 'Personal indemnity at 100%.',
+        }),
+      ],
+      providerId: 'anthropic',
+      modelId: 'claude-sonnet-4-6',
+      runtimeMode: 'live',
+      attempts: [],
+    });
+    vi.mocked(lookupInvestorReputations).mockResolvedValue({
+      extractedNames: ['Atomico'],
+      matched: [],
+      unmatchedNames: [],
+      averageReputationScore: 90,
+      reputationTilt: 8, // max positive
+    });
+
+    const report = await analyzeTermSheet({
+      valuationSubjectId: SUBJECT_ID,
+      termSheetText: 'sample',
+      conversationId: 'p4-cap-wins',
+    });
+    /* Famous investor + critical clause: cap WINS — single dealbreaker
+       stays a dealbreaker. */
+    expect(report.smartScore).toBeLessThanOrEqual(39);
+  });
+
+  it('negative tilt below the cap is allowed', async () => {
+    vi.mocked(parseTermSheet).mockResolvedValue(liveTerms());
+    vi.mocked(classifyClauses).mockResolvedValue({
+      analyses: [
+        clauseAnalysis({ severity: 'low', toxicity: 5 }),
+        clauseAnalysis({ severity: 'low', toxicity: 5 }),
+        clauseAnalysis({ severity: 'low', toxicity: 5 }),
+      ],
+      providerId: 'anthropic',
+      modelId: 'claude-sonnet-4-6',
+      runtimeMode: 'live',
+      attempts: [],
+    });
+    vi.mocked(lookupInvestorReputations).mockResolvedValue({
+      extractedNames: ['Predatory PE'],
+      matched: [],
+      unmatchedNames: [],
+      averageReputationScore: 10,
+      reputationTilt: -8,
+    });
+
+    const report = await analyzeTermSheet({
+      valuationSubjectId: SUBJECT_ID,
+      termSheetText: 'sample',
+      conversationId: 'p4-neg',
+    });
+    /* base = 95; -8 tilt → 87. */
+    expect(report.smartScore).toBe(87);
+  });
+
+  it('forwards the lookup result onto the report (matched + unmatched)', async () => {
+    vi.mocked(parseTermSheet).mockResolvedValue(
+      liveTerms({ investorNames: ['Atomico', 'Unknown Fund'] }),
+    );
+    vi.mocked(classifyClauses).mockResolvedValue({
+      analyses: [clauseAnalysis({ severity: 'low', toxicity: 5 })],
+      providerId: 'anthropic',
+      modelId: 'claude-sonnet-4-6',
+      runtimeMode: 'live',
+      attempts: [],
+    });
+    vi.mocked(lookupInvestorReputations).mockResolvedValue({
+      extractedNames: ['Atomico', 'Unknown Fund'],
+      matched: [],
+      unmatchedNames: ['Unknown Fund'],
+      averageReputationScore: 88,
+      reputationTilt: 6,
+    });
+
+    const report = await analyzeTermSheet({
+      valuationSubjectId: SUBJECT_ID,
+      termSheetText: 'sample',
+      conversationId: 'p4-passthrough',
+    });
+    expect(report.reputationLookup.unmatchedNames).toEqual(['Unknown Fund']);
+    expect(report.reputationLookup.reputationTilt).toBe(6);
   });
 });
 
