@@ -16,6 +16,7 @@
  */
 
 import { AvatarOrb, type AvatarOrbState } from "@/components/primitives";
+import { MarkdownReply } from "./reply-renderer";
 
 export interface HomeHeroProps {
   state: AvatarOrbState;
@@ -98,24 +99,23 @@ export function HomeHero({ state, onClick, lastReply }: HomeHeroProps) {
       </div>
 
       {showReply && (
-        <blockquote
+        <div
           aria-live="polite"
           style={{
-            margin: 0,
-            maxWidth: 640,
-            padding: "14px 18px",
+            maxWidth: 720,
+            padding: "16px 20px",
             borderRadius: "var(--radius-lg)",
             background: "var(--canvas-recess)",
             borderLeft: "2px solid var(--aurum-primary)",
             color: "var(--fg-secondary)",
             fontSize: "var(--text-sm)",
             lineHeight: 1.55,
-            fontStyle: "italic",
             textAlign: "left",
+            boxShadow: "0 30px 80px rgba(0,0,0,0.32)",
           }}
         >
-          {lastReply}
-        </blockquote>
+          <MarkdownReply text={lastReply ?? ""} />
+        </div>
       )}
     </section>
   );

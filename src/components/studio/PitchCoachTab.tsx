@@ -26,6 +26,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePitchConfig, PITCH_PERSONAS, type PitchConfig } from "@/hooks";
 import type { Slide } from "@/lib/studio/types";
 import { PLAN_SECTIONS } from "@/lib/studio/plan-sections";
+import { MarkdownReply } from "@/components/home/reply-renderer";
 
 interface CoachMessage {
   role: "user" | "olivia";
@@ -401,10 +402,13 @@ export function PitchCoachTab({
               color: "var(--fg-primary)",
               fontSize: "var(--text-sm)",
               lineHeight: 1.45,
-              whiteSpace: "pre-wrap",
             }}
           >
-            {m.text}
+            {m.role === "olivia" ? (
+              <MarkdownReply text={m.text} maxChartWidth={320} />
+            ) : (
+              <span style={{ whiteSpace: "pre-wrap" }}>{m.text}</span>
+            )}
           </div>
         ))}
         {isTyping && (

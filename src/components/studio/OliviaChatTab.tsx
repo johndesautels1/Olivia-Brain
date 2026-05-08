@@ -21,6 +21,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MarkdownReply } from "@/components/home/reply-renderer";
 
 interface ChatMessage {
   role: "user" | "olivia";
@@ -182,10 +183,13 @@ export function OliviaChatTab({ onAuditEntry }: OliviaChatTabProps) {
               color: "var(--fg-primary)",
               fontSize: "var(--text-sm)",
               lineHeight: 1.45,
-              whiteSpace: "pre-wrap",
             }}
           >
-            {m.text}
+            {m.role === "olivia" ? (
+              <MarkdownReply text={m.text} maxChartWidth={320} />
+            ) : (
+              <span style={{ whiteSpace: "pre-wrap" }}>{m.text}</span>
+            )}
           </div>
         ))}
         {isTyping && (
