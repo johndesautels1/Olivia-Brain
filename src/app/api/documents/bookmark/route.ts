@@ -23,6 +23,7 @@ import { z } from "zod";
 import { getAuthSession } from "@/lib/auth/session";
 import prisma from "@/lib/db/client";
 import { rateLimit } from "@/lib/rate-limit";
+import { ensureUserProfile } from "@/lib/users/ensure-user-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -59,8 +60,12 @@ export async function GET(request: NextRequest) {
   const documentId = request.nextUrl.searchParams.get("documentId");
   if (!documentId) return fail("documentId query param is required");
 
+  // FK to UserProfile (Track B Session 8d) — lookup-or-create the
+  // caller's profile row before reading bookmark state. Idempotent.
+  const profile = await ensureUserProfile(auth.userId);
+
   const row = await prisma.documentBookmark.findUnique({
-    where: { userProfileId_documentId: { userProfileId: auth.userId, documentId } },
+    where: { userProfileId_documentId: { userProfileId: profile.id, documentId } },
     select: { id: true },
   });
 
@@ -90,8 +95,13 @@ export async function POST(request: NextRequest) {
   }
 
   const { documentId } = parsed.data;
+
+  // FK to UserProfile (Track B Session 8d) — lookup-or-create the
+  // caller's profile row before toggling. Idempotent.
+  const profile = await ensureUserProfile(auth.userId);
+
   const existing = await prisma.documentBookmark.findUnique({
-    where: { userProfileId_documentId: { userProfileId: auth.userId, documentId } },
+    where: { userProfileId_documentId: { userProfileId: profile.id, documentId } },
     select: { id: true },
   });
 
@@ -101,7 +111,7 @@ export async function POST(request: NextRequest) {
   }
 
   await prisma.documentBookmark.create({
-    data: { userProfileId: auth.userId, documentId },
+    data: { userProfileId: profile.id, documentId },
   });
   return NextResponse.json({ bookmarked: true });
 }

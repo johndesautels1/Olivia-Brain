@@ -1,10 +1,13 @@
 /**
  * `/api/me/documents/save-from-template` — surface-contract tests.
  *
- * Validates the 501 stub behaviour shipped in Track B Session 8b-routes.
- * When Session 8d ports the `Document` Prisma model, the stub gets
- * replaced with the real fork logic and these tests get extended to
- * cover the success path.
+ * Track B Session 8d replaces the prior 501 stub with real fork logic
+ * (Document Prisma model + ensureUserProfile + idempotent fork via
+ * (ownerUserId, sourceTemplateId) compound unique). These tests
+ * cover the validation branches that return BEFORE Prisma is hit.
+ * Persistence-side cases (template-not-found 404, not-a-template 403,
+ * already-owned idempotency, fresh-fork happy path) are exercised
+ * once the DB is reachable + 08 + 09 migrations are applied.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,7 +34,7 @@ describe("/api/me/documents/save-from-template — module surface", () => {
   });
 });
 
-describe("/api/me/documents/save-from-template — 501 stub", () => {
+describe("/api/me/documents/save-from-template — POST validation", () => {
   beforeEach(() => {
     vi.stubEnv("STUB_USER_ID", "00000000-0000-0000-0000-000000000001");
   });
@@ -39,29 +42,44 @@ describe("/api/me/documents/save-from-template — 501 stub", () => {
     vi.unstubAllEnvs();
   });
 
-  it("rejects unparseable body with 400 BEFORE returning 501", async () => {
+  it("rejects unparseable body with 400", async () => {
     const { POST } = await import(
       "@/app/api/me/documents/save-from-template/route"
     );
     const res = await POST(makePost("not-json", "5.5.5.61") as never);
     expect(res.status).toBe(400);
+    const data = (await res.json()) as { error: string };
+    expect(data.error).toMatch(/Invalid JSON/i);
   });
 
-  it("returns 501 with structured Session 8d pointer for valid input", async () => {
+  it("rejects missing templateId with 400", async () => {
+    const { POST } = await import(
+      "@/app/api/me/documents/save-from-template/route"
+    );
+    const res = await POST(makePost({}, "5.5.5.62") as never);
+    expect(res.status).toBe(400);
+    const data = (await res.json()) as { error: string };
+    expect(data.error).toMatch(/Validation failed/i);
+  });
+
+  it("rejects empty-string templateId with 400", async () => {
+    const { POST } = await import(
+      "@/app/api/me/documents/save-from-template/route"
+    );
+    const res = await POST(makePost({ templateId: "" }, "5.5.5.63") as never);
+    expect(res.status).toBe(400);
+    const data = (await res.json()) as { error: string };
+    expect(data.error).toMatch(/Validation failed/i);
+  });
+
+  it("returns 503 when STUB_USER_ID is unset (auth unavailable)", async () => {
+    vi.unstubAllEnvs();
     const { POST } = await import(
       "@/app/api/me/documents/save-from-template/route"
     );
     const res = await POST(
-      makePost({ templateId: "tmpl-123" }, "5.5.5.62") as never,
+      makePost({ templateId: "tmpl-123" }, "5.5.5.64") as never,
     );
-    expect(res.status).toBe(501);
-    const data = (await res.json()) as {
-      ok: boolean;
-      error: string;
-      pendingSession: string;
-    };
-    expect(data.ok).toBe(false);
-    expect(data.pendingSession).toBe("8d");
-    expect(data.error).toMatch(/Document Prisma model/);
+    expect(res.status).toBe(503);
   });
 });
