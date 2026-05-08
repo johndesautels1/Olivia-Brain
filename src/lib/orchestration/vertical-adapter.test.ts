@@ -27,10 +27,16 @@ describe("getVerticalAddendum", () => {
     expect(a.preferredProviders).toContain("anthropic");
   });
 
-  it("returns the other 3 verticals as draft", () => {
-    expect(getVerticalAddendum("healthtech").status).toBe("draft");
-    expect(getVerticalAddendum("climatetech").status).toBe("draft");
-    expect(getVerticalAddendum("proptech").status).toBe("draft");
+  it("returns all 4 industry verticals as final after S26", () => {
+    expect(getVerticalAddendum("healthtech").status).toBe("final");
+    expect(getVerticalAddendum("climatetech").status).toBe("final");
+    expect(getVerticalAddendum("proptech").status).toBe("final");
+  });
+
+  it("each finalized vertical addendum is substantive (>500 chars)", () => {
+    expect(getVerticalAddendum("healthtech").systemPromptAddendum.length).toBeGreaterThan(500);
+    expect(getVerticalAddendum("climatetech").systemPromptAddendum.length).toBeGreaterThan(500);
+    expect(getVerticalAddendum("proptech").systemPromptAddendum.length).toBeGreaterThan(500);
   });
 
   it("HealthTech draft prefers Perplexity for citations", () => {
