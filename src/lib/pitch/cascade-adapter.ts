@@ -27,6 +27,10 @@ import type {
   RouteIntent,
   RuntimeMode,
 } from "@/lib/foundation/types";
+import {
+  detectVerticalFromIndustry,
+} from "@/lib/orchestration/vertical-adapter";
+import type { VerticalId } from "@/lib/quantara/metamorphic/vertical-types";
 
 export interface PitchCascadeInput {
   /** XML-tagged system framing. */
@@ -47,6 +51,12 @@ export interface PitchCascadeInput {
   useWebResearch?: boolean;
   /** The query to send to Tavily. Required when `useWebResearch` is true. */
   searchQuery?: string;
+  /** Track J — explicit vertical override; otherwise the adapter
+   *  attempts to detect from `industry`. Pass to bypass detection. */
+  vertical?: VerticalId;
+  /** Track J — free-form industry string used to auto-detect vertical
+   *  (e.g. "AI / SaaS" → ai_saas). Cheap regex; not LLM-driven. */
+  industry?: string;
 }
 
 export interface PitchCascadeResult {
@@ -97,12 +107,18 @@ export async function runPitchCascade(
     `<user>\n${input.userPrompt}${researchBlock}\n</user>`,
   ].join("\n\n");
 
+  /* Track J — vertical resolution. Explicit takes precedence over
+   * detection; either feeds the cascade for system-prompt augmentation. */
+  const vertical: VerticalId | undefined =
+    input.vertical ?? detectVerticalFromIndustry(input.industry) ?? undefined;
+
   const result = await runModelCascade({
     conversationId,
     message: composedMessage,
     intent: input.intent,
     recalledContext: [],
     integrationSnapshot: {},
+    vertical,
   });
 
   return {

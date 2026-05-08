@@ -38,6 +38,8 @@ import type {
   StatusLevel,
 } from "@/lib/foundation/types";
 import { withTraceSpan } from "@/lib/observability/tracer";
+import { getVerticalAddendum } from "@/lib/orchestration/vertical-adapter";
+import type { VerticalId } from "@/lib/quantara/metamorphic/vertical-types";
 
 interface CascadeInput {
   conversationId: string;
@@ -53,6 +55,12 @@ interface CascadeInput {
    *  Track O Session O1. INTERIM: when Track G S19-S20 ports LTM's
    *  `lib/cascade/` orchestrator, this hook moves there. */
   tools?: Record<string, Tool>;
+  /** Track J — optional vertical context. When set, the system prompt
+   *  picks up a vertical-specific addendum (AI/SaaS / HealthTech /
+   *  ClimateTech / PropTech) and the provider order may be biased
+   *  toward providers that handle that vertical's diligence patterns
+   *  better (e.g. Perplexity for HealthTech regulatory citations). */
+  vertical?: VerticalId;
 }
 
 interface CascadeResult {
@@ -153,7 +161,7 @@ function providerOrderForIntent(intent: RouteIntent): ProviderId[] {
   }
 }
 
-function buildSystemPrompt(intent: RouteIntent) {
+function buildSystemPrompt(intent: RouteIntent, vertical?: VerticalId) {
   const intentBrief = (() => {
     switch (intent) {
       case "planning":
@@ -173,6 +181,12 @@ function buildSystemPrompt(intent: RouteIntent) {
     }
   })();
 
+  /* Track J — vertical addendum (empty for "generic" / undefined). */
+  const verticalAddendum =
+    vertical && vertical !== "generic"
+      ? getVerticalAddendum(vertical).systemPromptAddendum
+      : "";
+
   return [
     "You are Olivia Brain, the intelligence and orchestration layer for the CLUES portfolio.",
     intentBrief,
@@ -186,7 +200,10 @@ function buildSystemPrompt(intent: RouteIntent) {
     `When data is comparable across categories or across time, manifest it as a chart inline using a fenced \`\`\`chart code block containing JSON. The schema:`,
     `{ "type": "bar"|"line"|"area"|"pie", "title": string, "data": Array<{[x or name]: string, [seriesKey]: number}>, "x": string (bar/line/area), "value": string (pie), "name": string (pie), "series": [{"key": string, "label"?: string, "color"?: "aurum"|"aether"|"mint"|"sky"|"amber"|"coral"}] }`,
     "Use charts only when they clarify; never wrap qualitative answers in a chart. Format the rest of the answer as standard markdown (headings, lists, tables, blockquotes, fenced code). Inline backticks for short code/identifiers. Be concise.",
-  ].join(" ");
+    verticalAddendum,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function buildPrompt(input: CascadeInput) {
@@ -264,7 +281,7 @@ export async function runModelCascade(input: CascadeInput): Promise<CascadeResul
         async () =>
           generateText({
             model: provider.createModel(),
-            system: buildSystemPrompt(input.intent),
+            system: buildSystemPrompt(input.intent, input.vertical),
             prompt: buildPrompt(input),
             temperature: 0.3,
             maxOutputTokens: 900,

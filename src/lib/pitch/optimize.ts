@@ -167,6 +167,7 @@ export async function optimizeSlide(
     userPrompt,
     intent: "general",
     conversationId: options?.conversationId,
+    industry: config.industry,
   });
 
   const parsed = safeParseJson<{
@@ -255,6 +256,7 @@ export async function draftPlanSection(
     conversationId: options?.conversationId,
     useWebResearch: true,
     searchQuery: `${sectionTitle} for ${config.projectName} (${config.industry}, ${config.stage})`,
+    industry: config.industry,
   });
 
   const parsed = safeParseJson<{
@@ -301,6 +303,7 @@ export async function analyzeContent(
     conversationId: options?.conversationId,
     useWebResearch: true,
     searchQuery: `${config.projectName} ${config.industry} market analysis ${config.stage}`,
+    industry: config.industry,
   });
 
   const parsed = safeParseJson<{
@@ -342,6 +345,7 @@ export async function askOlivia(
     userPrompt: message,
     intent: "general",
     conversationId: options?.conversationId,
+    industry: config.industry,
   });
 
   return result.text;
