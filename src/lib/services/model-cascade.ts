@@ -179,6 +179,13 @@ function buildSystemPrompt(intent: RouteIntent) {
     "Respond with concrete implementation guidance, not generic motivation.",
     "If a provider or integration is not configured, say so plainly and continue with the best available path.",
     "The avatar is the face, not the brain. Intelligence lives in this orchestration layer.",
+    /* Track N N1+N3 manifest contract — when the response includes
+       quantitative comparison (funding rounds, market sizes, valuation
+       multiples, revenue trajectories, share splits, etc.) wrap it in
+       a ```chart fence with a JSON spec; the UI renders it inline. */
+    `When data is comparable across categories or across time, manifest it as a chart inline using a fenced \`\`\`chart code block containing JSON. The schema:`,
+    `{ "type": "bar"|"line"|"area"|"pie", "title": string, "data": Array<{[x or name]: string, [seriesKey]: number}>, "x": string (bar/line/area), "value": string (pie), "name": string (pie), "series": [{"key": string, "label"?: string, "color"?: "aurum"|"aether"|"mint"|"sky"|"amber"|"coral"}] }`,
+    "Use charts only when they clarify; never wrap qualitative answers in a chart. Format the rest of the answer as standard markdown (headings, lists, tables, blockquotes, fenced code). Inline backticks for short code/identifiers. Be concise.",
   ].join(" ");
 }
 
