@@ -19,7 +19,12 @@ import {
   WorkspaceShell,
   type InspectorTab,
 } from "@/components/workspace";
-import { CommandPaletteButton, HomeCenter, LiveAgentStream } from "@/components/home";
+import {
+  CommandPaletteButton,
+  HomeCenter,
+  KeyboardShortcuts,
+  LiveAgentStream,
+} from "@/components/home";
 import {
   CommandPalette,
   buildCommandRegistry,
@@ -439,6 +444,7 @@ export default function HomePage() {
         onClose={palette.closePalette}
         commands={paletteCommands}
       />
+      <KeyboardShortcuts />
       <WorkspaceShell
       header={
         <Header

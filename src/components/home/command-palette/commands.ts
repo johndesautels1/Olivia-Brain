@@ -156,6 +156,19 @@ export function buildCommandRegistry(ctx: CommandContext): PaletteCommand[] {
     run: ctx.clearAudit,
   });
 
+  cmds.push({
+    id: "action.show-shortcuts",
+    group: "actions",
+    label: "Show keyboard shortcuts",
+    hint: "Press ? from any surface",
+    glyph: "⌨",
+    run: () => {
+      /* Trigger the same global handler the `?` key uses. */
+      const event = new KeyboardEvent("keydown", { key: "?", bubbles: true });
+      window.dispatchEvent(event);
+    },
+  });
+
   return cmds;
 }
 

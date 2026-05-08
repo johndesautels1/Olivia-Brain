@@ -16,6 +16,7 @@ export { RecentWorkStrip } from "./RecentWorkStrip";
 export { CommandPaletteButton } from "./CommandPaletteButton";
 export { LiveAgentStream } from "./LiveAgentStream";
 export { SuggestionChips } from "./SuggestionChips";
+export { KeyboardShortcuts } from "./KeyboardShortcuts";
 export {
   MarkdownReply,
   ChartFromSpec,
