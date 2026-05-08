@@ -50,6 +50,8 @@ import {
   useHomeDashboard,
   useKeyboardNav,
   useScoreChips,
+  useTenantUi,
+  isSurfaceSuppressed,
 } from "@/hooks";
 import type {
   ActiveDoc,
@@ -130,6 +132,20 @@ export default function HomePage() {
    * Inspector footer (LiveAgentStream) so it doesn't fetch twice. */
   const dashboard = useHomeDashboard();
   const scoreSnap = useScoreChips();
+
+  /* S24 — adaptive surface suppression. When Olivia is embedded in a
+   * host (e.g. clueslondon-prod tenant) that ships its own map +
+   * calendar, the host's tenant config marks those surfaces suppressed
+   * and we filter rail links + ⌘K nav targets accordingly. Standalone
+   * mode (no tenant) returns empty defaults — every surface visible. */
+  const tenantUi = useTenantUi();
+  const visibleRailLinks = useMemo(
+    () =>
+      RAIL_LINKS.filter(
+        (link) => !isSurfaceSuppressed(tenantUi.suppressedSurfaces, link.href),
+      ),
+    [tenantUi.suppressedSurfaces],
+  );
 
   /* U6 — command palette (⌘K). The hook owns the open/close state and
    * the global keystroke binding; the registry is rebuilt when its
@@ -328,7 +344,8 @@ export default function HomePage() {
 
   useKeyboardNav({ onNext: handleNext, onPrev: handlePrev });
 
-  /* U6 — build the command-palette registry from the current context. */
+  /* U6 — build the command-palette registry from the current context.
+   * S24 — also filtered by tenant-suppressed surfaces. */
   const paletteCommands = useMemo(
     () =>
       buildCommandRegistry({
@@ -338,8 +355,16 @@ export default function HomePage() {
         setTheme: handleThemeSelect,
         clearAudit: clearAuditLog,
         focusComposer,
+        suppressedSurfaces: tenantUi.suppressedSurfaces,
       }),
-    [router, handleNavSection, handleThemeSelect, clearAuditLog, focusComposer],
+    [
+      router,
+      handleNavSection,
+      handleThemeSelect,
+      clearAuditLog,
+      focusComposer,
+      tenantUi.suppressedSurfaces,
+    ],
   );
 
   /* U5 — order matters. Olivia chat sits first as the default tab so
@@ -417,7 +442,7 @@ export default function HomePage() {
       <WorkspaceShell
       header={
         <Header
-          wordmark="STUDIO OLIVIA"
+          wordmark={tenantUi.brandName ?? "STUDIO OLIVIA"}
           crumb={["Workspace"]}
           avatarState={avatarPulse ? "thinking" : "idle"}
           onAvatarClick={() => setAvatarPulse((v) => !v)}
@@ -491,7 +516,7 @@ export default function HomePage() {
           >
             Other surfaces
           </div>
-          {RAIL_LINKS.map((link) => (
+          {visibleRailLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}

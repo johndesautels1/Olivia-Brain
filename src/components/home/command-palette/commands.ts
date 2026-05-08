@@ -40,6 +40,10 @@ export interface CommandContext {
   setTheme: (key: ThemeKey) => void;
   clearAudit: () => void;
   focusComposer: () => void;
+  /** S24 — suppressed surface keys filter NAVIGATE_TARGETS so a
+   *  tenant-embedded Olivia doesn't surface routes its host already
+   *  owns (LTM map + calendar etc.). Default empty = standalone. */
+  suppressedSurfaces?: readonly string[];
 }
 
 const NAVIGATE_TARGETS: { href: string; label: string; hint: string }[] = [
@@ -82,6 +86,10 @@ const THEME_TARGETS: { key: ThemeKey; label: string; hint: string }[] = [
 
 export function buildCommandRegistry(ctx: CommandContext): PaletteCommand[] {
   const cmds: PaletteCommand[] = [];
+  const suppressed = ctx.suppressedSurfaces ?? [];
+  const suppressedNorm = new Set(
+    suppressed.map((s) => s.replace(/^\//, "").toLowerCase()),
+  );
 
   /* Olivia-first action — top of list when query is empty. */
   cmds.push({
@@ -95,6 +103,7 @@ export function buildCommandRegistry(ctx: CommandContext): PaletteCommand[] {
   });
 
   for (const t of NAVIGATE_TARGETS) {
+    if (suppressedNorm.has(t.href.replace(/^\//, "").toLowerCase())) continue;
     cmds.push({
       id: `nav.${t.href}`,
       group: "navigate",

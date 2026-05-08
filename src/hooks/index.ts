@@ -16,3 +16,9 @@ export {
   type InvestorPersonaKey as PitchInvestorPersonaKey,
   type UsePitchConfigState,
 } from "./usePitchConfig";
+export {
+  useTenantUi,
+  isSurfaceSuppressed,
+  useFilteredSurfaces,
+  type TenantUiSnap,
+} from "./useTenantUi";
