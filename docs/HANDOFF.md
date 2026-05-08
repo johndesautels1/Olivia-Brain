@@ -1,7 +1,31 @@
 # Olivia Brain — Handoff to next agent
 
 > **Last updated:** 2026-05-08 — written under termination of the prior agent for cause (lying about file state, phantom completions, repeated unverified claims). Read this whole file before touching anything.
-> **HEAD:** `bd8366d` — fix: Vercel build error (plan-tier inversion) + documents/page.tsx OB-adaptation completed.
+> **HEAD:** `1eb144e` (this docs commit, after `bd8366d` Vercel build fix).
+
+---
+
+## § 0. The repo and where you are
+
+**GitHub:** https://github.com/johndesautels1/Olivia-Brain
+**Branch:** `main` — all work pushed; nothing uncommitted at termination.
+**Clone command** (if you don't already have it on disk):
+
+```
+git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"
+```
+
+**Local path:** `D:\Olivia Brain` (Windows; OB development is Windows-native — PowerShell-first, never POSIX `find` per `~/CLAUDE.md`).
+
+**Sister repos referenced from OB:**
+
+| Path | Repo | Status |
+|---|---|---|
+| `D:\London-Tech-Map` | https://github.com/johndesautels1/london-tech-map | **READ-ONLY from OB.** OB nests in LTM as the home tenant — schema follows LTM (see § "Architectural decisions you must respect" below). Confirm URL with the founder before cloning. |
+| `D:\Studio-Olivia` | local prototypes (not a git repo) | reference only |
+| `D:\Clues Main` | https://github.com/johndesautels1/Clues-Main | docs canonical, code stale |
+
+**Verify on arrival:** run `git -C "D:\Olivia Brain" log --oneline -10` from anywhere. The top commit should be the one this file ships in (after `bd8366d`). If it isn't, `git pull origin main`. Run `npm test` and `npm run typecheck` before you write anything.
 
 ---
 
