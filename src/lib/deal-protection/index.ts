@@ -197,3 +197,48 @@ export {
 } from './counter-term-sheet-templates';
 
 export { buildCounterDraftPrompt } from './counter-term-sheet-prompts';
+
+export {
+  type RehearsalRequest,
+  type RehearsalResponse,
+  type RehearsalTurn,
+  REHEARSAL_LIMITS,
+  REHEARSAL_STANCE_BY_BAND,
+  RehearsalPostBodySchema,
+  RehearsalTurnSchema,
+} from './rehearsal-types';
+
+export {
+  type GenerateRehearsalTurnOptions,
+  generateRehearsalTurn,
+} from './rehearsal';
+
+export { buildRehearsalPrompt } from './rehearsal-prompts';
+
+export {
+  type AnalysisDiff,
+  type ClauseDiff,
+  type CriticalIssueDelta,
+  type VersionedAnalysis,
+  compareAnalyses,
+} from './versioning';
+
+export {
+  type ConsensusResult,
+  type ConsensusVerdict,
+  type EvaluatorVerdict,
+  CONSENSUS_DEFAULT_EVALUATORS,
+  ConsensusPostBodySchema,
+  ConsensusVerdictSchema,
+  EvaluatorVerdictResponseSchema,
+} from './consensus-types';
+
+export {
+  type GenerateConsensusOptions,
+  generateConsensus,
+} from './consensus';
+
+export {
+  buildEvaluatorPrompt,
+  buildOpusJudgePrompt,
+} from './consensus-prompts';
