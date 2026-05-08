@@ -2021,3 +2021,87 @@ Coverage spans: catalog invariants (5 verticals × 5 fields = 20, generic = 0 by
 | Apply `prisma/sql/04-add-quantara-foundation.sql` to Supabase (still owed from Q1) | Before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson` | Carries forward — Q6 reuses both the existing `quantaraJson` column (under a new `vertical` namespace) AND the existing top-level `sector` column. No new SQL migration needed for Q6. |
 
 **Next session:** **Track Q Session Q7 — Voice-first paragraphical capture + persona generation.** User can speak instead of type; cascade parses utterances into structured fields (same primitive as cluesintelligence questionnaire engine). At 100% completeness, cascade synthesizes `FounderPersona` + `CompanyPersona` records that downstream consumers (Pitch Deck, Business Plan, marketing) read from. **Closes Track Q.** Per BUILD_SEQUENCE Track Q row Q7.
+
+---
+
+## Part 43 — 2026-05-08 — Track Q Session Q7: Voice-first capture + persona synthesis (TRACK Q CLOSED)
+
+**HEAD before:** `8918139` (Q6 docs handoff, 610/610 across 46 suites). **HEAD after Q7 code:** `5b47efb`. **HEAD after Q7 docs:** (this commit). **Tests:** 610/610 → **642/642** across **46 → 50 suites** (+32 new across 4 new suites). Typecheck: clean.
+
+### Deliverable split
+
+Q7's spec carries two distinct deliverables on the same session — voice capture + persona synthesis. They share the cascade primitive (`runModelCascade`) and the structured-JSON parsing pattern but otherwise live in separate `src/lib/quantara/voice/` and `src/lib/quantara/personas/` namespaces. Voice extraction reuses Q3's `QuantaraSuggestion` shape so the existing accept/reject chip flow handles voice-derived suggestions unchanged.
+
+### Schema + SQL migration (the DB push the user emphasised)
+
+Two new Prisma models + a hand-written SQL migration file matching the prisma-migrate-diff format used by V1 / Q1:
+
+- `model FounderPersona` + `model CompanyPersona` — both keyed off `valuation_subjects(id)` via cascading FK. JSON columns hold structured strengths / gaps / differentiators / watch-outs so the shape can evolve without schema churn; `personaSchemaVersion` (default 1) is the BEE invalidation key for non-additive prompt changes; `runtimeMode` ("live" | "mock") surfaces in the UI so a mock-mode placeholder is never mistaken for live synthesis.
+
+- `prisma/sql/05-add-personas-foundation.sql` — 2 CREATE TABLEs + 4 indexes (`(userId, generatedAt)` + `(valuationSubjectId, generatedAt)` per table) + 2 CASCADE FK constraints. Hand-written in the same style as Q1/V1 so the migration history reads coherently.
+
+- `ValuationSubject` extended with reverse relations (`founderPersonas FounderPersona[]` + `companyPersonas CompanyPersona[]`) — additive only, doesn't disturb V1's existing relations.
+
+### Voice extraction
+
+| File | Surface |
+|---|---|
+| `src/lib/quantara/voice/types.ts` | `VoiceExtractionItemSchema` (fieldId regex enforces `f1..f56`; confidence 0-1; optional note ≤ 280 chars), `VoiceExtractionPayloadSchema` (max 30 extractions per call), `VoiceExtractionResult` (typed cascade output). |
+| `src/lib/quantara/voice/extract.ts` | `buildVoiceExtractionPrompt` includes a compact manifest of all 56 canonical fields with already-filled hints so the cascade skips them. Truncates transcripts > 4000 chars. `extractFromTranscript` runs `runModelCascade` with `intent: "questionnaire"` (Gemini → Sonnet → GPT etc.) and parses JSON, falling back to empty extractions on mock-mode / parse failure / schema failure (no fabrication). |
+| `src/app/api/founder-intake/voice-extract/route.ts` | POST validates transcript length 4-4000 + `currentValues` via `QuantaraValuesSchema`; calls `extractFromTranscript`; adapts each `VoiceExtractionItem` to a `QuantaraSuggestion` with `source: { integration: "olivia_defaults", label: "Voice transcript", ... }`. Rate-limited 6/60s. |
+| `src/components/quantara/VoiceCaptureCard.tsx` | Mic button + MediaRecorder lifecycle (start → record → stop → blob → /api/voice/transcribe → /api/founder-intake/voice-extract → onSuggestions). Releases the mic on stop (the single most-reported voice-mode bug across audio apps). Graceful fallback when MediaRecorder is unavailable (JSDOM, blocked permission). |
+
+### Persona synthesis
+
+| File | Surface |
+|---|---|
+| `src/lib/quantara/personas/types.ts` | `CombinedPersonaPayloadSchema` validates `{ founder: {...}, company: {...} }`. `FOUNDER_ARCHETYPE_VALUES` (technical_visionary / operator_ceo / sales_first_founder / domain_expert / serial_entrepreneur / first_time_founder), `RISK_TOLERANCE_VALUES` (low / medium / high). `PERSONA_SCHEMA_VERSION = 1`. |
+| `src/lib/quantara/personas/prompts.ts` | `buildPersonaSynthesisPrompt` emits a label/value fact list keyed off the founder's filled canonical + active-round supplementary + active-vertical entries. `buildMockPersonaPayload` deterministic placeholder — used when cascade returns mock-mode OR parsing fails (graceful, never throws). |
+| `src/lib/quantara/personas/synthesize.ts` | `synthesizePersonas` orchestrator. Three soft-failure modes all return the mock payload + preserve the cascade attempts trail for ops review: (1) cascade mock-mode short-circuit, (2) cascade JSON parse failure, (3) cascade JSON valid but doesn't match Zod. Never throws. |
+| `src/app/api/founder-intake/personas/route.ts` | POST gates on `completenessScore >= 80` (returns 422 with current score if not — UI mirrors); builds synthesis context from canonical + supplementary[active round] + vertical[active vertical]; persists `FounderPersona` + `CompanyPersona` in parallel. GET returns most-recent non-archived pair. Rate-limited 3 / 5min on POST (synthesis is expensive). |
+| `src/components/quantara/PersonaPanel.tsx` | Two-column persona display with archetype + risk-tolerance chips. Mock-mode runs labelled with an amber "Mock-mode placeholder" pill so they're never mistaken for live synthesis. |
+
+### IntakeForm wiring
+
+- `VoiceCaptureCard` mounted in the rail beneath `IntakeSidebar` (alongside the Q3 auto-fill card — both feed the same suggestion map).
+- "Generate persona" button added to `FinalCTA`, gated on `overall.percent >= 80` (mirrors server gate). Disabled below threshold.
+- `PersonaPanel` renders inline below the `FinalCTA` after a successful synthesis. Re-synthesis appends a new persona pair to the DB (audit history preserved); UI shows the most-recent.
+- Voice-derived suggestions feed both `suggestions` (Q3 inbox) and `apiReferenceValues` (Q4 truth-score reference) — the truth-score discrepancy cascade still applies to voice-stated values, mirroring Stripe / QuickBooks integrations.
+
+### Tests
+
+| Suite | New cases |
+|---|---|
+| `personas/__tests__/synthesize.test.ts` | 12 |
+| `voice/__tests__/extract.test.ts` | 11 |
+| `app/api/founder-intake/voice-extract/__tests__/route.test.ts` | 5 |
+| `app/api/founder-intake/personas/__tests__/route.test.ts` | 4 |
+| **Total** | **32 across 4 new suites** |
+
+Coverage spans: prompt builder for both axes (manifest, archetype list, fact serialization, transcript truncation, filled-field hints), mock-mode short-circuit returning placeholder payloads, code-fence stripping, JSON-parse soft-failure fallback, schema-validation soft-failure fallback, attempts trail preservation on mock fallback, regex enforcement on fieldId (`f1..f56` only), ≥ 3 extractions on a rich transcript (Q7 exit criterion), POST validation branches (empty body, missing transcript, oversize transcript, type-mismatched currentValues, missing subjectId).
+
+### Decisions / judgment-call trail
+
+1. **Two namespaces (voice + personas), not one.** They share the cascade + JSON-parsing pattern but their data models, persistence semantics, and lifecycles diverge. Coupling them would force unrelated bug-fixes to test the other. Parallel namespaces win.
+2. **Voice extractions adapt to `QuantaraSuggestion`.** The existing Q3 chip flow handles per-field accept/reject + Q4 truth-score discrepancy detection — reusing the shape gets all of that for free instead of forking it.
+3. **Cascade JSON output, not free-text.** Both prompts ask for strict JSON matching the corresponding Zod schema, with explicit "no markdown / no code fences" instructions. The orchestrator strips a `\`\`\`json ... \`\`\`` fence anyway because models often add it despite the instruction.
+4. **Append-not-overwrite on persona regenerate.** A founder regenerating after editing their answers shouldn't lose the prior synthesis — the audit trail matters when comparing two versions of "what's the company narrative." `isArchived` lets ops soft-delete bad runs without losing history.
+5. **Synthesis gated at ≥ 80% completeness, not 100%.** Mirrors the existing FinalCTA threshold for the valuation engine — once the founder has 80% of the canonical 56 + active supplementary + active vertical, the cascade has enough signal. 100% would gate on fields some founders genuinely can't answer (e.g. a pre-revenue company has no MRR).
+6. **No fabrication on voice mock-mode.** The voice extractor returns an empty array rather than placeholder suggestions when the cascade has no provider keys configured. A "Stripe-derived" mock placeholder makes sense for Q3 (founder is filling a known field); a "voice-derived" placeholder doesn't (founder is speaking new content).
+7. **Persona mock-mode has a placeholder body, voice mock-mode doesn't.** Persona records are persisted; the placeholder body lets the founder see the panel chrome + understand "regenerate when keys land" rather than seeing a mysterious empty section. Voice extraction is transient — its mock-mode "empty" outcome surfaces visibly as "0 suggestions" in the UI.
+8. **`personaSchemaVersion` integer + JSON columns.** Future schema changes (e.g. adding `valuesAlignment: string[]`) are additive within the JSON shape; non-additive renames bump the integer. Lets BEE (when it lands) invalidate old records without an ALTER TABLE.
+
+### Build status at session-Q7 close
+
+**Green.** Tests: **642/642** passing across **50 suites** (+32 new across 4 new suites). Typecheck: clean. **Track Q 7/7 ✅ — TRACK Q COMPLETE.** ~49 sessions remain to ship priorities 1–4.
+
+### Operator actions surfaced (DB pushes)
+
+| Migration | Status | Why |
+|---|---|---|
+| `prisma/sql/04-add-quantara-foundation.sql` (Q1) | **STILL OWED** | Carries forward — needed before any save against `/api/founder-intake` reaches `ValuationSubject.quantaraJson`. Also required for Q5 supplementary + Q6 vertical persistence (both nest under `quantaraJson`). |
+| `prisma/sql/05-add-personas-foundation.sql` (Q7) | **NEW — APPLY** | Required before any persona synthesis run (`POST /api/founder-intake/personas`) can persist. Two CREATE TABLEs + 4 indexes + 2 CASCADE FK constraints to `valuation_subjects`. |
+
+Both migrations are paste-into-Supabase-SQL-Editor-and-Run, identical workflow to 01 / 02 / 03 / 04. **Apply both before opening Track Q to founder traffic.**
+
+**Next track:** **Track P — Deal Protection Engine + Gap Closures (Sessions P1–P7).** P1 adds `DealAnalysis` + `InvestorReputation` Prisma models + Smart Score module; P2 ports clause classifier; P3 builds term-sheet parser + analyze API; P4 seeds Investor Reputation DB + admin CRUD; P5 ports multi-round dilution + band-specific email drafts; P6 wires WarRoom Deal Protection tab + counter-term-sheet auto-draft; P7 closes with negotiation rehearsal + term sheet versioning + multi-LLM consensus. Per BUILD_SEQUENCE.
