@@ -1,8 +1,8 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 — at end of the post-Track-U continuous build batch (Tracks D, E, I, N1+N3 closed; 4 deploy fixes landed in between).
-> **HEAD:** `3d7be1b` (test commit; will move with the next push).
-> Prior batch tip was `8cacdd8` (Track U handoff docs). This batch added 13 commits on top.
+> **Last updated:** 2026-05-09 — extended continuous build batch (Tracks D, E, I, J ALL CLOSED; Track N at 3/5 with N1+N3+N5 shipped; 4 deploy fixes landed).
+> **HEAD:** `0c4ef08` (N5 Gamma manifestation; will move with the next push).
+> Pre-batch tip was `8cacdd8` (Track U handoff docs). This batch added **24 commits** on top.
 
 ---
 
@@ -27,13 +27,18 @@ git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"
 
 ---
 
-## What just shipped — post-Track-U continuous batch (13 commits)
+## What just shipped — extended continuous batch (24 commits)
 
-The home page (Track U) was the start. This continuous batch built outward from it: cascade-routed pitch operations, voice-mode wired end-to-end, tenant surface suppression, and chart manifestation in Olivia replies.
+The home page (Track U) was the start. This continuous batch built outward across 4 closed tracks (D, E, I, J) plus partial Track N (3 of 5 manifestation modes), with polish and tests throughout.
 
 | Commit | Track / Session | What landed |
 |---|---|---|
-| `3d7be1b` | tests | 14 tests on chart-spec parser + color resolver. Suite 943/943 passing. |
+| `0c4ef08` | **N5 Track N** | Gamma deck preview cards. ` ```gamma ` fence (bare URL or full JSON `{url,title?,summary?,slides?}`) renders as a card with Open-in-Gamma action. 11 tests. |
+| `403e21d` | **S26 Track J** | HealthTech / ClimateTech / PropTech vertical addenda promoted from draft → final. Each now has a 5-point investor diligence frame (regulatory pathway, framework alignment, data accuracy etc.). Track J ✅ CLOSED. |
+| `2fe471f` | **S25 Track J** | AI/SaaS vertical adapter framework. `lib/orchestration/vertical-adapter.ts` — per-vertical system-prompt addenda + provider preferences + free-form industry detector. Cascade gains `vertical?: VerticalId` input; pitch helpers thread `industry` through. 15 tests. |
+| `2a26135` | polish | Suggestion chips above the home composer. 4 try-this prompts auto-hide on first interaction. |
+| `3081a97` | docs | Mid-batch handoff refresh. |
+| `3d7be1b` | tests | 14 tests on chart-spec parser + color resolver. |
 | `b5e6ab5` | N3-prompt | Cascade system prompt teaches Olivia the chart-fence contract. 5-line prompt edit. |
 | `4c2ff02` | **N1+N3** | Track N foundation. `<MarkdownReply>` (react-markdown + remark-gfm), `<ChartFromSpec>` (recharts bar/line/area/pie), `chart-spec.ts` parser with token-keyed colors. Wired into HomeHero `lastReply`, OliviaChatTab + PitchCoachTab message bubbles. |
 | `aa09fea` | **S24 Track I** | Adaptive surface suppression. `/api/home/tenant-ui` aggregator pulls `ui.suppressedSurfaces`/`ui.brandName`/`ui.accentColor` from `tenant_configs`. `useTenantUi` hook + `isSurfaceSuppressed` helper. RailLeft + ⌘K nav targets filtered. Header wordmark falls back to "STUDIO OLIVIA" without override. |
@@ -56,16 +61,16 @@ The home page (Track U) was the start. This continuous batch built outward from 
 | **Track D (Studio↔Brain, S15-S16)** | ✅ CLOSED | Pitch routes cascade-routed + PitchCoachTab. |
 | **Track E (voice input, S17)** | ✅ CLOSED | `/voice` STT/chat/TTS chain end-to-end. |
 | **Track I (multi-tenant + suppression, S24)** | ✅ CLOSED | Adaptive surface suppression + brand override. |
-| **Track N (visual manifestation, N1+N3 of 5)** | 🟡 partial | N1 manifest contract + N3 chart manifestation shipped. N2 (Mapbox 3D), N4 (generative UI / 3D scenes), N5 (Gamma deck preview) remaining. |
+| **Track N (visual manifestation, N1+N3+N5 of 5)** | 🟡 partial | N1 manifest contract ✅ + N3 chart manifestation ✅ + N5 Gamma deck preview ✅. **N2 (Mapbox 3D enhancement) and N4 (generative UI / 3D scenes) remaining.** |
+| **Track J (vertical adapters S25-S26)** | ✅ CLOSED | All 4 verticals final. AI/SaaS + HealthTech + ClimateTech + PropTech each carry a 5-point investor diligence frame in `lib/orchestration/vertical-adapter.ts`. Free-form industry detector + provider preferences + 16 tests. |
 | **Track G (cascade orchestrator port S19-S20)** | 🕗 pending | LTM `lib/cascade/` port + LangGraph wrap. Not started. |
 | **Track H (agents consolidation S21-S23)** | 🕗 pending | LTM 94 named agents port + auto-learning. Not started. |
-| **Track J (vertical adapters S25-S26)** | 🕗 pending | AI/SaaS · HealthTech · ClimateTech · PropTech routing. Q6 vertical catalog already exists in `lib/quantara/metamorphic/vertical-schedules.ts`. |
 | **Track K (hardening + launch S27-S29)** | 🕗 pending | Security audit, perf, runbooks. |
 | **S30 launch** | 🕗 pending | Target 2026-06-02. |
 | **Track O (weakness closure O2-O5)** | 🕗 pending | Patronus eval / sub-600ms voice / citation-first RAG / avatar lip-sync. |
 | **Track L (cluesintelligence ~10 sessions)** | 🕗 post-launch | Verdict + persona + what-if endpoints. |
 
-### Net-new files this batch (post-Track-U)
+### Net-new files this batch (post-Track-U, cumulative)
 
 ```
 src/lib/pitch/cascade-adapter.ts                                 (S15)
@@ -76,9 +81,16 @@ src/app/api/home/tenant-ui/route.ts                              (S24)
 src/components/home/reply-renderer/MarkdownReply.tsx             (N1)
 src/components/home/reply-renderer/ChartFromSpec.tsx             (N3)
 src/components/home/reply-renderer/chart-spec.ts                 (N1)
-src/components/home/reply-renderer/chart-spec.test.ts            (tests)
+src/components/home/reply-renderer/chart-spec.test.ts            (tests, 14)
+src/components/home/reply-renderer/GammaCard.tsx                 (N5)
+src/components/home/reply-renderer/GammaCard.test.ts             (tests, 11)
 src/components/home/reply-renderer/index.ts                      (barrel)
+src/components/home/SuggestionChips.tsx                          (polish)
+src/lib/orchestration/vertical-adapter.ts                        (S25+S26)
+src/lib/orchestration/vertical-adapter.test.ts                   (tests, 16)
 ```
+
+**Test additions: 41 new tests this batch (14 + 11 + 16). All passing.**
 
 ### Modified files this batch
 ```
