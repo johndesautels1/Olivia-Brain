@@ -2286,3 +2286,66 @@ Final smartScore goes through `clampSmartScore` (P1) so non-finite or out-of-ran
 **None new.** Carried forward from P1: apply `prisma/sql/06-add-deal-protection-foundation.sql` to Supabase before the route can persist. The orchestrator (`analyzeTermSheet`) runs cleanly without the table; only `prisma.dealAnalysis.create` requires the migration.
 
 **Next session:** **Track P Session P4 — Investor Reputation DB + admin CRUD.** Seed `InvestorReputation` from London-ecosystem data (note: P1 deferred the `D:\Deal_Doc_Engine\london\investor_db.json` seed because that path doesn't exist in OB — P4 designs the seed list from scratch). Admin CRUD page at `/admin/investors`. Founder-submitted reputation entries via opt-in form + admin moderation queue. Smart-score output starts including investor reputation when investor name matches a record.
+
+---
+
+## Part 47 — 2026-05-08 — Track P Session P4: Investor Reputation DB + admin CRUD + smart-score integration
+
+**HEAD before:** `21c2dad` (P3 docs — 724/724 across 56 suites). **HEAD after P4 code:** `97b789e`. **HEAD after P4 docs:** (this commit). **Tests:** 724/724 → **770/770** across **56 → 61 suites** (+46 new across 5 new suites). Typecheck clean.
+
+### What ships
+
+**Seed list (anonymized archetypes)** — `investor-seed.ts`. 15 fully-anonymized archetype entries spanning all 5 smart bands (3 per band). Names follow `<Posture> <Stage> Archetype` format so admins can quickly distinguish seed templates from curated entries. P1 deferred the LTM `investor_db.json` seed because that path doesn't exist in OB; P4 ships the archetype set instead — the admin UI is how operators clone-and-curate real entries afterward. Module-load runtime invariants verify band coverage + score calibration (every reputationScore lands inside its declared band) + name uniqueness.
+
+**Score impact** — `investor-score-impact.ts`. `computeReputationTilt(scores)` returns an integer in `[-REPUTATION_TILT_MAX, +REPUTATION_TILT_MAX]` (locked at ±8) based on the centered average of matched reputation scores. Score 100 → +8, score 0 → -8, score 50 → 0 (neutral). `applyReputationTilt` is the integration point with the P3 aggregator: **caps WIN over positive tilt** (a single critical clause stays a dealbreaker even with a famous investor in the room); negative tilt always allowed (a bad investor on a bad deal reinforces the verdict). Defensive clamping on non-finite + out-of-range inputs.
+
+**Lookup helper** — `investor-lookup.ts`. `lookupInvestorReputations(names)` normalizes parser-extracted investor names to deterministic slugs (`toInvestorSlug`), queries `prisma.investorReputation` filtered by `isActive=true && isArchived=false && slug IN (…)`, returns the full `InvestorReputationLookup` shape (matched records + unmatched names + average + tilt). De-duplicates input names by slug. **DB-failure soft fallback:** a Prisma error is logged and treated as "no matches" so the analyzer continues without a tilt — the founder's flow never breaks because the seed isn't loaded yet.
+
+**Analyzer wiring** — `analyze.ts` extended. After classification + aggregation, the orchestrator runs `lookupInvestorReputations(parsed.investorNames)`, applies `applyReputationTilt({ aggregatedScore, tilt, hadCriticalCap, hadHighCap })`, and uses the result as the final `smartScore` (which then drives band selection). New `reputationLookup` field on `DealRiskReport` surfaces matched investors, unmatched names (UI prompt for "submit a reputation entry"), and the applied tilt.
+
+**API routes (5 new):**
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `/api/admin/investors` | GET, POST | List (filterable by source/isActive/isArchived) + create (source='admin') |
+| `/api/admin/investors/[id]` | PATCH, DELETE | Partial update + soft-delete (`isArchived=true && isActive=false`) |
+| `/api/admin/investors/seed` | POST | Idempotent seed — preserves admin edits to `isActive`/`isArchived`/`notes` |
+| `/api/admin/investors/moderation` | GET, PATCH | Pending queue + approve (`isActive=true`) / reject (`isArchived=true`) |
+| `/api/deal-protection/investor-submission` | POST | Public, rate-limited 3/5min, lands as `source='founder_submitted'` + `isActive=false` |
+
+Admin routes use the `getAuthSession()` stub (W-015) — same as Track P P1-P3. The public submission route is unauthenticated by design (founder may not be signed in when surfacing the lookup result).
+
+**Admin UI** — `/admin/investors` page with three tabs (Active / Archived / Moderation), inline create + edit forms, `isActive` toggle (1-click), archive (soft-delete with confirmation), moderation approve/reject, seed re-apply with summary banner. Uses inline styles + Aurum/Aether tokens directly (no Tailwind in OB; Track C will polish per W-013). Auto-derives `reputationBand` from `reputationScore` via `getSmartBand()` so admins can't accidentally save mismatched calibration.
+
+### Tests (46 new across 5 new suites, plus 4 new cases on the existing analyze.test.ts)
+
+- **`investor-seed.test.ts`** (5 cases) — band coverage exhaustiveness; score calibration per band; name uniqueness; "(Archetype)" suffix; notes field present.
+- **`investor-score-impact.test.ts`** (16 cases) — empty list → 0; score 100 → +REPUTATION_TILT_MAX; score 0 → -REPUTATION_TILT_MAX; integer range invariant; defensive clamping (out-of-range + NaN); negative cap-aware path; positive cap-aware path (CRITICAL_CEILING wins over +8 tilt; HIGH_CEILING wins over +8 tilt); non-finite intermediates collapse to 0.
+- **`investor-lookup.test.ts`** (7 cases) — empty input → no Prisma call; case-insensitive slug match; whitespace + punctuation normalization; matched/unmatched partition; slug de-duplication on duplicate inputs; average + tilt computation; DB-failure soft-fallback preserves names as unmatched.
+- **`admin/investors/__tests__/route.test.ts`** (10 cases) — module surfaces (4 routes); POST validation (invalid JSON, bad shape, empty/symbol-only name); PATCH validation (empty body); moderation PATCH validation (unknown action); auth-stub 503 when env unset.
+- **`deal-protection/investor-submission/__tests__/route.test.ts`** (4 cases) — module surface; invalid JSON; missing required fields; out-of-range reputationScore.
+- **`analyze.test.ts`** (+4 cases) — positive reputation tilt applied to score; critical-cap wins over +8 tilt (single-dealbreaker semantics); negative tilt below cap allowed; lookup metadata (matched + unmatched) forwarded onto report.
+
+### Decisions / judgment-call trail
+
+1. **Anonymized archetype seed (vs real London VCs).** Naming specific firms with low reputation scores carries real defamation risk. P4 ships 15 archetype templates that admins clone and curate post-seed. The `(Archetype)` suffix on every name lets admins distinguish seed templates from curated entries at a glance; the `notes` field on each entry says "replace with verified entry before production."
+2. **Modest tilt magnitude (±8).** Locked 2026-05-08. Reputation is a contextual signal, not a clause-level finding. ±8 is enough to flip yellow→blue or yellow→orange in marginal cases but cannot single-handedly move red↔green. Bigger tilts would risk reputation overriding clause analysis.
+3. **Caps WIN over positive tilt.** Critical-clause cap (39) and high-clause cap (79) both apply AFTER the tilt is added. Means a famous investor on a deal with a critical clause cannot lift the score out of orange. Single dealbreakers stay dealbreakers — matches the "100 - mean rejected; one ratchet ADP cannot be averaged away" framing locked in P3.
+4. **Negative tilt always allowed.** No floor. A bad investor on a bad deal reinforces the verdict (score goes lower). Asymmetric by design — the engine is founder-side and is allowed to compound bad signals.
+5. **Slug-based lookup (vs case-insensitive ILIKE).** Prisma's `mode: 'insensitive'` doesn't compose with `in:` in a single query. The slug field is already in the schema (UNIQUE) so we use it as the lookup key — `toInvestorSlug("Octopus Ventures!")` = `"octopus-ventures"` regardless of how the founder writes it.
+6. **DB-failure soft fallback in lookup.** A Prisma error in the lookup is non-blocking; the analyzer continues with `reputationTilt=0` and preserves the names as `unmatchedNames`. The founder's flow never breaks because the seed isn't loaded or the table is empty.
+7. **Public submission lands as `isActive=false`.** Submitted entries do NOT influence smart-score lookups until an admin approves via `PATCH /api/admin/investors/moderation`. Two safety layers (rate limit + admin moderation) on the unauthenticated surface.
+8. **Submission collision strategy.** When a submission's name (or slug) collides with an existing record, the submission lands as `<Original Name> (founder submission)` with a timestamped slug suffix — every submission reaches the moderation queue (no silent drop), but the existing curated entry is unaffected.
+9. **Idempotent seed preserves admin edits.** Re-running `POST /api/admin/investors/seed` updates `investorType` / `geographicFocus` / `stage|sector|patterns` / `reputationScore` / `reputationBand` (canonical archetype data) but does NOT touch `isActive` / `isArchived` / `notes` (operator decisions). Operators can re-seed without losing customizations.
+10. **Auto-derived reputationBand in admin form.** When the admin types a `reputationScore`, the form auto-sets `reputationBand` via `getSmartBand()` — prevents miscalibrated entries that would fail the same monotonicity invariant the seed enforces.
+
+### Build status at session-P4 close
+
+**Green.** Tests: **770/770** across **61 suites** (+46 new). Typecheck: clean. **Track P 4/7 ✅.**
+
+### Operator actions surfaced
+
+1. **(Carried forward from P1)** Apply `prisma/sql/06-add-deal-protection-foundation.sql` to Supabase before the routes can persist.
+2. **(NEW for P4)** Once migration 06 is applied, run `POST /api/admin/investors/seed` (or click "Re-apply seed" in `/admin/investors`) to populate the 15 archetype entries. Without this, the analyzer just runs with an empty reputation table — no breakage, the smart-score tilt is always 0 until the seed lands.
+
+**Next session:** **Track P Session P5 — Multi-round dilution projection + band-specific email drafts.** New `src/lib/deal-protection/multi-round.ts` (forward simulation 2 rounds out, accepts existing `ValuationRun` + offer terms, returns dilution trajectory + ownership chart). Band-specific email generator: 5 tones (Red walk-away, Orange caution, Yellow negotiate-hard, Blue accept-with-edits, Green sign). Cascade-driven. Per BUILD_SEQUENCE Track P row P5.

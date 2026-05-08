@@ -2,8 +2,8 @@
 
 > **Snapshot of every shipped capability + the remaining roadmap.**
 >
-> Last refreshed: **2026-05-08** at HEAD `96324f0` (post-P3 feat commit). **Track Q closed; Track P 3/7 ✅.**
-> Test gate: **724/724 across 56 suites**. Typecheck: **clean**.
+> Last refreshed: **2026-05-08** at HEAD `97b789e` (post-P4 feat commit). **Track Q closed; Track P 4/7 ✅.**
+> Test gate: **770/770 across 61 suites**. Typecheck: **clean**.
 >
 > This file is a snapshot — refresh it at end of each batch (after the SESSION_LOG entry lands) so the next session opens to a current view of the codebase. It's a complement to `BUILD_SEQUENCE.md` (which is the session-by-session plan) and `HANDOFF.md` (which is the resume-point doc).
 
@@ -80,7 +80,7 @@
 | `quantara/metamorphic/` | Q5 round-axis (buyer-class map + section reorder + 18 supplementary fields) + Q6 vertical-axis (5 verticals + 20 vertical fields + projection); shared `MetamorphicFieldShape` powers a single field renderer across both axes | SHIPPED |
 | `quantara/voice/` | Q7 cascade-driven voice extraction — prompt builder with field manifest + filled hints + transcript truncation; `extractFromTranscript` orchestrator with 3-soft-failure-mode fallback to empty extractions (mock-mode / parse failure / schema failure — never fabricates) | SHIPPED |
 | `quantara/personas/` | Q7 cascade-driven persona synthesis — `CombinedPersonaPayloadSchema` (bounded archetype + risk-tolerance enums); prompt builder; deterministic mock fallback; `synthesizePersonas` orchestrator with 3-soft-failure-mode fallback that always preserves the cascade attempts trail for ops review | SHIPPED |
-| `deal-protection/` | Track P Smart Score primitives — 5-band ladder (red/orange/yellow/blue/green) covering 0-100 contiguously with module-load runtime invariants; pure helpers `clampSmartScore` / `getSmartBand` / `getSmartBandRecord` / `bandsAgree`; per-band UI copy + design-system color tokens. **P2** adds clause classifier — 20-value `ClauseType` enum, severity ladder + per-tier `SEVERITY_TOXICITY_RANGE`, 20 canonical fixture clauses, two-pass cascade orchestration (Sonnet primary + Opus judge for critical) with three-mode soft-failure fixture fallback. **P3** adds the term-sheet parser + analyze API — heuristic-first hybrid parser (section-marker split → cascade fallback → single-clause fallback) with investor names + round context extraction; severity-weighted aggregation with hard caps (any critical → ≤ 39, any high → ≤ 79) so a single dealbreaker can't be averaged away; analyze orchestrator + `DealRiskReport` shape; deterministic walk-away derivation (no extra cascade call); 0.95 live / 0.40 mock confidence scoring. New `POST /api/deal-protection/analyze` route — 5/min rate limit, own-row ValuationSubject lookup, persists `band.action` enum (not label) so P5 email drafts can pattern-match. P4 investor reputation seed lands in the next session. | SHIPPED (P1+P2+P3) |
+| `deal-protection/` | Track P Smart Score primitives — 5-band ladder (red/orange/yellow/blue/green) covering 0-100 contiguously with module-load runtime invariants; pure helpers `clampSmartScore` / `getSmartBand` / `getSmartBandRecord` / `bandsAgree`; per-band UI copy + design-system color tokens. **P2** adds clause classifier — 20-value `ClauseType` enum, severity ladder + per-tier `SEVERITY_TOXICITY_RANGE`, 20 canonical fixture clauses, two-pass cascade orchestration (Sonnet primary + Opus judge for critical) with three-mode soft-failure fixture fallback. **P3** adds the term-sheet parser + analyze API — heuristic-first hybrid parser (section-marker split → cascade fallback → single-clause fallback) with investor names + round context extraction; severity-weighted aggregation with hard caps (any critical → ≤ 39, any high → ≤ 79) so a single dealbreaker can't be averaged away; analyze orchestrator + `DealRiskReport` shape; deterministic walk-away derivation (no extra cascade call); 0.95 live / 0.40 mock confidence scoring. New `POST /api/deal-protection/analyze` route — 5/min rate limit, own-row ValuationSubject lookup, persists `band.action` enum (not label) so P5 email drafts can pattern-match. **P4** adds the investor reputation surface — 15 fully-anonymized archetype seed entries spanning all 5 bands (admins clone + curate); slug-based lookup helper with DB-failure soft fallback; cap-aware reputation tilt formula (`computeReputationTilt` ±8 max, `applyReputationTilt` enforces P3 caps over positive tilt — a famous investor cannot lift a critical-clause deal out of orange); analyzer wiring with new `reputationLookup` field on `DealRiskReport`; idempotent seed loader (preserves admin edits to isActive/isArchived/notes); 5 new routes — admin CRUD (`/api/admin/investors`, `/api/admin/investors/[id]`), seed (`/api/admin/investors/seed`), moderation queue (`/api/admin/investors/moderation`), public submission (`/api/deal-protection/investor-submission` rate-limited 3/5min, lands as `founder_submitted`+inactive). P5 multi-round dilution + email drafts lands in the next session. | SHIPPED (P1+P2+P3+P4) |
 | `queries/` | Calendar queries (CRUD, filters, sync) | SHIPPED |
 | `rag/` | Citation-first RAG with source ranking | SHIPPED |
 | `realtime/` | Unified transport: LiveKit, Twilio, Vapi, Retell | SHIPPED |
@@ -115,7 +115,8 @@
 | **`/api/admin/*`** | 8 | `agents/[agentId]`, `agents/run`, `approvals`, `integrations`, `integrations/test`, `memory`, `migrations`, `toggles` |
 | **`/api/pitch/*`** | 6 | `archetypes`, `templates`, `analyze`, `chat`, `draft`, `optimize` |
 | **`/api/founder-intake/*`** (Q2 + Q3 + Q7) | 4 | `POST/GET /api/founder-intake`, `POST /api/founder-intake/auto-fill`, `POST /api/founder-intake/voice-extract`, `POST/GET /api/founder-intake/personas` |
-| **`/api/deal-protection/*`** (P3) | 1 | `POST /api/deal-protection/analyze` — parse + classify + aggregate + persist DealAnalysis + return DealRiskReport |
+| **`/api/deal-protection/*`** (P3+P4) | 2 | `POST /api/deal-protection/analyze` — parse + classify + aggregate + reputation lookup + persist DealAnalysis + return DealRiskReport (P3+P4); `POST /api/deal-protection/investor-submission` — public, rate-limited founder reputation submission (P4) |
+| **`/api/admin/investors/*`** (P4) | 4 | `GET/POST /api/admin/investors`, `PATCH/DELETE /api/admin/investors/[id]`, `POST /api/admin/investors/seed`, `GET/PATCH /api/admin/investors/moderation` |
 | **`/api/avatar/*`** | 3 | Generate, status, session create/manage |
 | **`/api/realtime/*`** | 3 | Status, session create, WebRTC credentials |
 | **`/api/voice/*`** | 2 | `synthesize`, `transcribe` |
@@ -198,7 +199,7 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 | Track | Sessions remaining | Scope summary |
 |---|---|---|
 | **Track Q (Quantara)** — Q5 → Q7 | **3** | Q5 investor-class metamorphic UI · Q6 vertical-specific schedules (AI/SaaS, HealthTech, ClimateTech, PropTech) · Q7 voice-first paragraphical capture + persona generation |
-| **Track P (Deal Protection)** — P4 → P7 | **4** | Investor Reputation DB + admin CRUD · multi-round dilution + email drafts · WarRoom integration + counter term sheet · negotiation rehearsal + versioning + multi-LLM consensus (P1+P2+P3 ✅) |
+| **Track P (Deal Protection)** — P5 → P7 | **3** | Multi-round dilution + email drafts · WarRoom integration + counter term sheet · negotiation rehearsal + versioning + multi-LLM consensus (P1+P2+P3+P4 ✅) |
 | **Track D (Studio↔Brain wiring)** — S15-S16 | **2** | Re-point Studio "Ask Olivia / Analyze / Optimize" to OB cascade |
 | **Track E (Voice input, S17)** | **1** | Voice-driven Studio capture |
 | **Track F (Clerk auth, S18)** | **1** | Replace `getAuthSession` stub with real Clerk — closes W-015 |
@@ -222,11 +223,11 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 
 | Metric | Value |
 |---|---|
-| **Sessions complete** | 38 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P3) |
-| **Sessions remaining (priorities 1-4 + Track L)** | **~47** |
+| **Sessions complete** | 39 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P4) |
+| **Sessions remaining (priorities 1-4 + Track L)** | **~46** |
 | **Total sessions in plan** | ~85 |
-| **% complete** | ~45% by session count |
-| **Tests passing** | 724/724 across 56 suites |
+| **% complete** | ~46% by session count |
+| **Tests passing** | 770/770 across 61 suites |
 | **Typecheck** | clean |
 | **Open weaknesses** | 4 (W-013/14/15/16) |
 | **Library subsystems** | 50 (43 shipped, 1 LTM-ported, 2 partial, 3 stub, 1 pending) |
