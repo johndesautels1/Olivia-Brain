@@ -2723,3 +2723,46 @@ Single-session port of the LTM documents-rendering layer plus the studio questio
 Single-session bounded port. One concern (documents engine atoms). One feat commit (`8d30887`) + one docs commit (this one). 32 source files / 24 tests / +5557 LOC in feat. Five docs files in docs (`README.md` W-009 ▲ partial, `BUILD_SEQUENCE.md` Track B Session 8 ▲ atoms with new 8b/8c/8d rows, `STUDIO_PORT_MANIFEST.md` § K.4 execution log + new § K.5 Studio v1 engine carry-forward, `FEATURE_INVENTORY.md` refresh, this `SESSION_LOG` Part 52, `HANDOFF.md` updates).
 
 **Next session:** **CHECK IN FIRST.** W-009 atoms portion closed; the workspace shell port (Session 8b) is the natural follow-up because it unblocks the entire documents UX and was the original Session 7 deliverable. Track C remainder (Studio UI rebuild S11–S14), Track G (cascade orchestrator port S19–S20), Track L (cluesintelligence flagship), and Session 8c (Studio v1 engine — PreparationStudio + 17 engine-side components) are all open candidates. Founder picks priority.
+
+---
+
+## Part 53 — 2026-05-08 — Track B Session 8b: Workspace shell atoms (W-009 rendering layer fully closed)
+
+Single-session port. With Session 8 atoms (commit `8d30887`) and Session 8b atoms (commit `2abec1a`) on disk, the **rendering layer of LTM's documents subsystem is fully ported**: 18 blocks + DocumentRenderer + DocumentBody + DocumentWorkspace (data spine + React component) + 4 sibling workspace components + lib/studio/engine all compile end-to-end. `<DocumentWorkspace />` mounts against a stub `WorkspaceDocument` and the split-pane book-style editor renders + edits + saves through the supplied callback. The PORT+ADAPT files + new API routes + new Prisma models split out into a focused Session 8b-routes.
+
+### Files (6 staged, +2136 LOC)
+
+| Path | Surface |
+|---|---|
+| `src/components/documents/DocumentFieldEditor.tsx` | Per-field editor for text / textarea / items / metrics / table / timeline. 22.5 KB. Verbatim from LTM |
+| `src/components/documents/DocumentTemplatePreview.tsx` | Read-only block preview rendered in the workspace's left pane. 6.6 KB. Verbatim |
+| `src/components/documents/WorkspaceOliviaPanel.tsx` | Olivia guidance panel mounted above the split pane. 7.1 KB. Verbatim port; manifest § C.2 marks it PORT+ADAPT for future replacement by the GrandMaster right-pane Olivia tab — verbatim today keeps the workspace shippable, ADAPT lands when the GrandMaster surface is wired in Track C |
+| `src/components/documents/DocumentEditor.tsx` | Alternative edit-mode entry that uses `isBlockJsonDocumentContent` to gate. 18.8 KB. Imports are clean (next/navigation, next/link, lib/documents/content) — no Clerk, no LTM Prisma references. Verbatim |
+| `src/components/documents/DocumentWorkspace.tsx` (modified) | Appended the React component portion (LTM lines 257–612) + `DocumentWorkspaceProps` interface + `STATUS_COLORS` + `BLOCK_TYPE_LABELS` to the existing data-spine file. The Session 8 regex-divergence fix in `computeBlockStatus` is preserved verbatim. File header rewritten to reflect the now-complete port |
+| `src/components/documents/__tests__/DocumentWorkspace.test.tsx` | 6 smoke cases mounting the full shell against a stub `WorkspaceDocument`: top-bar title + completion chip; Save Progress button + onSave round-trip + 3-block payload; status pills for empty + complete editable blocks; aria-expanded toggles when an editable block is clicked; DNA-paragraph indicator surfaces when collection has mapping; decorative-block label without status pill for dividers. **Built-in vitest matchers only** — OB doesn't load `@testing-library/jest-dom` in `vitest.setup.ts`, so `toBeInTheDocument` is unavailable; tests use `container.textContent.toContain(...)` and `getAttribute(...)` instead |
+
+### Tests
+
+24 new across 2 new suites + 6 new in 1 new suite = **30 new in 3 new suites since pre-Track-B baseline.** Track B Session 8b alone adds 6 tests in 1 new suite (`DocumentWorkspace.test.tsx`). **905/905 across 79 suites passing.** Typecheck clean.
+
+### Decisions / judgment-call trail
+
+1. **Atoms-extended cut over full original S8b spec.** The original S8b row covered ~17 files including PORT+ADAPT siblings (BookmarkButton, DocumentActionBar, SaveToPackageModal, ShareDocumentModal, etc.) plus their `/api/bookmarks` + `/api/packages` + `/api/share` + `/api/saved-documents` routes plus 5 new Prisma models. Pulling that into one session would have shipped band-aid stubs for the routes (or required a Prisma migration mid-port). Splitting at the rendering / write boundary keeps the rendering layer fully verifiable today and concentrates the write-surface work into a focused Session 8b-routes.
+2. **Verbatim port of WorkspaceOliviaPanel (vs ADAPT today).** Manifest § C.2 marks WorkspaceOliviaPanel as PORT+ADAPT — to be replaced by the GrandMaster right-pane Olivia tab. Today's verbatim port keeps the workspace shippable end-to-end and renders Olivia's guidance against the active block. The ADAPT swap to the GrandMaster surface lands when Track C wires the right pane (S11–S14). This avoids two diffs of WorkspaceOliviaPanel — one stub-style today, one replacement during Track C.
+3. **Built-in vitest matchers (vs adopting `@testing-library/jest-dom`).** First test file in the workspace tier needed `toBeInTheDocument()`-style assertions. Adding jest-dom to `vitest.setup.ts` would have changed shared infra for every test. Built-in matchers (`container.textContent.toContain(...)`, `getAttribute(...)`, `not.toBeNull()`) cover every assertion this test needs. Established OB pattern (used by every other component test).
+4. **DocumentEditor ports verbatim (no Clerk dependency surfaced).** Manifest § K.3 flagged Clerk imports in `BookmarkButton.tsx` + `DocumentActionBar.tsx`. DocumentEditor was not on the Clerk-affected list — re-verified by reading its first 60 lines (next/navigation + next/link + isBlockJsonDocumentContent only). Verbatim port works without the W-015 Clerk integration touching it.
+5. **DocumentWorkspaceProps placed near the component (vs LTM's location).** LTM places `DocumentWorkspaceProps` between `WorkspaceDocument` and the placeholder helpers (lines 45–52). The data-spine extract dropped it. Re-adding it next to the component (logical grouping) is functionally equivalent — TypeScript doesn't care about order — and avoids a third Edit splitting the existing file.
+
+### Build status at session-Bb close
+
+**Green.** Tests: **905/905 across 79 suites** (+6 new across +1 new suite). Typecheck: **clean**. **Track B Session 8b ▲ workspace-shell-atoms — W-009 rendering layer fully closed.** ADAPT files + API routes + Prisma models pending in Session 8b-routes.
+
+### Operator actions surfaced
+
+**None new.** No SQL, no env vars, no operator step. Track P SQL carry-forwards (3 files) + Track F Vercel Clerk-keys action remain unchanged.
+
+### Session 8b closure summary
+
+Single-session bounded port. One concern (workspace shell rendering atoms). One feat commit (`2abec1a`) + one docs commit (this one). Six files / +2136 LOC in feat. Five docs files in docs (`README.md` W-009 ▲ rendering closed, `BUILD_SEQUENCE.md` Track B Session 8b ▲ atoms with new S8b-routes row, `STUDIO_PORT_MANIFEST.md` § K.4 step 5 fully closed, `FEATURE_INVENTORY.md` refresh, this `SESSION_LOG` Part 53, `HANDOFF.md` updates).
+
+**Next session:** **CHECK IN FIRST.** Rendering layer fully closed. Open candidates: **Session 8b-routes** (the bookmark/package/share/saved-docs routes + Prisma migration — natural follow-up to complete the documents write-surface), **Session 8c** (Studio v1 engine — PreparationStudio + 17 engine-side components), **Track C remainder** (Studio UI rebuild S11–S14), **Track G** (cascade orchestrator port S19–S20), **Track L** (cluesintelligence flagship). Founder picks priority. Three SQL migrations + one seed remain owed by the operator from earlier sessions (paste-into-Supabase shapes already on disk under `prisma/sql/`).

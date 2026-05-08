@@ -2,8 +2,8 @@
 
 > **Snapshot of every shipped capability + the remaining roadmap.**
 >
-> Last refreshed: **2026-05-08** at HEAD `8d30887` (post-Track-B-Session-8 feat commit). **Track Q closed; Track P CLOSED (7/7 ✅); Track F CLOSED (1/1 ✅); Track B Session 8 ▲ atoms-only (workspace shell + Studio v1 engine + app routes carry forward to S8b/S8c/S8d).**
-> Test gate: **899/899 across 78 suites**. Typecheck: **clean**.
+> Last refreshed: **2026-05-08** at HEAD `2abec1a` (post-Track-B-Session-8b feat commit). **Track Q closed; Track P CLOSED (7/7 ✅); Track F CLOSED (1/1 ✅); Track B Session 8 ▲ atoms-only ✅; Track B Session 8b ▲ workspace-shell-atoms ✅ (rendering layer of W-009 fully closed; ADAPT files + API routes + Prisma models defer to S8b-routes).**
+> Test gate: **905/905 across 79 suites**. Typecheck: **clean**.
 >
 > This file is a snapshot — refresh it at end of each batch (after the SESSION_LOG entry lands) so the next session opens to a current view of the codebase. It's a complement to `BUILD_SEQUENCE.md` (which is the session-by-session plan) and `HANDOFF.md` (which is the resume-point doc).
 
@@ -223,8 +223,8 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 
 | Metric | Value |
 |---|---|
-| **Sessions complete** | 44 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P7 + Track F S18 + Track B S8 atoms) |
-| **Sessions remaining (priorities 1-4 + Track L)** | **~44** (S8 atoms shipped; S8b workspace shell + S8c Studio v1 engine + S8d documents app routes added to the count) |
+| **Sessions complete** | 45 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P7 + Track F S18 + Track B S8 atoms + Track B S8b workspace-shell-atoms) |
+| **Sessions remaining (priorities 1-4 + Track L)** | **~44** (S8 + S8b shipped; S8b-routes + S8c Studio v1 engine + S8d documents app routes carry forward) |
 | **Total sessions in plan** | ~85 |
 | **% complete** | ~49% by session count |
 | **Tests passing** | 875/875 across 76 suites |
