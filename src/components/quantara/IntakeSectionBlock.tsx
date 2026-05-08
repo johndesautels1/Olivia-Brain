@@ -30,6 +30,7 @@ import {
   type QuantaraSectionId,
   type QuantaraValues,
   type QuantaraFieldId,
+  type FieldRelevanceTier,
 } from "@/lib/quantara";
 import type { QuantaraSuggestion } from "@/lib/quantara/auto-fill";
 import type { QuantaraDiscrepancyGap } from "@/lib/quantara/discrepancy";
@@ -42,6 +43,8 @@ export interface IntakeSectionBlockProps {
   sectionId: QuantaraSectionId;
   values: QuantaraValues;
   onChange: (fieldId: QuantaraFieldId, value: unknown) => void;
+  /** Q5 — per-field relevance tiers for the active round type. */
+  relevanceMap?: Readonly<Record<QuantaraFieldId, FieldRelevanceTier>>;
   /** Per-field auto-fill suggestions (Q3). */
   suggestions?: ReadonlyMap<QuantaraFieldId, QuantaraSuggestion>;
   onAcceptSuggestion?: (fieldId: QuantaraFieldId) => void;
@@ -56,6 +59,7 @@ export function IntakeSectionBlock({
   sectionId,
   values,
   onChange,
+  relevanceMap,
   suggestions,
   onAcceptSuggestion,
   onRejectSuggestion,
@@ -193,6 +197,7 @@ export function IntakeSectionBlock({
             fieldId={f.id}
             value={values[f.id]}
             onChange={(next) => onChange(f.id, next)}
+            relevanceTier={relevanceMap ? relevanceMap[f.id] : "primary"}
             suggestion={suggestions?.get(f.id)}
             onAcceptSuggestion={
               onAcceptSuggestion ? () => onAcceptSuggestion(f.id) : undefined

@@ -60,6 +60,8 @@ import {
   QUANTARA_SECTIONS_BY_ID,
   QUANTARA_VERTICALS,
   getSectionOrderForRound,
+  getAllFieldRelevanceTiers,
+  type FieldRelevanceTier,
   type QuantaraFieldId,
   type QuantaraSectionId,
   type QuantaraValues,
@@ -245,6 +247,15 @@ export function IntakeForm({
    */
   const sectionOrder = useMemo(
     () => getSectionOrderForRound(targetRoundType),
+    [targetRoundType],
+  );
+
+  /**
+   * Q5 — per-field relevance map. Tiers every canonical field as
+   * 'primary' or 'secondary' based on the active round type.
+   */
+  const relevanceMap = useMemo(
+    () => getAllFieldRelevanceTiers(targetRoundType),
     [targetRoundType],
   );
 
@@ -810,6 +821,7 @@ export function IntakeForm({
                   sectionId={s.id}
                   values={values}
                   onChange={handleChangeField}
+                  relevanceMap={relevanceMap}
                   suggestions={suggestions}
                   onAcceptSuggestion={handleAcceptSuggestion}
                   onRejectSuggestion={handleRejectSuggestion}

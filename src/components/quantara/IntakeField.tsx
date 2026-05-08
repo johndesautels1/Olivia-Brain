@@ -34,6 +34,7 @@ import {
   QUANTARA_FIELDS_BY_ID,
   type QuantaraFieldDefinition,
   type QuantaraFieldId,
+  type FieldRelevanceTier,
 } from "@/lib/quantara";
 import type { QuantaraSuggestion } from "@/lib/quantara/auto-fill";
 import type { QuantaraDiscrepancyGap } from "@/lib/quantara/discrepancy";
@@ -51,6 +52,8 @@ export interface IntakeFieldProps {
   value: unknown;
   /** Called with the new value when the user edits the input. */
   onChange: (value: unknown) => void;
+  /** Q5 — relevance tier for the active round. 'secondary' = de-emphasised. */
+  relevanceTier?: FieldRelevanceTier;
   /**
    * Optional Q3 auto-fill suggestion for this field. When set,
    * `IntakeField` renders a source chip + accept (✓) / reject (✗)
@@ -116,6 +119,7 @@ export function IntakeField({
   fieldId,
   value,
   onChange,
+  relevanceTier = "primary",
   suggestion,
   onAcceptSuggestion,
   onRejectSuggestion,
@@ -134,6 +138,8 @@ export function IntakeField({
      `filled` gates this so the chip never competes with a Q3 suggestion. */
   const showDiscrepancy = discrepancy !== undefined && filled;
 
+  const isSecondary = relevanceTier === "secondary";
+
   /* Border colour priority: discrepancy (coral) → suggestion (aether) →
      default. Discrepancy wins because it's a data-quality signal that
      blocks confidence in the saved value. */
@@ -141,7 +147,9 @@ export function IntakeField({
     ? "1px solid var(--coral-down)"
     : showSuggestion
       ? "1px solid var(--border-aether)"
-      : "1px solid var(--border-default)";
+      : isSecondary
+        ? "1px solid var(--border-subtle)"
+        : "1px solid var(--border-default)";
 
   return (
     <div
@@ -149,17 +157,42 @@ export function IntakeField({
       data-filled={filled || undefined}
       data-has-suggestion={showSuggestion || undefined}
       data-has-discrepancy={showDiscrepancy || undefined}
+      data-relevance-tier={relevanceTier}
       style={{
         gridColumn: ui.fullWidth ? "1 / -1" : undefined,
-        background: "var(--surface-translucent)",
+        background: isSecondary
+          ? "var(--surface-recess)"
+          : "var(--surface-translucent)",
         border: borderColour,
         borderRadius: "var(--radius-xl)",
         padding: 20,
-        backdropFilter: "blur(16px) saturate(1.4)",
+        backdropFilter: isSecondary
+          ? "blur(4px) saturate(0.8)"
+          : "blur(16px) saturate(1.4)",
+        opacity: isSecondary && !filled ? 0.65 : 1,
+        position: "relative",
         transition:
-          "border-color var(--duration-default) var(--ease-out-quart)",
+          "border-color var(--duration-default) var(--ease-out-quart), opacity var(--duration-default) var(--ease-out-quart), background var(--duration-default) var(--ease-out-quart)",
       }}
     >
+      {isSecondary && (
+        <span
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            fontFamily: "var(--font-mono)",
+            fontSize: "10px",
+            fontWeight: 700,
+            color: "var(--fg-disabled)",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            pointerEvents: "none",
+          }}
+        >
+          Secondary
+        </span>
+      )}
       <label
         htmlFor={inputId}
         style={{
@@ -169,7 +202,7 @@ export function IntakeField({
           fontFamily: "var(--font-sans)",
           fontSize: "var(--text-sm)",
           fontWeight: 500,
-          color: "var(--fg-secondary)",
+          color: isSecondary ? "var(--fg-tertiary)" : "var(--fg-secondary)",
           marginBottom: 8,
         }}
       >

@@ -9,6 +9,8 @@
  * Tracked as W-016 in README weakness backlog.
  */
 
+import prisma from "@/lib/db/client";
+
 interface CreateAlertOptions {
   source: string;
   severity?: "info" | "warning" | "error" | "critical";
@@ -17,11 +19,34 @@ interface CreateAlertOptions {
   metadata?: Record<string, unknown>;
 }
 
-/** Console-only stub. Never throws — alerting must not break the caller. */
+/**
+ * Creates a system alert in the database.
+ * Closes W-016: transition from console-only stub to persistent storage.
+ *
+ * Never throws — alerting must not break the caller.
+ */
 export async function createSystemAlert(opts: CreateAlertOptions): Promise<void> {
   const severity = opts.severity ?? "error";
-  console.error(
-    `[SystemAlert ${severity.toUpperCase()}] ${opts.source}: ${opts.title} — ${opts.message}`,
-    opts.metadata ?? {}
+
+  // Still log to console for immediate visibility in logs
+  console.log(
+    `[SystemAlert ${severity.toUpperCase()}] ${opts.source}: ${opts.title} — ${opts.message}`
   );
+
+  try {
+    await prisma.system_alerts.create({
+      data: {
+        source: opts.source,
+        severity: severity,
+        title: opts.title,
+        message: opts.message,
+        metadata: opts.metadata ?? {},
+      },
+    });
+  } catch (err) {
+    // If DB write fails, at least the console log above already happened.
+    // We don't throw here to ensure the primary workflow continues.
+    const raw = err instanceof Error ? err.message : String(err);
+    console.error(`[SystemAlert FAILED TO PERSIST] ${raw}`);
+  }
 }

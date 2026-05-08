@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, requireAdminKey } from "@/lib/rate-limit";
+import { rateLimit, requireAuth } from "@/lib/rate-limit";
 import { createAndStartSession } from "@/lib/olivia/liveavatar";
 
 /**
@@ -13,7 +13,7 @@ import { createAndStartSession } from "@/lib/olivia/liveavatar";
  *
  * Auth required — LiveAvatar sessions cost credits.
  *
- * TODO(week-1): swap requireAdminKey() for Clerk `auth()` once Clerk is wired.
+ * Closes W-015: uses Clerk-integrated auth via requireAuth().
  */
 export async function POST(request: NextRequest) {
   const limited = rateLimit(request, {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   });
   if (limited) return limited;
 
-  const authReject = requireAdminKey(request);
+  const authReject = await requireAuth();
   if (authReject) return authReject;
 
   try {

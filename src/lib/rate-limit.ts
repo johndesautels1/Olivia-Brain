@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthSession } from "@/lib/auth/session";
 
 interface BucketEntry {
   count: number;
@@ -29,6 +30,32 @@ function clientId(request: NextRequest): string {
   const real = request.headers.get("x-real-ip");
   if (real) return real.trim();
   return "anonymous";
+}
+
+/**
+ * Standard auth gate using getAuthSession().
+ * Closes W-015 by routing through real Clerk auth in production
+ * and the STUB_USER_ID in development.
+ *
+ * Returns a NextResponse 401 if rejected, or null if allowed.
+ */
+export async function requireAuth(): Promise<NextResponse | null> {
+  try {
+    const { userId } = await getAuthSession();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+    return null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Auth configuration error";
+    return NextResponse.json(
+      { error: message },
+      { status: 503 },
+    );
+  }
 }
 
 export function rateLimit(
@@ -71,7 +98,7 @@ export function rateLimit(
  * Pre-Clerk admin gate: requires `Authorization: Bearer <ADMIN_API_KEY>`.
  * Returns a NextResponse 401 if rejected, or null if allowed.
  *
- * TODO(week-1): Replace with `auth()` from @clerk/nextjs/server once Clerk is wired.
+ * @deprecated Use `requireAuth()` instead for Clerk-integrated authentication.
  */
 export function requireAdminKey(request: NextRequest): NextResponse | null {
   const adminKey = process.env.ADMIN_API_KEY;
