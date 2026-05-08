@@ -3,40 +3,65 @@
 /**
  * `HomeCenter` — center-pane composition for `/`.
  *
- * Track U owns this surface — replaces the Session-14 scaffolding hero
- * that read like an internal README. Composes:
+ * Track U owns this surface. Composes (top-to-bottom):
  *
- *   - Hero zone: 240px AvatarOrb + activity ticker + composer (U2)
- *   - KPI tile grid (U4)
- *   - Recent work strip (U4)
+ *   - Hero zone:        240px AvatarOrb (state-reactive) + tagline    (U2)
+ *   - Activity ticker:  Bloomberg-style live foundation status        (U2)
+ *   - Composer:         Cursor-style chips + /api/olivia/chat wiring  (U2)
+ *   - KPI tile grid:    Today / Agents / Next                         (U4)
+ *   - Recent work:      Artifact strip                                 (U4)
+ *
+ * State:
+ *   - `chatState` drives the hero orb (idle → thinking → speaking).
+ *   - `lastReply` rendered as quote beneath the hero.
+ *   - `audit` callback bubbles to parent for the audit log.
  *
  * The aesthetic — Bond × Bentley × mid-century × Fortune-50 × modern —
  * is enforced via canonical tokens (`tokens.css`). No raw hex.
  */
 
-import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
 import { HomeHero } from "./HomeHero";
 import { HomeComposer } from "./HomeComposer";
 import { ActivityTicker } from "./ActivityTicker";
 import { KpiTileGrid } from "./KpiTileGrid";
 import { RecentWorkStrip } from "./RecentWorkStrip";
 import type { AvatarOrbState } from "@/components/primitives";
-import type { NavSection, Slide } from "@/lib/studio/types";
+import type { Slide } from "@/lib/studio/types";
 
 export interface HomeCenterProps {
-  navSection: NavSection;
-  avatarState: AvatarOrbState;
+  /** External avatar pulse (header click). Overrides chat state when active. */
+  externalPulse: boolean;
   onAvatarClick: () => void;
   appliedSummary: string | null;
   slides: readonly Slide[];
+  onAudit?: (text: string) => void;
 }
 
 export function HomeCenter({
-  avatarState,
+  externalPulse,
   onAvatarClick,
   appliedSummary,
   slides,
+  onAudit,
 }: HomeCenterProps) {
+  const [chatState, setChatState] = useState<AvatarOrbState>("idle");
+  const [lastReply, setLastReply] = useState<string | null>(null);
+
+  const audit = useCallback(
+    (text: string) => onAudit?.(text),
+    [onAudit],
+  );
+
+  const handleReply = useCallback((reply: string) => {
+    setLastReply(reply);
+    setChatState("speaking");
+    /* Settle to idle after a moment. */
+    window.setTimeout(() => setChatState("idle"), 2400);
+  }, []);
+
+  const heroState: AvatarOrbState = externalPulse ? "thinking" : chatState;
+
   return (
     <div
       style={{
@@ -47,9 +72,17 @@ export function HomeCenter({
         paddingBlock: 16,
       }}
     >
-      <HomeHero state={avatarState} onClick={onAvatarClick} />
+      <HomeHero
+        state={heroState}
+        onClick={onAvatarClick}
+        lastReply={lastReply}
+      />
       <ActivityTicker />
-      <HomeComposer />
+      <HomeComposer
+        onStateChange={setChatState}
+        onReply={handleReply}
+        onAudit={audit}
+      />
       <KpiTileGrid />
       <RecentWorkStrip />
 
@@ -66,7 +99,7 @@ function AppliedBreadcrumb({
 }: {
   summary: string;
   slides: readonly Slide[];
-}): ReactNode {
+}) {
   return (
     <div
       role="status"

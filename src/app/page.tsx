@@ -437,11 +437,11 @@ export default function HomePage() {
       center={
         <Center>
           <HomeCenter
-            navSection={navSection}
-            avatarState={avatarPulse ? "thinking" : "idle"}
+            externalPulse={avatarPulse}
             onAvatarClick={() => setAvatarPulse((v) => !v)}
             appliedSummary={appliedSummary}
             slides={slides}
+            onAudit={pushAudit}
           />
         </Center>
       }

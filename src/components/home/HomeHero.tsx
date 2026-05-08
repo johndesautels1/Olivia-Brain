@@ -4,18 +4,15 @@
  * `HomeHero` — the protagonist on `/`.
  *
  * Bond × Bentley × mid-century: a single 240px orb on dark canvas
- * with generous negative space. The orb IS the product. Sub-agent
- * ring (council mode) shows live cascade activity beneath the orb
- * caption.
+ * with generous negative space. The orb IS the product. Last reply
+ * renders as a quoted whisper beneath the headline so the user has
+ * a breadcrumb of Olivia's most recent thought.
  *
  * State semantics:
  *   - idle       — quiet ambient breathing
  *   - listening  — aether ring, voice mode active
  *   - thinking   — aurum + aether twin pulse, cascade in flight
  *   - speaking   — aurum solid, reply rendering
- *
- * Click → toggles avatar pulse (parent owns state) so a demo viewer
- * can see the protagonist react.
  */
 
 import { AvatarOrb, type AvatarOrbState } from "@/components/primitives";
@@ -23,6 +20,8 @@ import { AvatarOrb, type AvatarOrbState } from "@/components/primitives";
 export interface HomeHeroProps {
   state: AvatarOrbState;
   onClick: () => void;
+  /** Most recent Olivia reply — quoted beneath the headline. */
+  lastReply?: string | null;
 }
 
 const STATE_CAPTION: Record<AvatarOrbState, string> = {
@@ -34,7 +33,9 @@ const STATE_CAPTION: Record<AvatarOrbState, string> = {
   connecting: "Olivia · connecting",
 };
 
-export function HomeHero({ state, onClick }: HomeHeroProps) {
+export function HomeHero({ state, onClick, lastReply }: HomeHeroProps) {
+  const showReply = Boolean(lastReply && state !== "thinking");
+
   return (
     <section
       aria-label="Olivia hero zone"
@@ -95,6 +96,27 @@ export function HomeHero({ state, onClick }: HomeHeroProps) {
           standalone.
         </p>
       </div>
+
+      {showReply && (
+        <blockquote
+          aria-live="polite"
+          style={{
+            margin: 0,
+            maxWidth: 640,
+            padding: "14px 18px",
+            borderRadius: "var(--radius-lg)",
+            background: "var(--canvas-recess)",
+            borderLeft: "2px solid var(--aurum-primary)",
+            color: "var(--fg-secondary)",
+            fontSize: "var(--text-sm)",
+            lineHeight: 1.55,
+            fontStyle: "italic",
+            textAlign: "left",
+          }}
+        >
+          {lastReply}
+        </blockquote>
+      )}
     </section>
   );
 }
