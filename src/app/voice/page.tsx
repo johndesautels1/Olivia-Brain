@@ -1,31 +1,267 @@
 "use client";
 
 /**
- * `/voice` — voice-mode full-screen takeover (Track U Session U7).
+ * `/voice` — Olivia voice mode (Track E Session 17).
  *
- * Pi-style minimalism: dark canvas, single 320px breathing orb at the
- * optical centre, mic toggle, no chrome. Esc returns to `/`. The orb
- * cycles through `idle → listening → thinking → speaking` based on
- * the chat lifecycle (parity with the home composer).
+ * Pi-style minimalism: dark canvas, single 240px breathing orb at the
+ * optical centre, mic toggle, no chrome. Esc returns to `/`. Space
+ * also toggles the mic (matches the footer hint).
  *
- * Voice itself rides the existing `/api/voice/transcribe` →
- * `/api/olivia/chat` chain. U7 ships the surface + state choreography
- * (mic button, transcript chip, last-reply quote, error fallback);
- * full speech-to-text wiring to the browser MediaRecorder API
- * carries forward to the next voice-focused track.
+ * S17 wires the full STT → chat → TTS chain end-to-end:
+ *
+ *   1. Mic press → `MediaRecorder.start()` → orb state = "listening"
+ *   2. Mic press again → `MediaRecorder.stop()` → orb state = "thinking"
+ *   3. `dataavailable` collects chunks; `stop` POSTs the blob to
+ *      `/api/voice/transcribe` (Deepgram primary / Whisper fallback)
+ *   4. Transcript → `/api/olivia/chat` (9-model cascade) → reply
+ *   5. Reply → `/api/voice/synthesize` (ElevenLabs / OpenAI TTS) →
+ *      base64 audio → HTMLAudioElement → orb state = "speaking"
+ *   6. Audio `ended` → orb state = "idle", reply persists as quote
+ *
+ * Each stage degrades gracefully:
+ *   - No `MediaRecorder` support → friendly error, mic disabled
+ *   - STT not configured (503) → show error, fall through to "idle"
+ *   - Chat error → show error, fall through
+ *   - TTS not configured → still surface the text reply (no audio)
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AvatarOrb, type AvatarOrbState } from "@/components/primitives";
 
+type Stage = "idle" | "listening" | "thinking" | "speaking" | "error";
+
+const STAGE_TO_ORB: Record<Stage, AvatarOrbState> = {
+  idle: "idle",
+  listening: "listening",
+  thinking: "thinking",
+  speaking: "speaking",
+  error: "error",
+};
+
+const STAGE_CAPTION: Record<Stage, string> = {
+  idle: "Tap the mic to begin",
+  listening: "Listening — speak",
+  thinking: "Thinking…",
+  speaking: "Olivia speaking",
+  error: "Something went wrong",
+};
+
+interface VoiceError {
+  stage: Stage;
+  message: string;
+}
+
 export default function VoicePage() {
   const router = useRouter();
-  const [state, setState] = useState<AvatarOrbState>("idle");
-  const [listening, setListening] = useState(false);
+  const [stage, setStage] = useState<Stage>("idle");
   const [reply, setReply] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [error, setError] = useState<VoiceError | null>(null);
+  const [supported, setSupported] = useState(true);
 
-  /* Esc returns home; Space toggles listening (matches the footer hint). */
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  /* Detect browser support up front. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setSupported(false);
+    }
+  }, []);
+
+  /* Cleanup on unmount — stop mic + free stream + abort audio. */
+  useEffect(() => {
+    return () => {
+      try {
+        recorderRef.current?.stop();
+      } catch {
+        /* ignore */
+      }
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      audioRef.current?.pause();
+    };
+  }, []);
+
+  const playReplyAudio = useCallback(
+    async (text: string) => {
+      try {
+        const res = await fetch("/api/voice/synthesize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, personaId: "olivia" }),
+        });
+        if (!res.ok) {
+          /* TTS not configured / failed — leave text on screen, settle. */
+          setStage("idle");
+          return;
+        }
+        const data = (await res.json()) as {
+          audio?: string;
+          mimeType?: string;
+        };
+        if (!data.audio) {
+          setStage("idle");
+          return;
+        }
+        const audio = new Audio(`data:${data.mimeType ?? "audio/mpeg"};base64,${data.audio}`);
+        audioRef.current = audio;
+        audio.onended = () => setStage("idle");
+        audio.onerror = () => setStage("idle");
+        setStage("speaking");
+        await audio.play();
+      } catch {
+        setStage("idle");
+      }
+    },
+    [],
+  );
+
+  const sendToChat = useCallback(
+    async (text: string) => {
+      try {
+        setTranscript(text);
+        setStage("thinking");
+        const res = await fetch("/api/olivia/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, pageContext: "/voice" }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { reply?: string };
+        const replyText = data.reply ?? "(no reply)";
+        setReply(replyText);
+        await playReplyAudio(replyText);
+      } catch (err) {
+        setError({
+          stage: "thinking",
+          message: err instanceof Error ? err.message : "Chat failed",
+        });
+        setStage("error");
+        window.setTimeout(() => setStage("idle"), 1800);
+      }
+    },
+    [playReplyAudio],
+  );
+
+  const sendBlobToTranscribe = useCallback(
+    async (blob: Blob) => {
+      try {
+        const fd = new FormData();
+        fd.append("audio", blob, "speech.webm");
+        const res = await fetch("/api/voice/transcribe", {
+          method: "POST",
+          body: fd,
+        });
+        if (!res.ok) {
+          if (res.status === 503) {
+            setError({
+              stage: "thinking",
+              message: "STT not configured — set DEEPGRAM_API_KEY or OPENAI_API_KEY",
+            });
+            setStage("error");
+            window.setTimeout(() => setStage("idle"), 2500);
+            return;
+          }
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = (await res.json()) as {
+          success?: boolean;
+          transcript?: string;
+        };
+        const text = data.transcript?.trim();
+        if (!text) {
+          setError({ stage: "thinking", message: "No speech detected" });
+          setStage("error");
+          window.setTimeout(() => setStage("idle"), 1500);
+          return;
+        }
+        await sendToChat(text);
+      } catch (err) {
+        setError({
+          stage: "thinking",
+          message: err instanceof Error ? err.message : "Transcription failed",
+        });
+        setStage("error");
+        window.setTimeout(() => setStage("idle"), 1800);
+      }
+    },
+    [sendToChat],
+  );
+
+  const startListening = useCallback(async () => {
+    if (!supported) return;
+    setError(null);
+    setReply(null);
+    setTranscript(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      /* Pick a mime type the browser can record. */
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : "audio/mp4";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorderRef.current = recorder;
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        chunksRef.current = [];
+        if (blob.size === 0) {
+          setStage("idle");
+          return;
+        }
+        void sendBlobToTranscribe(blob);
+      };
+
+      recorder.start();
+      setStage("listening");
+    } catch (err) {
+      setError({
+        stage: "listening",
+        message:
+          err instanceof Error && err.name === "NotAllowedError"
+            ? "Microphone permission denied — check browser settings"
+            : err instanceof Error
+              ? err.message
+              : "Could not start recording",
+      });
+      setStage("error");
+      window.setTimeout(() => setStage("idle"), 2500);
+    }
+  }, [supported, sendBlobToTranscribe]);
+
+  const stopListening = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+    if (recorder.state !== "inactive") {
+      recorder.stop();
+      setStage("thinking");
+    }
+    recorderRef.current = null;
+  }, []);
+
+  const handleMic = useCallback(() => {
+    if (stage === "listening") {
+      stopListening();
+    } else if (stage === "idle" || stage === "error") {
+      void startListening();
+    }
+    /* "thinking" or "speaking" — do nothing, wait for chain to settle. */
+  }, [stage, startListening, stopListening]);
+
+  /* Esc returns home; Space toggles the mic. */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -35,29 +271,25 @@ export default function VoicePage() {
         const target = e.target as HTMLElement | null;
         if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
         e.preventDefault();
-        setListening((prev) => {
-          const next = !prev;
-          setState(next ? "listening" : "idle");
-          if (!next) setReply(null);
-          return next;
-        });
+        handleMic();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [router]);
+  }, [router, handleMic]);
 
-  /* Toggle listening. Real STT lands in a future voice track — for
-   * now the toggle drives the orb state so the demo paints correctly
-   * and the surface is wired end-to-end the moment STT is plugged in. */
-  const toggleListening = useCallback(() => {
-    setListening((prev) => {
-      const next = !prev;
-      setState(next ? "listening" : "idle");
-      if (!next) setReply(null);
-      return next;
-    });
-  }, []);
+  const orbState: AvatarOrbState = STAGE_TO_ORB[stage];
+  const captionText = STAGE_CAPTION[stage];
+  const captionColor =
+    stage === "listening"
+      ? "var(--aether-primary)"
+      : stage === "thinking"
+        ? "var(--aurum-primary)"
+        : stage === "speaking"
+          ? "var(--aurum-soft)"
+          : stage === "error"
+            ? "var(--coral-down)"
+            : "var(--fg-tertiary)";
 
   return (
     <main
@@ -119,7 +351,7 @@ export default function VoicePage() {
           padding: 32,
         }}
       >
-        <AvatarOrb size={240} state={state} label="Olivia voice mode" />
+        <AvatarOrb size={240} state={orbState} label="Olivia voice mode" />
 
         <div style={{ display: "grid", placeItems: "center", gap: 12 }}>
           <span
@@ -129,11 +361,25 @@ export default function VoicePage() {
               fontSize: "var(--text-xs)",
               letterSpacing: "0.18em",
               textTransform: "uppercase",
-              color: listening ? "var(--aether-primary)" : "var(--fg-tertiary)",
+              color: captionColor,
             }}
           >
-            {listening ? "Listening — speak" : "Tap the mic to begin"}
+            {captionText}
           </span>
+          {transcript && (
+            <p
+              style={{
+                margin: 0,
+                maxWidth: 640,
+                color: "var(--fg-tertiary)",
+                fontSize: "var(--text-sm)",
+                textAlign: "center",
+                fontStyle: "italic",
+              }}
+            >
+              You said: "{transcript}"
+            </p>
+          )}
           {reply && (
             <blockquote
               style={{
@@ -143,44 +389,86 @@ export default function VoicePage() {
                 borderRadius: "var(--radius-lg)",
                 background: "var(--canvas-recess)",
                 borderLeft: "2px solid var(--aurum-primary)",
-                color: "var(--fg-secondary)",
+                color: "var(--fg-primary)",
                 fontSize: "var(--text-md)",
                 lineHeight: 1.55,
                 fontStyle: "italic",
-                textAlign: "center",
+                textAlign: "left",
+                boxShadow: "0 30px 80px rgba(0,0,0,0.32)",
               }}
             >
               {reply}
             </blockquote>
           )}
+          {error && (
+            <p
+              role="alert"
+              style={{
+                margin: 0,
+                maxWidth: 640,
+                color: "var(--coral-down)",
+                fontSize: "var(--text-2xs)",
+                fontFamily: "var(--font-mono)",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                textAlign: "center",
+              }}
+            >
+              {error.message}
+            </p>
+          )}
+          {!supported && (
+            <p
+              role="alert"
+              style={{
+                margin: 0,
+                maxWidth: 640,
+                color: "var(--coral-down)",
+                fontSize: "var(--text-sm)",
+                textAlign: "center",
+              }}
+            >
+              Your browser doesn't support MediaRecorder. Voice mode requires
+              Chrome / Edge / Safari 14.1+.
+            </p>
+          )}
         </div>
 
         <button
           type="button"
-          onClick={toggleListening}
-          aria-pressed={listening}
-          aria-label={listening ? "Stop listening" : "Start listening"}
+          onClick={handleMic}
+          disabled={!supported || stage === "thinking" || stage === "speaking"}
+          aria-pressed={stage === "listening"}
+          aria-label={stage === "listening" ? "Stop listening" : "Start listening"}
           style={{
             width: 88,
             height: 88,
             borderRadius: "var(--radius-full)",
-            background: listening
-              ? "linear-gradient(135deg, var(--aether-primary), var(--aurum-primary))"
-              : "linear-gradient(135deg, var(--aurum-primary), var(--aurum-soft))",
-            color: "var(--fg-on-accent)",
+            background:
+              stage === "listening"
+                ? "linear-gradient(135deg, var(--aether-primary), var(--aurum-primary))"
+                : stage === "thinking"
+                  ? "linear-gradient(135deg, var(--surface-2), var(--surface-3))"
+                  : "linear-gradient(135deg, var(--aurum-primary), var(--aurum-soft))",
+            color:
+              stage === "thinking" ? "var(--fg-tertiary)" : "var(--fg-on-accent)",
             border: "none",
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: 32,
-            cursor: "pointer",
+            cursor:
+              !supported || stage === "thinking" || stage === "speaking"
+                ? "not-allowed"
+                : "pointer",
+            opacity: !supported ? 0.45 : 1,
             boxShadow:
               "0 30px 80px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255,255,255,0.15)",
             transition:
               "background var(--duration-default) var(--ease-out-quart), transform var(--duration-micro) var(--ease-out-quart)",
           }}
         >
-          {listening ? "■" : "●"}
+          {stage === "listening" ? "■" : stage === "thinking" ? "…" : "●"}
         </button>
       </section>
 
