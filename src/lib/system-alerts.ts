@@ -9,6 +9,7 @@
  * Tracked as W-016 in README weakness backlog.
  */
 
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/db/client";
 
 interface CreateAlertOptions {
@@ -40,7 +41,7 @@ export async function createSystemAlert(opts: CreateAlertOptions): Promise<void>
         severity: severity,
         title: opts.title,
         message: opts.message,
-        metadata: opts.metadata ?? {},
+        metadata: (opts.metadata ?? {}) as Prisma.InputJsonValue,
       },
     });
   } catch (err) {
