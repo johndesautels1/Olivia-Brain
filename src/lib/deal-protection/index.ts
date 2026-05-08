@@ -28,3 +28,33 @@ export {
   getSmartBandRecordByAction,
   bandsAgree,
 } from './smart-score';
+
+export {
+  type ClauseType,
+  type Severity,
+  type ClauseAnalysis,
+  type ClauseAnalysisResult,
+  type ClauseClassificationAttempt,
+  CLAUSE_TYPES_ORDERED,
+  CLAUSE_TYPE_COUNT,
+  SEVERITIES_ORDERED,
+  SEVERITY_TOXICITY_RANGE,
+} from './clause-types';
+
+export {
+  type ClauseFixture,
+  CLAUSE_FIXTURES,
+  CLAUSE_FIXTURES_BY_TYPE,
+} from './clause-fixtures';
+
+export {
+  buildClassificationPrompt,
+  buildJudgePrompt,
+} from './clause-prompts';
+
+export {
+  type ClassifyClauseOptions,
+  type ClassifyClausesOptions,
+  classifyClause,
+  classifyClauses,
+} from './clause-intel';
