@@ -2066,79 +2066,119 @@ model InvestorReputation {
 
 // ─── Track B Session 8b-routes — Documents engine write surface ───────────────
 //
-// Bookmark / package / share / saved-document tables backing the
-// workspace shell's action bar + share modal + save-to-package modal.
-// `documentId` is a loose `String` — no FK to a `Document` table
-// because OB doesn't have one yet (the Document Prisma model lands
-// alongside Session 8d when the documents app routes ship). Consumers
-// tolerate dangling references; a 404 from the documents reader is
-// the right behaviour when a bookmark or share points at a doc that
-// hasn't been ported yet. `userId` is a `String` (not `@db.Uuid`) so
-// both Clerk's `user_xxx` IDs and dev/test `STUB_USER_ID` env values
-// resolve cleanly.
+// **LTM-aligned shapes.** OB will nest inside the London Tech Map app
+// as the home tenant — every model in this section mirrors the
+// equivalent LTM model in `D:\London-Tech-Map\prisma\schema.prisma`
+// (column names, table names, FK relationships, sortOrder/isRequired
+// semantics on PackageDocument). The minimum-viable subset of LTM
+// fields ships here; LTM-only optional fields that reference tables
+// OB doesn't have yet (TargetList, PackageTemplate, Person,
+// Organization, etc.) are deliberately omitted and re-added when
+// those tables port in.
+//
+// **Two user-id conventions, both deliberately following LTM:**
+// - `userProfileId` on `DocumentBookmark` — LTM's bookmark table FKs
+//   to `UserProfile` (LTM's own user table whose `clerkUserId` field
+//   maps to Clerk's `user_xxx` ID). OB doesn't have UserProfile yet
+//   (lands in Session 8d alongside the Document model). Until then
+//   we store the raw Clerk userId / `STUB_USER_ID` env value in the
+//   `userProfileId` column. The column is named for the destination
+//   shape so the migration adds an FK without renaming any column
+//   when UserProfile arrives.
+// - `ownerUserId` on `Package` and `DocumentShare` — LTM stores the
+//   raw Clerk userId here directly (see LTM `Package.ownerUserId` +
+//   `DocumentShare.ownerUserId`, both `String` not FK to UserProfile).
+//   No future migration needed for these; they already match LTM.
+//
+// **`documentId` is a loose `String`** (no FK to a `Document` table)
+// because OB doesn't have a `Document` Prisma model yet. The FK lands
+// when Session 8d ports the Document model alongside the documents
+// app routes. Consumers tolerate dangling references today; a 404
+// from the documents reader is the right behaviour.
 
-/// User-owned bookmark on a document. Compound unique on
-/// `[userId, documentId]` makes the toggle endpoint idempotent and
-/// "is bookmarked?" a single point lookup.
+/// LTM-aligned bookmark. Compound unique on `[userProfileId, documentId]`
+/// makes the toggle endpoint idempotent and "is bookmarked?" a single
+/// point lookup. Mirrors `LTM.DocumentBookmark` (line 1955 of LTM
+/// schema). FK to `UserProfile` + `Document` lands in Session 8d.
 model DocumentBookmark {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String
-  documentId String
-  createdAt  DateTime @default(now())
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userProfileId String
+  documentId    String
+  createdAt     DateTime @default(now())
 
-  @@unique([userId, documentId])
-  @@index([userId, createdAt(sort: Desc)])
+  @@unique([userProfileId, documentId])
+  @@index([userProfileId])
   @@index([documentId])
   @@map("document_bookmarks")
 }
 
-/// User-owned outreach package — a curated bundle of documents for a
-/// specific outreach goal (fundraising / strategic_partnership /
-/// white_label / pilot / reseller / acquisition / enterprise_sales).
-/// Documents added via `PackageItem`. `outreachGoal` and
-/// `packageStatus` are free-form strings so consumers can extend
-/// without a migration.
-model DocumentPackage {
-  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String
+/// LTM-aligned package. Mirrors `LTM.Package` (line 1461 of LTM
+/// schema): `ownerUserId` (Clerk userId direct), `outreachGoal`,
+/// `packageStatus`, optional `summary` + `shareToken` + `expiresAt`.
+/// LTM fields that reference unported tables (`targetListId`,
+/// `packageTemplateId`, `personalizationJson`) are deferred. LTM
+/// uses enums for `outreachGoal` (OutreachGoal) + `packageStatus`
+/// (PackageStatus); OB stores them as `String` until those enums
+/// port — column shape is identical so the type tightening is a
+/// non-breaking enum migration when it lands.
+model Package {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String
+  ownerUserId   String?
   outreachGoal  String
-  /// Lifecycle — draft / sent / archived.
-  packageStatus String        @default("draft")
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  items         PackageItem[]
+  packageStatus String   @default("draft")
+  summary       String?
+  shareToken    String?  @unique
+  expiresAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  @@index([userId, createdAt(sort: Desc)])
-  @@map("document_packages")
+  packageDocuments PackageDocument[]
+
+  @@index([ownerUserId])
+  @@index([outreachGoal])
+  @@index([packageStatus])
+  @@index([shareToken])
+  @@map("packages")
 }
 
-/// Document inside a package. Composition: deleting the package
-/// cascades the items.
-model PackageItem {
-  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  packageId  String          @db.Uuid
-  documentId String
-  position   Int             @default(0)
-  addedAt    DateTime        @default(now())
-  package    DocumentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+/// LTM-aligned package-document join. Mirrors `LTM.PackageDocument`
+/// (line 1499 of LTM schema): `sortOrder` (not `position`),
+/// `isRequired`, `customIntro`. LTM uses `onDelete: Restrict` on
+/// the package FK so deleting a Package while it has documents is
+/// rejected — preserved here for parity. LTM's `visibilityRule`
+/// + `generatedOverlayJson` are optional fields that defer to
+/// follow-up port.
+model PackageDocument {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  packageId   String   @db.Uuid
+  documentId  String
+  sortOrder   Int      @default(0)
+  isRequired  Boolean  @default(true)
+  customIntro String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  package Package @relation(fields: [packageId], references: [id], onDelete: Restrict)
 
   @@unique([packageId, documentId])
-  @@index([packageId, position])
-  @@map("package_items")
+  @@index([packageId])
+  @@index([documentId])
+  @@index([sortOrder])
+  @@map("package_documents")
 }
 
-/// Per-document share link with optional recipient + expiry. Tracks
-/// view count + last-view timestamp for the share-existing-links UI.
-/// Soft-revocable: `isRevoked = true` makes the share-token reader
-/// 404 the public page without losing the audit trail.
+/// LTM-aligned per-document share link. Mirrors `LTM.DocumentShare`
+/// (line 1411 of LTM schema): `ownerUserId` (Clerk userId direct,
+/// matches LTM's `Document.ownerUserId`), opaque `shareToken`,
+/// optional recipient + expiry, soft-revocable. LTM's
+/// `DocumentShareEvent` audit table (line 1444) is not ported in
+/// this session — view-count + lastViewedAt cover the immediate UI
+/// needs, the per-event audit trail can land in a follow-up.
 model DocumentShare {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String
   documentId     String
-  /// Opaque token used in the public share URL — generated server-side
-  /// via `crypto.randomBytes(24).toString("base64url")`. Unique index
-  /// for O(1) reader lookup.
+  ownerUserId    String
   shareToken     String    @unique
   recipientEmail String?
   recipientName  String?
@@ -2148,8 +2188,10 @@ model DocumentShare {
   viewCount      Int       @default(0)
   lastViewedAt   DateTime?
   createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  @@index([userId, createdAt(sort: Desc)])
   @@index([documentId])
+  @@index([ownerUserId])
+  @@index([shareToken])
   @@map("document_shares")
 }

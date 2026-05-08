@@ -50,7 +50,7 @@ export async function DELETE(
   if (!documentId || !shareId) return fail("documentId and shareId are required");
 
   const existing = await prisma.documentShare.findFirst({
-    where: { id: shareId, userId: auth.userId, documentId },
+    where: { id: shareId, ownerUserId: auth.userId, documentId },
     select: { id: true, isRevoked: true },
   });
   if (!existing) return fail("Share not found", 404);

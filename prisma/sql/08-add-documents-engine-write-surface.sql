@@ -1,118 +1,141 @@
--- Track B Session 8b-routes — Documents engine write surface (2026-05-08)
+-- Track B Session 8b-routes — Documents engine write surface (2026-05-08, LTM-aligned revision)
 --
--- Adds 4 tables for the workspace shell's write actions:
---   document_bookmarks  — user-owned bookmarks; toggle endpoint
---   document_packages   — user-owned outreach bundles
---   package_items       — documents inside a package (composition)
---   document_shares     — per-document share links with recipient + expiry
+-- **LTM-aligned shapes.** Every table here mirrors the equivalent LTM
+-- model in `D:\London-Tech-Map\prisma\schema.prisma` so OB nests
+-- cleanly inside LTM as the home tenant. Column names + table names
+-- match LTM byte-for-byte. The minimum-viable subset of LTM fields
+-- ships in this migration; LTM-only optional fields that reference
+-- tables OB doesn't have yet (TargetList, PackageTemplate, Person,
+-- Organization, etc.) are deliberately omitted and re-added when
+-- those tables port in.
 --
--- `documentId` is a loose `TEXT` column — no FK to a `documents`
--- table because OB doesn't have a Document Prisma model yet (lands in
--- Session 8d alongside the documents app routes). Consumers tolerate
--- dangling references; a 404 from the documents reader is the right
--- behaviour when a bookmark or share points at a doc that hasn't been
--- ported yet.
+-- Tables added (LTM map in parens):
+--   document_bookmarks  (LTM.DocumentBookmark, line 1955)
+--   packages            (LTM.Package, line 1461)
+--   package_documents   (LTM.PackageDocument, line 1499)
+--   document_shares     (LTM.DocumentShare, line 1411)
 --
--- `userId` is a `TEXT` column (not `UUID`) so both Clerk's `user_xxx`
--- IDs and dev/test `STUB_USER_ID` env values resolve cleanly. This
--- diverges from earlier OB migrations (CounterTermSheet uses `UUID`
--- on `userId`); deliberate — the older shape would have rejected the
--- real Clerk format once Track F's keys are configured on Vercel.
+-- **Two user-id conventions, both deliberately following LTM:**
+-- - `userProfileId` on `document_bookmarks` — LTM's bookmark table
+--   FKs to `UserProfile`. OB doesn't have UserProfile yet (lands in
+--   Session 8d alongside the Document model). Until then, the column
+--   stores the raw Clerk userId / `STUB_USER_ID` env value. Naming
+--   for the destination shape lets a follow-up migration add the FK
+--   without renaming any column.
+-- - `ownerUserId` on `packages` and `document_shares` — LTM stores
+--   the raw Clerk userId directly here (no FK to UserProfile). No
+--   follow-up renaming needed.
+--
+-- `documentId` is a loose `TEXT` column (no FK to a `documents`
+-- table) because OB doesn't have a Document model yet. The FK lands
+-- in Session 8d alongside the Document model port.
 --
 -- # Apply
 --
 -- Paste into Supabase SQL Editor and Run. Order: independent of all
--- earlier migrations. Idempotent — re-running is safe (each CREATE
--- guarded by IF NOT EXISTS at the index/constraint level via the
--- `_pkey` and `_key` naming Prisma uses; the table CREATEs will fail
--- if the table already exists, but in that case nothing else to do).
+-- earlier migrations.
 --
 -- # Verify
 --
 -- SELECT table_name FROM information_schema.tables
 --   WHERE table_schema = 'public'
---     AND table_name IN ('document_bookmarks', 'document_packages',
---                        'package_items', 'document_shares')
+--     AND table_name IN ('document_bookmarks', 'packages',
+--                        'package_documents', 'document_shares')
 --   ORDER BY table_name;
 -- -- Expect 4 rows.
 
 -- ─── document_bookmarks ──────────────────────────────────────────────────────
 
--- CreateTable
 CREATE TABLE "document_bookmarks" (
-    "id"         UUID         NOT NULL DEFAULT gen_random_uuid(),
-    "userId"     TEXT         NOT NULL,
-    "documentId" TEXT         NOT NULL,
-    "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "id"            UUID         NOT NULL DEFAULT gen_random_uuid(),
+    "userProfileId" TEXT         NOT NULL,
+    "documentId"    TEXT         NOT NULL,
+    "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "document_bookmarks_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "document_bookmarks_userId_documentId_key"
-    ON "document_bookmarks"("userId", "documentId");
+CREATE UNIQUE INDEX "document_bookmarks_userProfileId_documentId_key"
+    ON "document_bookmarks"("userProfileId", "documentId");
 
--- CreateIndex
-CREATE INDEX "document_bookmarks_userId_createdAt_idx"
-    ON "document_bookmarks"("userId", "createdAt" DESC);
+CREATE INDEX "document_bookmarks_userProfileId_idx"
+    ON "document_bookmarks"("userProfileId");
 
--- CreateIndex
 CREATE INDEX "document_bookmarks_documentId_idx"
     ON "document_bookmarks"("documentId");
 
--- ─── document_packages ───────────────────────────────────────────────────────
+-- ─── packages ────────────────────────────────────────────────────────────────
 
--- CreateTable
-CREATE TABLE "document_packages" (
+CREATE TABLE "packages" (
     "id"            UUID         NOT NULL DEFAULT gen_random_uuid(),
-    "userId"        TEXT         NOT NULL,
     "name"          TEXT         NOT NULL,
+    "ownerUserId"   TEXT,
     "outreachGoal"  TEXT         NOT NULL,
     "packageStatus" TEXT         NOT NULL DEFAULT 'draft',
+    "summary"       TEXT,
+    "shareToken"    TEXT,
+    "expiresAt"     TIMESTAMP(3),
     "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt"     TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "document_packages_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "packages_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE INDEX "document_packages_userId_createdAt_idx"
-    ON "document_packages"("userId", "createdAt" DESC);
+CREATE UNIQUE INDEX "packages_shareToken_key"
+    ON "packages"("shareToken");
 
--- ─── package_items ───────────────────────────────────────────────────────────
+CREATE INDEX "packages_ownerUserId_idx"
+    ON "packages"("ownerUserId");
 
--- CreateTable
-CREATE TABLE "package_items" (
-    "id"         UUID         NOT NULL DEFAULT gen_random_uuid(),
-    "packageId"  UUID         NOT NULL,
-    "documentId" TEXT         NOT NULL,
-    "position"   INTEGER      NOT NULL DEFAULT 0,
-    "addedAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE INDEX "packages_outreachGoal_idx"
+    ON "packages"("outreachGoal");
 
-    CONSTRAINT "package_items_pkey" PRIMARY KEY ("id")
+CREATE INDEX "packages_packageStatus_idx"
+    ON "packages"("packageStatus");
+
+CREATE INDEX "packages_shareToken_idx"
+    ON "packages"("shareToken");
+
+-- ─── package_documents ───────────────────────────────────────────────────────
+
+CREATE TABLE "package_documents" (
+    "id"          UUID         NOT NULL DEFAULT gen_random_uuid(),
+    "packageId"   UUID         NOT NULL,
+    "documentId"  TEXT         NOT NULL,
+    "sortOrder"   INTEGER      NOT NULL DEFAULT 0,
+    "isRequired"  BOOLEAN      NOT NULL DEFAULT true,
+    "customIntro" TEXT,
+    "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"   TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "package_documents_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "package_items_packageId_documentId_key"
-    ON "package_items"("packageId", "documentId");
+CREATE UNIQUE INDEX "package_documents_packageId_documentId_key"
+    ON "package_documents"("packageId", "documentId");
 
--- CreateIndex
-CREATE INDEX "package_items_packageId_position_idx"
-    ON "package_items"("packageId", "position");
+CREATE INDEX "package_documents_packageId_idx"
+    ON "package_documents"("packageId");
 
--- AddForeignKey
-ALTER TABLE "package_items"
-    ADD CONSTRAINT "package_items_packageId_fkey"
-    FOREIGN KEY ("packageId") REFERENCES "document_packages"("id")
-    ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE INDEX "package_documents_documentId_idx"
+    ON "package_documents"("documentId");
+
+CREATE INDEX "package_documents_sortOrder_idx"
+    ON "package_documents"("sortOrder");
+
+-- LTM uses ON DELETE Restrict here so deleting a Package while it
+-- has documents is rejected. Preserved for parity with LTM.
+ALTER TABLE "package_documents"
+    ADD CONSTRAINT "package_documents_packageId_fkey"
+    FOREIGN KEY ("packageId") REFERENCES "packages"("id")
+    ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- ─── document_shares ─────────────────────────────────────────────────────────
 
--- CreateTable
 CREATE TABLE "document_shares" (
     "id"             UUID         NOT NULL DEFAULT gen_random_uuid(),
-    "userId"         TEXT         NOT NULL,
     "documentId"     TEXT         NOT NULL,
+    "ownerUserId"    TEXT         NOT NULL,
     "shareToken"     TEXT         NOT NULL,
     "recipientEmail" TEXT,
     "recipientName"  TEXT,
@@ -122,18 +145,19 @@ CREATE TABLE "document_shares" (
     "viewCount"      INTEGER      NOT NULL DEFAULT 0,
     "lastViewedAt"   TIMESTAMP(3),
     "createdAt"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"      TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "document_shares_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
 CREATE UNIQUE INDEX "document_shares_shareToken_key"
     ON "document_shares"("shareToken");
 
--- CreateIndex
-CREATE INDEX "document_shares_userId_createdAt_idx"
-    ON "document_shares"("userId", "createdAt" DESC);
-
--- CreateIndex
 CREATE INDEX "document_shares_documentId_idx"
     ON "document_shares"("documentId");
+
+CREATE INDEX "document_shares_ownerUserId_idx"
+    ON "document_shares"("ownerUserId");
+
+CREATE INDEX "document_shares_shareToken_idx"
+    ON "document_shares"("shareToken");

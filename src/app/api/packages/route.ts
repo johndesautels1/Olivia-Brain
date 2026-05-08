@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
   const auth = await authedUserId();
   if (auth instanceof NextResponse) return auth;
 
-  const rows = await prisma.documentPackage.findMany({
-    where: { userId: auth.userId },
+  const rows = await prisma.package.findMany({
+    where: { ownerUserId: auth.userId },
     orderBy: { createdAt: "desc" },
     take: LIST_LIMIT,
     select: {
@@ -89,9 +89,9 @@ export async function POST(request: NextRequest) {
     return fail(`Validation failed: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
   }
 
-  const created = await prisma.documentPackage.create({
+  const created = await prisma.package.create({
     data: {
-      userId: auth.userId,
+      ownerUserId: auth.userId,
       name: parsed.data.name,
       outreachGoal: parsed.data.outreachGoal,
     },

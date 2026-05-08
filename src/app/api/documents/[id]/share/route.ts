@@ -72,7 +72,7 @@ export async function GET(
   if (!documentId) return fail("documentId path param is required");
 
   const rows = await prisma.documentShare.findMany({
-    where: { userId: auth.userId, documentId },
+    where: { ownerUserId: auth.userId, documentId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -126,7 +126,7 @@ export async function POST(
   const token = generateShareToken();
   const created = await prisma.documentShare.create({
     data: {
-      userId: auth.userId,
+      ownerUserId: auth.userId,
       documentId,
       shareToken: token,
       recipientEmail: parsed.data.recipientEmail ?? null,

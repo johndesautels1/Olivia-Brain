@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   if (!documentId) return fail("documentId query param is required");
 
   const row = await prisma.documentBookmark.findUnique({
-    where: { userId_documentId: { userId: auth.userId, documentId } },
+    where: { userProfileId_documentId: { userProfileId: auth.userId, documentId } },
     select: { id: true },
   });
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 
   const { documentId } = parsed.data;
   const existing = await prisma.documentBookmark.findUnique({
-    where: { userId_documentId: { userId: auth.userId, documentId } },
+    where: { userProfileId_documentId: { userProfileId: auth.userId, documentId } },
     select: { id: true },
   });
 
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
   }
 
   await prisma.documentBookmark.create({
-    data: { userId: auth.userId, documentId },
+    data: { userProfileId: auth.userId, documentId },
   });
   return NextResponse.json({ bookmarked: true });
 }

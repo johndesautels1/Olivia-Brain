@@ -63,25 +63,25 @@ export async function POST(request: NextRequest) {
   }
   const { packageId, documentId } = parsed.data;
 
-  const pkg = await prisma.documentPackage.findFirst({
-    where: { id: packageId, userId: auth.userId },
+  const pkg = await prisma.package.findFirst({
+    where: { id: packageId, ownerUserId: auth.userId },
     select: { id: true },
   });
   if (!pkg) return fail("Package not found", 404);
 
-  const existing = await prisma.packageItem.findUnique({
+  const existing = await prisma.packageDocument.findUnique({
     where: { packageId_documentId: { packageId, documentId } },
-    select: { id: true, position: true },
+    select: { id: true, sortOrder: true },
   });
   if (existing) {
     return NextResponse.json({ ok: true, alreadyInPackage: true, item: existing });
   }
 
-  // Position = current count, so new items append.
-  const itemCount = await prisma.packageItem.count({ where: { packageId } });
-  const created = await prisma.packageItem.create({
-    data: { packageId, documentId, position: itemCount },
-    select: { id: true, packageId: true, documentId: true, position: true, addedAt: true },
+  // sortOrder = current count, so new items append (matches LTM convention).
+  const itemCount = await prisma.packageDocument.count({ where: { packageId } });
+  const created = await prisma.packageDocument.create({
+    data: { packageId, documentId, sortOrder: itemCount },
+    select: { id: true, packageId: true, documentId: true, sortOrder: true, createdAt: true },
   });
 
   return NextResponse.json({ ok: true, alreadyInPackage: false, item: created }, { status: 201 });
