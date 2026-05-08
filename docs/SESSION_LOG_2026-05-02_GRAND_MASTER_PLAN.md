@@ -2349,3 +2349,110 @@ Admin routes use the `getAuthSession()` stub (W-015) — same as Track P P1-P3. 
 2. **(NEW for P4)** Once migration 06 is applied, run `POST /api/admin/investors/seed` (or click "Re-apply seed" in `/admin/investors`) to populate the 15 archetype entries. Without this, the analyzer just runs with an empty reputation table — no breakage, the smart-score tilt is always 0 until the seed lands.
 
 **Next session:** **Track P Session P5 — Multi-round dilution projection + band-specific email drafts.** New `src/lib/deal-protection/multi-round.ts` (forward simulation 2 rounds out, accepts existing `ValuationRun` + offer terms, returns dilution trajectory + ownership chart). Band-specific email generator: 5 tones (Red walk-away, Orange caution, Yellow negotiate-hard, Blue accept-with-edits, Green sign). Cascade-driven. Per BUILD_SEQUENCE Track P row P5.
+
+---
+
+## Part 48 — 2026-05-08 — Track P Session P5: Multi-round dilution projection + band-specific email drafts
+
+**HEAD before:** `ca9a2d2` (post-P4 docs + investor seed SQL — 770/770 across 61 suites). **HEAD after P5 code:** `6840302`. **HEAD after P5 docs:** (this commit). **Tests:** 770/770 → **814/814** across **61 → 66 suites** (+44 new across 5 new suites). Typecheck clean.
+
+### What ships
+
+#### A. Multi-round dilution projection (`multi-round-types.ts` + `multi-round.ts`)
+
+Pure-math forward simulation of a founder's cap table across one or more hypothetical future rounds. **Works in shares, not just percentages** so anti-dilution math is correct (full-ratchet adjusts conversion price; weighted-average needs the actual share-count basis for the broad/narrow distinction).
+
+**Per-round mechanics:**
+
+1. **ESOP top-up (pre-money)** — expands the option pool out of pre-money valuation; bonus shares added to existing `esop` entry (or a new one created).
+2. **Compute new PPS** —
+   ```
+   newInvestorCash      = postMoneyGbp × newInvestorPct / 100
+   preMoneyAfterEsop    = postMoneyGbp − newInvestorCash
+   sharesAfterEsop      = totalSharesPreRound + esopTopUpShares
+   newPPS               = preMoneyAfterEsop / sharesAfterEsop
+   newInvestorShares    = newInvestorCash / newPPS
+   ```
+3. **Anti-dilution adjustments (down rounds only)** — for each prior preferred entry with non-`none` protection AND a recorded `originalPricePerShare`:
+   - `full_ratchet`: factor = `oldPPS / newPPS` (capped at `MAX_RATCHET_FACTOR=100` defensively for degenerate near-zero `newPPS`)
+   - `weighted_average_broad`: factor = `(A_broad + C) / (A_broad + B)` where `A_broad` = pre-round shares incl. options/warrants
+   - `weighted_average_narrow`: same formula, `A_narrow` = pre-round shares **excluding** options/warrants
+   - Bonus shares = `entry.shares × (factor − 1)`; added to the protected entry. Founder/ESOP/non-protected entries dilute implicitly via the larger total.
+4. **Add new investor entry** — recorded with `preferredClass`, `antiDilutionType`, and `originalPricePerShare = newPPS` so future down rounds can apply protection to *this* round in turn.
+
+`projectDilution(inputs)` returns `{ snapshots, trajectories, founderTrajectory }`. Trajectories are computed from the snapshot sequence so a holder that joins mid-trajectory (new investors) appears with `0%` ownership in earlier snapshots. Founder trajectory pulled out for the UI's headline metric.
+
+**Test coverage** — 4 sample term sheets per the BUILD_SEQUENCE exit criterion, all using the same baseline (Founder 60% / Series A 30% / ESOP 10% at £10/share, 10M total) hit by Series B at £80M post-money, 25% new investor, no ESOP top-up, **down round** (newPPS = £6):
+
+| Scenario | Series A protection | Series A ends with | Founder ends with |
+|---|---|---|---|
+| 1 | `full_ratchet` | ~5M shares (×1.667) | **~39%** |
+| 2 | `weighted_average_broad` | ~3.33M shares (×1.111) | **~44%** |
+| 3 | `weighted_average_broad` (up round, no trigger) | 3M shares (no bonus) | ~46% |
+| 4 | `none` | 3M shares (no bonus) | ~45% |
+
+Strict ordering invariant tested: `full_ratchet < weighted_average_broad < none` for founder ownership on the same down round.
+
+#### B. Band-specific email drafts (`email-templates.ts` + `email-prompts.ts` + `email-drafts.ts`)
+
+Five tones one-to-one with the smart bands locked in P1:
+
+| Band | Tone id | Voice |
+|---|---|---|
+| red | `walk_away` | Decisive, polite-but-firm. **No negotiation hook.** |
+| orange | `caution` | Diplomatic, signals material concerns, asks for re-discussion. |
+| yellow | `negotiate_hard` | Detailed and professional. Lists 3-5 specific clauses with concrete counter-language. |
+| blue | `counter_minor` | Warm and aligned overall. Surgical asks on 1-2 clauses. |
+| green | `sign` | Warm and excited. Aligned on terms. Ready for definitive docs. |
+
+**Cascade-driven** via Sonnet (`intent: "operations"`) with strict JSON output contract `{ subject, body }`. Subject 4-120 chars, body 80-2,500 chars. **Three soft-failure modes** (matches Q7/P2/P3 pattern):
+1. Cascade mock-mode → deterministic per-band template
+2. JSON parse failure → template
+3. Zod schema rejection (subject/body length out of bounds) → template
+
+Tone is **band-derived even on a live response** — the `EmailToneSchema` validation always overwrites with the canonical band-mapped tone so a hallucinated tone string can't leak through.
+
+The deterministic templates interpolate the report's `criticalIssues` (when present) or top-toxicity `clauseAnalyses` (fallback) into bullet lists. Subject lines are short and band-appropriate ("Re: term sheet — declining" for red, "— accepted" for green). Founder name / company name / recipient name are all optional; the templates degrade gracefully when absent.
+
+#### C. API routes (2 new)
+
+| Route | Methods | Behaviour |
+|---|---|---|
+| `/api/deal-protection/dilution` | POST | Validates `ProjectionInputsSchema` → calls `projectDilution` → returns `{ ok, projection }`. Pure math, no persistence. Auth via `getAuthSession` stub (W-015), 10/min rate limit. |
+| `/api/deal-protection/email-draft` | POST | Body `{ dealAnalysisId, founderName?, companyName?, recipientName? }` → looks up the analysis (own-row only) → reconstructs the report shape from persisted `clauseAnalysisJson` + `smartBand` → calls `generateEmailDraft` → returns `{ ok, draft: { subject, body, tone, runtimeMode } }`. No persistence — the draft is ephemeral. Auth via `getAuthSession` stub, 10/min rate limit. |
+
+**No new SQL migration.** Dilution projection is stateless; email-draft route reads from the existing `deal_analyses` table (P1 migration 06).
+
+### Tests (44 new across 5 new suites)
+
+- **`multi-round.test.ts`** (20 cases) — 4 sample-term-sheet scenarios + ratchet ordering invariant + multi-round chaining + 6 direct `computeAdjustmentFactor` cases (up-round → 1.0; full ratchet exact ratio; degenerate newPPS clamps at MAX_RATCHET_FACTOR; broad uses broad base; narrow gives bigger bonus than broad; type=none returns 1.0) + applyRound-does-not-mutate-input invariant.
+- **`email-templates.test.ts`** (12 cases) — band → tone mapping for all 5 bands; red declines without negotiation hook; green is positive without problem-listing prose; yellow lists clauses with counter-language; recipient-name interpolation; subject-line length + content; robustness with missing names + missing issues.
+- **`email-drafts.test.ts`** (5 cases) — happy path with band-derived tone override; mock-mode fallback; JSON-parse-fail fallback; schema-fail fallback (subject too short); attempts trail forwarded.
+- **`dilution route.test.ts`** (4 cases) — module surface; invalid JSON → 400; missing `initial` → 400; > MAX_PROJECTION_ROUNDS → 400.
+- **`email-draft route.test.ts`** (3 cases) — module surface; invalid JSON → 400; missing `dealAnalysisId` → 400.
+
+### Decisions / judgment-call trail
+
+1. **Work in shares, not just percentages.** Anti-dilution conversion-price math requires share counts (full-ratchet `oldPPS/newPPS` doesn't compose with %s; weighted-average's `(A+C)/(A+B)` needs the actual share base). The richer model also lets the projection record per-round PPS so future rounds can compute their own anti-dilution against this round's pricing.
+2. **Modest defensive cap on full-ratchet factor (`MAX_RATCHET_FACTOR=100`).** A near-zero `newPPS` from degenerate input would otherwise produce infinite ratchet factors and break ownership math. Real-world cap-on-ratchet is a separately-negotiated term; this is purely a math floor against bad input.
+3. **`weighted_average_broad` includes ESOP shares; `weighted_average_narrow` excludes them.** Standard convention — broad is more founder-friendly because the larger share base in the denominator dampens the bonus. Narrow is more investor-friendly. The test suite verifies `narrow > broad` on the same scenario.
+4. **Band-derived tone overrides any model-suggested tone.** Even when the cascade returns a `tone` field in its JSON, `email-drafts.ts` always re-derives via `EMAIL_TONES[band].tone`. Founders are using the tone label to pre-judge the email's posture; we cannot let a hallucinated tone leak through.
+5. **Templates as both fallback AND prompt scaffold.** `email-prompts.ts` references the per-band `descriptor` from `EMAIL_TONES` so live cascade output is stylistically aligned with the template fallback. Live and mock outputs are interchangeable from the founder's POV.
+6. **Email drafts are ephemeral, no persistence.** P5's exit criterion is "Email drafts read naturally" — there's no requirement to store every draft. P6 (WarRoom integration) consumes the result directly; the founder copies into their email client. Persisting would require a new table + audit columns + retention policy, none of which are in P5 scope.
+7. **`/api/deal-protection/dilution` is stateless.** No DB writes. The route validates → computes → returns. Stateless math is the cleanest API surface for the front-end (founder can run "what if Series B is at £50M post-money?" instantly without an analysis row to scope it to).
+8. **Auth on both routes via the stub.** Dilution math is "public information" math but consistent with the rest of `/api/deal-protection/*` it uses `getAuthSession()`. One-line swap when Track F lands Clerk; same surface contract until then.
+9. **`MAX_PROJECTION_ROUNDS=5`.** Generous — typical projection is 2 rounds out per the BUILD_SEQUENCE row, but allowing 5 lets the founder run an extended Series B → C → D → E → F simulation if they want. Higher limits are a runaway-request risk for the route.
+
+### Build status at session-P5 close
+
+**Green.** Tests: **814/814** across **66 suites** (+44 new). Typecheck: clean. **Track P 5/7 ✅.**
+
+### Operator actions surfaced
+
+**None new.** P5 is pure logic + cascade-driven UI. No new SQL migration. No env vars beyond what P3/P4 already required.
+
+The carry-forward operator actions remain:
+1. Apply `prisma/sql/06-add-deal-protection-foundation.sql` to Supabase (P1).
+2. Apply the seed via `prisma/sql/seed-investor-reputations.sql` (or `POST /api/admin/investors/seed`) once 06 lands (P4).
+
+**Next session:** **Track P Session P6 — WarRoom integration + counter term sheet auto-draft.** New tab in WarRoom (ported in V9) that mounts the deal-protection report. Counter term sheet auto-drafted into Document Library — Deal Protection drafts the redlined counter document the founder sends back. Cross-doc inheritance: `ValuationSubject` data fills the counter automatically. Per BUILD_SEQUENCE Track P row P6.
