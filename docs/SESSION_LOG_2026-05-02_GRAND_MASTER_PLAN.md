@@ -2163,3 +2163,57 @@ Coverage: catalog invariants (5 bands, contiguous 0..100 coverage, unique action
 SQL body printed inline in the P1 feat-commit chat (`bb58863`). Paste into Supabase SQL Editor and Run.
 
 **Next session:** **Track P Session P2 — Clause classifier.** New `src/lib/deal-protection/clause-intel.ts` with 20-clause `ClauseType` enum, toxicity 0-100, founder-friendly alternative, cascade-driven (Anthropic primary, Opus judge for high-stakes). Per BUILD_SEQUENCE Track P row P2.
+
+---
+
+## Part 45 — 2026-05-08 — Track P Session P2: Clause classifier
+
+**HEAD before:** `22d3624` (P1 docs handoff — 676/676 across 51 suites). **HEAD after P2 code:** `fb5eba6`. **HEAD after P2 docs:** (this commit). **Tests:** 676/676 → **697/697** across **51 → 52 suites** (+21 new cases). Typecheck clean.
+
+### What ships
+
+**Clause taxonomy + fixtures** (`src/lib/deal-protection/`):
+
+| File | Surface |
+|---|---|
+| `clause-types.ts` | `ClauseType` enum (20 values — liquidation_preference, anti_dilution, board_control, vesting, leaver_provisions, veto_rights, exclusivity, information_rights, legal_fees, indemnification, ip_assignment, non_compete, drag_along, tag_along, earnout, reps_warranties, key_person, governing_law, assignment, other), `Severity` enum (low/medium/high/critical), `SEVERITY_TOXICITY_RANGE` (low 0-25 / medium 26-50 / high 51-75 / critical 76-100), `ClauseAnalysis` + `ClauseAnalysisResult` interfaces. |
+| `clause-fixtures.ts` | 20 canonical fixture clauses (one per `ClauseType`) covering the full severity spectrum — fixture toxicity values deliberately spread across each tier so the monotonicity invariant `tier(a) < tier(b) ⇒ toxicity(a) < toxicity(b)` is verifiable. Module-load runtime invariants verify exhaustive coverage. Doubles as test data + mock-mode fallback content. |
+| `clause-prompts.ts` | `buildClassificationPrompt` (Sonnet primary via `intent: "operations"`) — emits the full clauseType list + severity ladder + per-tier toxicity range so the cascade has zero ambiguity on calibration. `buildJudgePrompt` (Opus via `intent: "judge"`) — invoked ONLY when primary flagged the clause as `critical`; explicitly invites push-back rather than rubber-stamping. |
+| `clause-intel.ts` | `classifyClause` orchestrator: Sonnet primary pass → if severity=critical, Opus judge pass → merge (judge overrides severity / toxicity / summary; counter-language uses judge only when non-empty; reasoning passes through). `classifyClauses` fans out per-clause in parallel, reports `runtimeMode: "live"` iff every sub-call succeeded. Three soft-failure modes return the closest fixture rather than throwing. |
+| `index.ts` | Re-exports the P2 surface. |
+
+### Soft-failure handling (consistent with Q7 patterns)
+
+Three failure modes that don't break the founder's flow:
+1. **Cascade mock-mode** — no provider keys → fixture nearest by text-prefix match → falls through to `other` if nothing matches.
+2. **JSON parse failure** — strips a `\`\`\`json … \`\`\`` code fence first; if still not valid JSON, fixture fallback.
+3. **Calibration violation** — even with valid JSON matching the Zod schema, a `low + toxicity 80` response is structurally invalid against `SEVERITY_TOXICITY_RANGE`. Fixture fallback. The model never gets to fabricate an "edge case" toxicity that violates the band ladder.
+
+### Tests (21 new cases)
+
+- **Catalog invariants** — 20 types, exhaustive fixtures, contiguous severity coverage, severity tiers strictly monotone (every `low.max < medium.min`, etc.).
+- **Prompt builders** — clause text echo, every clauseType listed, every severity + toxicity range listed, judge prompt echoes both clause text and primary classification.
+- **Live happy path** — single classification with severity below critical (1 cascade call), code-fence stripping.
+- **Judge pass** — triggers on critical, judge overrides toxicity (88→95) + counter-language when non-empty, judge mock-fallback preserves primary verdict with `opusJudged: false`.
+- **Soft-failure fallbacks** — mock-mode, invalid JSON, calibration violation, no-fixture-match → `other`.
+- **Exit criterion** — every fixture clause correctly tagged when cascade returns canonical answer; toxicity-monotone-with-severity verified pairwise across all 20 fixtures.
+- **Batch orchestrator** — one analysis per input, `runtimeMode: "live"` iff every sub-call live.
+
+### Decisions / judgment-call trail
+
+1. **Sonnet primary + Opus judge only on critical.** Cheaper for the 80% of clauses that are standard, deeper for the predatory ones. Founders deserve a second opinion before the engine recommends "walk away."
+2. **`SEVERITY_TOXICITY_RANGE` is enforced server-side.** Even with valid JSON matching the Zod shape, a low/80 response is rejected and routed through the fixture fallback. The model cannot smuggle out-of-band toxicity scores.
+3. **Fixture-driven mock fallback (not LLM hallucination).** When cascade fails, the orchestrator returns the closest fixture's analysis — same `text` field but the `clauseType` / `severity` / `toxicity` / counter-language come from a deterministic vetted source. Better to under-classify (`other` / `low`) than to fabricate.
+4. **Judge merge: override severity/toxicity/summary, conditional counter-language.** Judge has the casting vote on severity calls, but if the judge's counter-language returns empty, primary's stays — primary may have produced a more specific counter than the judge's terse re-validation.
+5. **`opusJudged: boolean` on every analysis row.** Audit-trail discipline — the UI can render an "Opus-validated" badge on the clauses where Cristiano weighed in, distinct from cascade-only classifications.
+6. **20-fixture exhaustiveness verified at module load.** Adding a new ClauseType without adding its fixture throws at import time — never reaches prod.
+
+### Build status at session-P2 close
+
+**Green.** Tests: **697/697** across **52 suites** (+21 new). Typecheck: clean. **Track P 2/7 ✅.**
+
+### Operator action surfaced
+
+**None.** P2 is pure logic against the P1 schema — no new migration, no env vars, no operator step.
+
+**Next session:** **Track P Session P3 — Term sheet parser + analyze API.** New `src/lib/deal-protection/parser.ts` (text + PDF → structured `TermSheetTerms`); new API `POST /api/deal-protection/analyze` (parse → clause-intel → smart-score → optional quant via existing V3 engine in scenario mode → `DealAnalysis` record persisted). Per BUILD_SEQUENCE Track P row P3.
