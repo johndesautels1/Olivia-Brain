@@ -31,6 +31,7 @@ import { DocumentTree } from "@/components/studio/DocumentTree";
 import { FrameworksPanel } from "@/components/studio/FrameworksPanel";
 import { PlanSectionNav } from "@/components/studio/PlanSectionNav";
 import { OliviaChatTab } from "@/components/studio/OliviaChatTab";
+import { PitchCoachTab } from "@/components/studio/PitchCoachTab";
 import { PreviewTab } from "@/components/studio/PreviewTab";
 import { ThemesTab } from "@/components/studio/ThemesTab";
 import { AuditTab } from "@/components/studio/AuditTab";
@@ -350,6 +351,18 @@ export default function HomePage() {
         id: "olivia",
         label: "Olivia",
         content: <OliviaChatTab onAuditEntry={pushAudit} />,
+      },
+      {
+        id: "coach",
+        label: "Coach",
+        content: (
+          <PitchCoachTab
+            slides={slides}
+            activePlanIdx={activePlanIdx}
+            navSection={navSection}
+            onAuditEntry={pushAudit}
+          />
+        ),
       },
       {
         id: "artifacts",

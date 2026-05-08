@@ -58,6 +58,7 @@ const NAVIGATE_TARGETS: { href: string; label: string; hint: string }[] = [
 
 const TAB_TARGETS: { id: string; label: string; hint: string }[] = [
   { id: "olivia", label: "Open Olivia chat", hint: "Inspector → Olivia tab" },
+  { id: "coach", label: "Open Pitch Coach", hint: "Inspector → Coach (Analyze · Draft · Optimize)" },
   { id: "artifacts", label: "Open Artifacts", hint: "Inspector → Artifacts tab" },
   { id: "library", label: "Open Library", hint: "Inspector → Library tab" },
   { id: "themes", label: "Open Themes", hint: "Inspector → Themes tab" },
