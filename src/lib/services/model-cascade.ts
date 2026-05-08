@@ -200,6 +200,12 @@ function buildSystemPrompt(intent: RouteIntent, vertical?: VerticalId) {
     `When data is comparable across categories or across time, manifest it as a chart inline using a fenced \`\`\`chart code block containing JSON. The schema:`,
     `{ "type": "bar"|"line"|"area"|"pie", "title": string, "data": Array<{[x or name]: string, [seriesKey]: number}>, "x": string (bar/line/area), "value": string (pie), "name": string (pie), "series": [{"key": string, "label"?: string, "color"?: "aurum"|"aether"|"mint"|"sky"|"amber"|"coral"}] }`,
     "Use charts only when they clarify; never wrap qualitative answers in a chart. Format the rest of the answer as standard markdown (headings, lists, tables, blockquotes, fenced code). Inline backticks for short code/identifiers. Be concise.",
+    /* Track N N5 — Gamma deck manifestation. When the response
+       references or generates a Gamma deck, surface it as a preview
+       card via a fenced ```gamma block. Bare URL or JSON object both
+       work (`{ "url": string, "title"?: string, "summary"?: string,
+       "slides"?: number }`). */
+    "When you generate or reference a Gamma deck, surface the link as a fenced ```gamma block — either a bare URL or JSON `{ url, title?, summary?, slides? }`. The UI renders a preview card with an Open-in-Gamma action.",
     verticalAddendum,
   ]
     .filter(Boolean)

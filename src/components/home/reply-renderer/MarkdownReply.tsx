@@ -25,6 +25,7 @@ import remarkGfm from "remark-gfm";
 import type { ReactNode } from "react";
 import { ChartFromSpec } from "./ChartFromSpec";
 import { parseChartSpec } from "./chart-spec";
+import { GammaCard, parseGammaSpec } from "./GammaCard";
 
 export interface MarkdownReplyProps {
   text: string;
@@ -93,6 +94,17 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
             }
             return (
               <CodeBlock raw={raw} lang={lang} note={`Invalid chart spec: ${parsed.error}`} />
+            );
+          }
+
+          /* Gamma deck preview fence (Track N N5). */
+          if (lang === "gamma") {
+            const parsed = parseGammaSpec(raw);
+            if (parsed.ok) {
+              return <GammaCard spec={parsed.spec} maxWidth={maxChartWidth} />;
+            }
+            return (
+              <CodeBlock raw={raw} lang={lang} note={`Invalid gamma spec: ${parsed.error}`} />
             );
           }
 

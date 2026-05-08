@@ -22,3 +22,10 @@ export {
   type ChartColorToken,
   type ChartParseResult,
 } from "./chart-spec";
+export {
+  GammaCard,
+  parseGammaSpec,
+  type GammaCardProps,
+  type GammaCardSpec,
+  type GammaCardParseResult,
+} from "./GammaCard";
