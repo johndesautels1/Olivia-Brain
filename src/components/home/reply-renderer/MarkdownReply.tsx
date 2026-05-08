@@ -26,6 +26,7 @@ import type { ReactNode } from "react";
 import { ChartFromSpec } from "./ChartFromSpec";
 import { parseChartSpec } from "./chart-spec";
 import { GammaCard, parseGammaSpec } from "./GammaCard";
+import { CitationStrip, parseCitations } from "./CitationStrip";
 
 export interface MarkdownReplyProps {
   text: string;
@@ -105,6 +106,17 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
             }
             return (
               <CodeBlock raw={raw} lang={lang} note={`Invalid gamma spec: ${parsed.error}`} />
+            );
+          }
+
+          /* Sources / citations strip (Track O O4). */
+          if (lang === "sources") {
+            const parsed = parseCitations(raw);
+            if (parsed.ok) {
+              return <CitationStrip citations={parsed.citations} maxWidth={maxChartWidth} />;
+            }
+            return (
+              <CodeBlock raw={raw} lang={lang} note={`Invalid sources block: ${parsed.error}`} />
             );
           }
 

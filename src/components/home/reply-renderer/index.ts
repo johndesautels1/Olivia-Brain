@@ -29,3 +29,10 @@ export {
   type GammaCardSpec,
   type GammaCardParseResult,
 } from "./GammaCard";
+export {
+  CitationStrip,
+  parseCitations,
+  type CitationStripProps,
+  type Citation,
+  type CitationsParseResult,
+} from "./CitationStrip";

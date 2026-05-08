@@ -206,6 +206,11 @@ function buildSystemPrompt(intent: RouteIntent, vertical?: VerticalId) {
        work (`{ "url": string, "title"?: string, "summary"?: string,
        "slides"?: number }`). */
     "When you generate or reference a Gamma deck, surface the link as a fenced ```gamma block — either a bare URL or JSON `{ url, title?, summary?, slides? }`. The UI renders a preview card with an Open-in-Gamma action.",
+    /* Track O O4 — citation-first RAG. When the response draws on
+       web research, regulatory documents, or peer-reviewed sources,
+       surface the source list as a `sources` fence so the UI can
+       render a citation strip beneath the narrative. */
+    "When citing external sources (Tavily research, Perplexity citations, regulatory documents, peer-reviewed studies), append a fenced ```sources block with a JSON array `[{ title: string, url: string, source?: string }]`. The UI renders a numbered citation strip; in-prose `[1]` / `[2]` references map to entries by position. Always include sources for factual claims sourced from web research.",
     verticalAddendum,
   ]
     .filter(Boolean)
