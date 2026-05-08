@@ -2,8 +2,8 @@
 
 > **Snapshot of every shipped capability + the remaining roadmap.**
 >
-> Last refreshed: **2026-05-08** at HEAD `fb5eba6` (post-P2 feat commit). **Track Q closed; Track P 2/7 ✅.**
-> Test gate: **697/697 across 52 suites**. Typecheck: **clean**.
+> Last refreshed: **2026-05-08** at HEAD `96324f0` (post-P3 feat commit). **Track Q closed; Track P 3/7 ✅.**
+> Test gate: **724/724 across 56 suites**. Typecheck: **clean**.
 >
 > This file is a snapshot — refresh it at end of each batch (after the SESSION_LOG entry lands) so the next session opens to a current view of the codebase. It's a complement to `BUILD_SEQUENCE.md` (which is the session-by-session plan) and `HANDOFF.md` (which is the resume-point doc).
 
@@ -80,7 +80,7 @@
 | `quantara/metamorphic/` | Q5 round-axis (buyer-class map + section reorder + 18 supplementary fields) + Q6 vertical-axis (5 verticals + 20 vertical fields + projection); shared `MetamorphicFieldShape` powers a single field renderer across both axes | SHIPPED |
 | `quantara/voice/` | Q7 cascade-driven voice extraction — prompt builder with field manifest + filled hints + transcript truncation; `extractFromTranscript` orchestrator with 3-soft-failure-mode fallback to empty extractions (mock-mode / parse failure / schema failure — never fabricates) | SHIPPED |
 | `quantara/personas/` | Q7 cascade-driven persona synthesis — `CombinedPersonaPayloadSchema` (bounded archetype + risk-tolerance enums); prompt builder; deterministic mock fallback; `synthesizePersonas` orchestrator with 3-soft-failure-mode fallback that always preserves the cascade attempts trail for ops review | SHIPPED |
-| `deal-protection/` | Track P Smart Score primitives — 5-band ladder (red/orange/yellow/blue/green) covering 0-100 contiguously with module-load runtime invariants; pure helpers `clampSmartScore` / `getSmartBand` / `getSmartBandRecord` / `bandsAgree`; per-band UI copy + design-system color tokens. **P2** adds clause classifier — 20-value `ClauseType` enum, severity ladder + per-tier `SEVERITY_TOXICITY_RANGE`, 20 canonical fixture clauses, two-pass cascade orchestration (Sonnet primary + Opus judge for critical) with three-mode soft-failure fixture fallback. P3 cascade analyzer + P4 investor reputation seed land in subsequent sessions. | SHIPPED (P1+P2) |
+| `deal-protection/` | Track P Smart Score primitives — 5-band ladder (red/orange/yellow/blue/green) covering 0-100 contiguously with module-load runtime invariants; pure helpers `clampSmartScore` / `getSmartBand` / `getSmartBandRecord` / `bandsAgree`; per-band UI copy + design-system color tokens. **P2** adds clause classifier — 20-value `ClauseType` enum, severity ladder + per-tier `SEVERITY_TOXICITY_RANGE`, 20 canonical fixture clauses, two-pass cascade orchestration (Sonnet primary + Opus judge for critical) with three-mode soft-failure fixture fallback. **P3** adds the term-sheet parser + analyze API — heuristic-first hybrid parser (section-marker split → cascade fallback → single-clause fallback) with investor names + round context extraction; severity-weighted aggregation with hard caps (any critical → ≤ 39, any high → ≤ 79) so a single dealbreaker can't be averaged away; analyze orchestrator + `DealRiskReport` shape; deterministic walk-away derivation (no extra cascade call); 0.95 live / 0.40 mock confidence scoring. New `POST /api/deal-protection/analyze` route — 5/min rate limit, own-row ValuationSubject lookup, persists `band.action` enum (not label) so P5 email drafts can pattern-match. P4 investor reputation seed lands in the next session. | SHIPPED (P1+P2+P3) |
 | `queries/` | Calendar queries (CRUD, filters, sync) | SHIPPED |
 | `rag/` | Citation-first RAG with source ranking | SHIPPED |
 | `realtime/` | Unified transport: LiveKit, Twilio, Vapi, Retell | SHIPPED |
@@ -114,7 +114,8 @@
 | **`/api/valuation/*`** | 8 | `run` (full or math-mode), `subject`, `[runId]`, `latest`, `compare`, `sensitivity`, `export`, `deal-room/{session,score-rubric}` |
 | **`/api/admin/*`** | 8 | `agents/[agentId]`, `agents/run`, `approvals`, `integrations`, `integrations/test`, `memory`, `migrations`, `toggles` |
 | **`/api/pitch/*`** | 6 | `archetypes`, `templates`, `analyze`, `chat`, `draft`, `optimize` |
-| **`/api/founder-intake/*`** (Q2 + Q3) | 2 | `POST/GET /api/founder-intake`, `POST /api/founder-intake/auto-fill` |
+| **`/api/founder-intake/*`** (Q2 + Q3 + Q7) | 4 | `POST/GET /api/founder-intake`, `POST /api/founder-intake/auto-fill`, `POST /api/founder-intake/voice-extract`, `POST/GET /api/founder-intake/personas` |
+| **`/api/deal-protection/*`** (P3) | 1 | `POST /api/deal-protection/analyze` — parse + classify + aggregate + persist DealAnalysis + return DealRiskReport |
 | **`/api/avatar/*`** | 3 | Generate, status, session create/manage |
 | **`/api/realtime/*`** | 3 | Status, session create, WebRTC credentials |
 | **`/api/voice/*`** | 2 | `synthesize`, `transcribe` |
@@ -197,7 +198,7 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 | Track | Sessions remaining | Scope summary |
 |---|---|---|
 | **Track Q (Quantara)** — Q5 → Q7 | **3** | Q5 investor-class metamorphic UI · Q6 vertical-specific schedules (AI/SaaS, HealthTech, ClimateTech, PropTech) · Q7 voice-first paragraphical capture + persona generation |
-| **Track P (Deal Protection)** — P1 → P7 | **7** | Smart Score + bands · clause classifier (20 types) · term-sheet parser API · Investor Reputation DB + admin CRUD · multi-round dilution + email drafts · WarRoom integration + counter term sheet · negotiation rehearsal + versioning + multi-LLM consensus |
+| **Track P (Deal Protection)** — P4 → P7 | **4** | Investor Reputation DB + admin CRUD · multi-round dilution + email drafts · WarRoom integration + counter term sheet · negotiation rehearsal + versioning + multi-LLM consensus (P1+P2+P3 ✅) |
 | **Track D (Studio↔Brain wiring)** — S15-S16 | **2** | Re-point Studio "Ask Olivia / Analyze / Optimize" to OB cascade |
 | **Track E (Voice input, S17)** | **1** | Voice-driven Studio capture |
 | **Track F (Clerk auth, S18)** | **1** | Replace `getAuthSession` stub with real Clerk — closes W-015 |
@@ -221,11 +222,11 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 
 | Metric | Value |
 |---|---|
-| **Sessions complete** | 32 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1 + Q2 + Q3) |
-| **Sessions remaining (priorities 1-4 + Track L)** | **~53** |
+| **Sessions complete** | 38 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P3) |
+| **Sessions remaining (priorities 1-4 + Track L)** | **~47** |
 | **Total sessions in plan** | ~85 |
-| **% complete** | ~38% by session count |
-| **Tests passing** | 494/494 across 37 suites |
+| **% complete** | ~45% by session count |
+| **Tests passing** | 724/724 across 56 suites |
 | **Typecheck** | clean |
 | **Open weaknesses** | 4 (W-013/14/15/16) |
 | **Library subsystems** | 50 (43 shipped, 1 LTM-ported, 2 partial, 3 stub, 1 pending) |

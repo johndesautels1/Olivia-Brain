@@ -2217,3 +2217,72 @@ Three failure modes that don't break the founder's flow:
 **None.** P2 is pure logic against the P1 schema — no new migration, no env vars, no operator step.
 
 **Next session:** **Track P Session P3 — Term sheet parser + analyze API.** New `src/lib/deal-protection/parser.ts` (text + PDF → structured `TermSheetTerms`); new API `POST /api/deal-protection/analyze` (parse → clause-intel → smart-score → optional quant via existing V3 engine in scenario mode → `DealAnalysis` record persisted). Per BUILD_SEQUENCE Track P row P3.
+
+---
+
+## Part 46 — 2026-05-08 — Track P Session P3: Term sheet parser + analyze API
+
+**HEAD before:** `9685719` (handoff after Q5 → P2 batch — 697/697 across 52 suites). **HEAD after P3 code:** `96324f0`. **HEAD after P3 docs:** (this commit). **Tests:** 697/697 → **724/724** across **52 → 56 suites** (+27 new cases across 4 new suites). Typecheck clean.
+
+### What ships
+
+**Parser (heuristic-first hybrid)** — `src/lib/deal-protection/parser.ts` + `parser-types.ts` + `parser-prompts.ts`.
+
+| Stage | Behaviour |
+|---|---|
+| 1. Cap text | Input capped to `PARSER_TEXT_CHAR_LIMIT` (50_000). |
+| 2. Heuristic split | Section-marker regex on `Section N`, `N.`, and `Heading:` patterns; clauses ≥ 20 chars survive. |
+| 3. Decision | If ≥ `MIN_HEURISTIC_CLAUSE_COUNT` (3) clauses → return heuristic result, **`runtimeMode: "live"`**, **`extractionStrategy: "heuristic"`**. Cascade is skipped — free, fast, deterministic happy path. |
+| 4. Cascade fallback | Sonnet via `intent: "operations"`. Validates against `CascadeParseSchema` (Zod). Returns `extractionStrategy: "cascade"` on success. |
+| 5. Single-clause fallback | When cascade mocks OR JSON parse fails OR schema rejects → one clause containing the verbatim text. `runtimeMode: "mock"`, `extractionStrategy: "fallback_single"`. |
+
+Investor names + round context (`roundType`, `amountGbp`, `preMoneyGbp`) extracted heuristically alongside; cascade pass merges its own findings on top.
+
+**Aggregation formula** — `src/lib/deal-protection/aggregate.ts`. Severity-weighted toxicity with severity-band caps (locked 2026-05-08 via `AskUserQuestion`):
+
+```
+weights = { low: 1, medium: 2, high: 4, critical: 8 }
+weighted_avg_toxicity = Σ(w[sᵢ] × tᵢ) / Σ(w[sᵢ])
+base_score = 100 − weighted_avg_toxicity
+if any severity == 'critical':  smart_score = min(base, 39)   // CRITICAL_CEILING
+elif any severity == 'high':    smart_score = min(base, 79)   // HIGH_CEILING
+else:                            smart_score = base
+empty clause list → smartScore = 50, emptyInput = true
+```
+
+Final smartScore goes through `clampSmartScore` (P1) so non-finite or out-of-range inputs collapse to 0–100.
+
+`deriveWalkAwayReasons` returns the band-language preface + sorted critical-clause summaries — deterministic, no extra cascade call. Only called when band='red'.
+
+**Orchestrator** — `src/lib/deal-protection/analyze.ts`. Pipeline: parser → P2 classifier → aggregator → band lookup → bundle `DealRiskReport` payload. `runtimeMode = "live"` iff every sub-stage stayed live AND input was structurally parseable. `confidenceScore`: 0.95 live / 0.40 mock. `walkAwayReasons` populated only when band='red'. Empty-input branch overrides band copy ("manual review with counsel recommended"); `investorSignal: "Unparsed"`.
+
+**Report contract** — `src/lib/deal-protection/report-types.ts`. `DealRiskReport` shape stable for the platform lifetime — downstream P5 email drafts / P6 WarRoom counter / P7 negotiation rehearsal / founder UI bind to these names. Fields: `dealAnalysisId`, `valuationSubjectId`, `smartScore`, `band: SmartBandRecord`, `clauseAnalyses`, `criticalIssues` (≤ 5, sorted by toxicity desc), `walkAwayReasons`, `investorNames`, `confidenceScore`, `runtimeMode`, `attempts`, `generatedAt`.
+
+**API route** — `src/app/api/deal-protection/analyze/route.ts`. POST body `{ subjectId, termSheetText }`. Pipeline mirrors `/api/founder-intake/personas` — 5/min rate limit, `getAuthSession()` stub (W-015), own-row ValuationSubject lookup (404 if not yours), pure orchestrator call, `prisma.dealAnalysis.create`, return `{ ok, report }`. Persists `band.action` (stable enum), not `actionLabel`, so downstream P5 can pattern-match. **No new SQL migration** — uses the `deal_analyses` table from P1.
+
+### Tests (27 new cases across 4 new suites)
+
+- **`parser.test.ts`** (7 cases) — heuristic split on numbered list (skips cascade); heading capture; round-context + multi-investor extraction (`Investors: A, B`); cascade fallback when heuristic produces < 3 clauses; cascade mock-mode → single-clause; cascade invalid JSON → single-clause; whitespace-only input → empty clauses.
+- **`aggregate.test.ts`** (9 cases) — empty input → 50; all-low → high score, no caps; 19 low + 1 critical → cap at 39 (proves caps essential — without them score would be ~73, "blue"); high without critical → cap at 79; low+medium only → no caps; critical-issues sorted+truncated to 5; out-of-range toxicity clamps; walk-away includes band preface + sorted critical summaries; blank band-language preface omitted.
+- **`analyze.test.ts`** (6 cases) — happy path runtimeMode=live + confidence=0.95; critical clause forces orange-or-red band + walk-away populated; empty-input overrides band copy + investorSignal=Unparsed + score=50; classifier mock + parser live → mock; parser mock + classifier live → mock; investor names + combined attempts trail forwarded.
+- **`route.test.ts`** (5 cases) — POST module surface; invalid JSON body → 400; missing subjectId → 400; missing termSheetText → 400; too-short termSheetText → 400.
+
+### Decisions / judgment-call trail
+
+1. **Heuristic-first hybrid (vs cascade-only).** User-confirmed via `AskUserQuestion` 2026-05-08. Free + deterministic on the 80% of structured term sheets; cascade only when heuristic can't structurally split. Saves an LLM call per analyze on the happy path without losing the fallback.
+2. **Severity-weighted with hard caps (vs simpler unweighted mean).** User-confirmed. The hard caps are essential: a single ratchet anti-dilution clause + 19 boilerplate clauses must NOT show as green just because the average toxicity is low. One critical clause is dealbreaker-shaped, not averageable. Verified by the "19 low + 1 critical" test — without caps the score would land in blue.
+3. **Three-mode soft-failure (matches Q7 / P2 patterns).** Cascade mock-mode → single-clause; JSON parse failure → single-clause; Zod schema rejection → single-clause. Each fallback preserves the cascade attempts trail for ops review. Never throws on the happy path.
+4. **`runtimeMode: "live"` requires every sub-stage live AND parseable input.** A cascade-live extraction with empty output is mock-mode. A parser-mock + classifier-live is mock-mode. The label tells the UI when to render "this analysis used real intelligence" vs "this is fixture data."
+5. **Walk-away reasons derived deterministically (vs separate cascade pass).** Critical-clause summaries plus the band-language preface produce the bullet list. Deterministic; no extra LLM call. Band-language preface skipped if blank.
+6. **Persist `band.action` enum (not `actionLabel`).** P5's email-draft generator pattern-matches on the enum; the human label is derivable via `getSmartBandRecordByAction(action).actionLabel` and renamable without touching the DB.
+7. **Investor names whitelist via heuristic + cascade union.** Heuristic catches the structured "Investors: X, Y" line; cascade catches names embedded in prose. Both feed `investorNames` for P4's reputation lookup later.
+
+### Build status at session-P3 close
+
+**Green.** Tests: **724/724** across **56 suites** (+27 new across 4 new suites). Typecheck: clean. **Track P 3/7 ✅.**
+
+### Operator action surfaced
+
+**None new.** Carried forward from P1: apply `prisma/sql/06-add-deal-protection-foundation.sql` to Supabase before the route can persist. The orchestrator (`analyzeTermSheet`) runs cleanly without the table; only `prisma.dealAnalysis.create` requires the migration.
+
+**Next session:** **Track P Session P4 — Investor Reputation DB + admin CRUD.** Seed `InvestorReputation` from London-ecosystem data (note: P1 deferred the `D:\Deal_Doc_Engine\london\investor_db.json` seed because that path doesn't exist in OB — P4 designs the seed list from scratch). Admin CRUD page at `/admin/investors`. Founder-submitted reputation entries via opt-in form + admin moderation queue. Smart-score output starts including investor reputation when investor name matches a record.
