@@ -149,7 +149,7 @@ export async function GET() {
         id: true,
         smartScore: true,
         generatedAt: true,
-        valuationSubject: { select: { name: true } },
+        valuationSubject: { select: { companyName: true } },
       },
     }),
     prisma.valuationRun.findMany({
@@ -159,11 +159,11 @@ export async function GET() {
       select: {
         id: true,
         createdAt: true,
-        valuationSubject: { select: { name: true } },
+        valuationSubject: { select: { companyName: true } },
       },
     }),
     prisma.document.findMany({
-      where: { status: "ready" },
+      where: { status: "active" },
       orderBy: { updatedAt: "desc" },
       take: 3,
       select: {
@@ -203,7 +203,7 @@ export async function GET() {
     recent.push({
       id: `deal-${item.id}`,
       kind: "deal",
-      title: `Deal Analysis · ${item.valuationSubject?.name ?? "Subject"}`,
+      title: `Deal Analysis · ${item.valuationSubject?.companyName ?? "Subject"}`,
       meta: `${relTime(item.generatedAt)} · score ${Number(item.smartScore).toFixed(0)}`,
       timestamp: item.generatedAt.toISOString(),
     });
@@ -212,7 +212,7 @@ export async function GET() {
     recent.push({
       id: `val-${item.id}`,
       kind: "valuation",
-      title: `Valuation · ${item.valuationSubject?.name ?? "Subject"}`,
+      title: `Valuation · ${item.valuationSubject?.companyName ?? "Subject"}`,
       meta: `${relTime(item.createdAt)} · run completed`,
       timestamp: item.createdAt.toISOString(),
     });
