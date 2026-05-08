@@ -2099,12 +2099,16 @@ model InvestorReputation {
 /// LTM-aligned bookmark. Compound unique on `[userProfileId, documentId]`
 /// makes the toggle endpoint idempotent and "is bookmarked?" a single
 /// point lookup. Mirrors `LTM.DocumentBookmark` (line 1955 of LTM
-/// schema). FK to `UserProfile` + `Document` lands in Session 8d.
+/// schema). FK to `UserProfile` + `Document` landed in Session 8d
+/// (this session) — both relations now enforce referential integrity.
 model DocumentBookmark {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userProfileId String
   documentId    String
   createdAt     DateTime @default(now())
+
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  document    Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@unique([userProfileId, documentId])
   @@index([userProfileId])
@@ -2122,16 +2126,21 @@ model DocumentBookmark {
 /// port — column shape is identical so the type tightening is a
 /// non-breaking enum migration when it lands.
 model Package {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String
   ownerUserId   String?
-  outreachGoal  String
-  packageStatus String   @default("draft")
+  /// LTM-aligned enum (Session 8d tightened from `String`). Values:
+  /// fundraising / strategic_partnership / white_label / pilot /
+  /// reseller / acquisition / enterprise_sales.
+  outreachGoal  OutreachGoal
+  /// LTM-aligned enum (Session 8d tightened from `String`). Values:
+  /// draft / ready / sent / viewed / engaged / closed / package_archived.
+  packageStatus PackageStatus @default(draft)
   summary       String?
-  shareToken    String?  @unique
+  shareToken    String?       @unique
   expiresAt     DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   packageDocuments PackageDocument[]
 
@@ -2159,7 +2168,8 @@ model PackageDocument {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  package Package @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  package  Package  @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
 
   @@unique([packageId, documentId])
   @@index([packageId])
@@ -2190,8 +2200,265 @@ model DocumentShare {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  document Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
   @@index([documentId])
   @@index([ownerUserId])
   @@index([shareToken])
   @@map("document_shares")
+}
+
+// ─── Track B Session 8d — Documents foundation (Document + UserProfile + enums) ─
+//
+// **LTM-aligned shapes.** Full LTM enum set + Document + UserProfile
+// minimum-viable subset, ported byte-for-byte where the columns exist
+// in LTM. Differences from LTM (all deliberate):
+//
+// - `Document.collectionId` is **optional** in OB (LTM marks it required
+//   FK to `DocumentCollection`). OB doesn't have `DocumentCollection`
+//   yet — that table + its consumers (collection-tier filtering on
+//   the documents index) port in a follow-up. The column shape is
+//   preserved so a follow-up migration can add the FK without
+//   renaming.
+// - LTM's `DocumentVersion`, `DocumentModule`, `DocumentRelationship`
+//   tables are not ported — those are append-only audit tables with
+//   no current consumer in OB. Land when the documents app routes
+//   ship a "version history" or "module composition" feature.
+// - `UserProfile` is the minimum-viable subset (id, clerkUserId,
+//   displayName, headline, bio, jobTitle, company, contactEmail,
+//   phone, isPublic, planTier, Stripe wiring, timestamps). The many
+//   LTM cross-product relations (DistrictFollow, EventRsvp, salutations,
+//   comments, valuationSubjects, dealRoomSessions, etc.) are not
+//   ported — they live in LTM-only tables. The `documentBookmarks`
+//   relation is ported; the `valuationSubjects` relation is wired in
+//   ValuationSubject in a follow-up edit if needed for cross-table FK
+//   pressure.
+
+// ─── Enums (12 new) ────────────────────────────────────────────────────────
+
+/// Subscription tier for feature gating. Drives the share endpoint's
+/// plan-block hook and other entitlement checks.
+enum PlanTier {
+  free
+  developer
+  executive
+  enterprise
+}
+
+enum DocumentType {
+  executive_summary
+  company_overview
+  founder_bio
+  investor_deck
+  strategic_partner_deck
+  enterprise_deck
+  white_label_deck
+  acquisition_teaser
+  product_overview
+  technical_architecture
+  methodology_whitepaper
+  financial_model
+  pricing_sheet
+  licensing_sheet
+  proposal
+  roadmap
+  integration_guide
+  sample_report
+  term_sheet
+  legal_agreement
+  diligence_doc
+  marketing_doc
+}
+
+enum DocAudienceType {
+  investor
+  strategic_partner
+  enterprise_client
+  white_label_partner
+  acquirer
+  reseller
+  media
+  internal
+}
+
+enum PurposeType {
+  fundraising
+  partnership
+  licensing
+  pilot
+  acquisition
+  diligence
+  education
+  outreach
+}
+
+enum FormatType {
+  markdown
+  richtext
+  block_json
+  docx
+  pptx
+  pdf
+  spreadsheet
+  link
+}
+
+enum ContentSourceType {
+  stored_file
+  rich_text
+  generated_template
+  external_link
+}
+
+enum ConfidentialityLevel {
+  public_access
+  internal
+  confidential
+  nda_required
+}
+
+enum DocStatus {
+  draft
+  active
+  archived
+}
+
+/// Authoring progress for a user-owned Document. Independent of DocStatus
+/// (which tracks library-visibility lifecycle). Per-row badges on the
+/// dashboard "My Documents" tile.
+enum DocAuthoringState {
+  draft
+  in_progress
+  complete
+}
+
+/// Origin of a Document. Stored explicitly so the dashboard "My Documents"
+/// tile renders source chips without re-deriving from heuristics.
+enum DocSourceKind {
+  user_upload
+  business_library
+  general_library
+  studio_olivia
+  voice_dictation
+  authored
+}
+
+enum OutreachGoal {
+  fundraising
+  strategic_partnership
+  white_label
+  pilot
+  reseller
+  acquisition
+  enterprise_sales
+}
+
+enum PackageStatus {
+  draft
+  ready
+  sent
+  viewed
+  engaged
+  closed
+  package_archived
+}
+
+// ─── Document — LTM-aligned (line 1189 of LTM schema) ──────────────────────
+
+/// Top-level document record. Templates have `isTemplate = true` and
+/// `ownerUserId = null`; user-owned copies (via fork or new-doc wizard)
+/// have `ownerUserId` set + `sourceTemplateId` pointing back at the
+/// template they were forked from.
+model Document {
+  id                String               @id @default(cuid())
+  /// LTM: required FK to `DocumentCollection`. OB: optional, no FK
+  /// because OB doesn't have the collection table yet.
+  collectionId      String?
+  title             String
+  slug              String               @unique
+  documentType      DocumentType
+  audienceType      DocAudienceType
+  purposeType       PurposeType
+  formatType        FormatType
+  summary           String?
+  contentSourceType ContentSourceType
+  /// Full body for inline-content documents (markdown / richtext /
+  /// block_json). For stored-file documents this stores the storage
+  /// path. For external-link documents this stores the URL.
+  storagePathOrBody String?              @db.Text
+  previewText       String?
+  isModular         Boolean              @default(false)
+  isTemplate        Boolean              @default(false)
+  confidentiality   ConfidentialityLevel @default(internal)
+  status            DocStatus            @default(draft)
+  authoringState    DocAuthoringState    @default(draft)
+  sourceKind        DocSourceKind?
+  feedsValuation    Boolean              @default(false)
+  /// Clerk userId direct (matches LTM convention). Null for public
+  /// templates; set on user-owned copies.
+  ownerUserId       String?
+  /// FK to the template this row was forked from (if any). Used by the
+  /// fork endpoint to detect already-owned copies.
+  sourceTemplateId  String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  sourceTemplate Document?  @relation("TemplateCopies", fields: [sourceTemplateId], references: [id], onDelete: SetNull)
+  copies         Document[] @relation("TemplateCopies")
+  packageDocs    PackageDocument[]
+  bookmarks      DocumentBookmark[]
+  shares         DocumentShare[]
+
+  @@index([documentType])
+  @@index([audienceType])
+  @@index([purposeType])
+  @@index([confidentiality])
+  @@index([status])
+  @@index([ownerUserId])
+  @@index([sourceTemplateId])
+  @@index([status, audienceType])
+  @@index([status, updatedAt])
+  @@index([ownerUserId, authoringState])
+  @@index([ownerUserId, sourceKind])
+  @@unique([ownerUserId, sourceTemplateId])
+  @@map("documents")
+}
+
+// ─── UserProfile — LTM-aligned (line 1694 of LTM schema, minimum subset) ──
+
+/// Per-user profile keyed off Clerk's `userId`. OB looks up or creates
+/// the row on first user-scoped action via `ensureUserProfile()`
+/// (`src/lib/users/ensure-user-profile.ts`). Cross-product relations
+/// from LTM's UserProfile (DistrictFollow, EventRsvp, salutations,
+/// comments, etc.) are not ported — they live on LTM-only tables.
+model UserProfile {
+  id           String   @id @default(cuid())
+  clerkUserId  String   @unique
+  displayName  String
+  headline     String?
+  bio          String?  @db.Text
+  jobTitle     String?
+  company      String?
+  contactEmail String?
+  phone        String?
+  isPublic     Boolean  @default(true)
+  /// Subscription tier for feature gating (drives the share endpoint's
+  /// plan-block hook).
+  planTier     PlanTier @default(free)
+
+  /// Stripe wiring — mirrored from Stripe webhooks. Lets the UI render
+  /// "renews on …" without a live Stripe round-trip.
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  /// Mirror of Stripe subscription.status. String not enum because
+  /// Stripe adds new states and we don't want a schema migration each time.
+  subscriptionStatus   String?
+  currentPeriodEnd     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documentBookmarks DocumentBookmark[]
+
+  @@map("user_profiles")
 }

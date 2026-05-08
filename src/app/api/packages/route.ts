@@ -10,6 +10,7 @@
  * Auth: `getAuthSession()` (Track F gate).
  */
 
+import { OutreachGoal } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -23,7 +24,10 @@ const LIST_LIMIT = 50 as const;
 
 const PackagePostSchema = z.object({
   name: z.string().min(1).max(200),
-  outreachGoal: z.string().min(1).max(80),
+  /// LTM-aligned enum (Track B Session 8d tightened from `z.string()`).
+  /// Values: fundraising / strategic_partnership / white_label / pilot /
+  /// reseller / acquisition / enterprise_sales.
+  outreachGoal: z.nativeEnum(OutreachGoal),
 });
 
 function fail(message: string, status = 400): NextResponse {
