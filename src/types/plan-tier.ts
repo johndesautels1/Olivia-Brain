@@ -1,13 +1,42 @@
 /**
- * Plan-tier shape — re-exports the canonical types from
- * `@/lib/require-tier` so callers that follow LTM's `@/types/plan-tier`
- * convention continue to compile.
+ * Plan-tier types + pure helpers.
+ *
+ * **Source of truth for plan-tier shape** — `@/lib/require-tier`
+ * imports from this file (not the other way around) so client
+ * components can pull `PlanTier` / `tierAtLeast` / `TIER_DISPLAY_NAMES`
+ * without transitively pulling `@clerk/nextjs/server` into the
+ * client SSR bundle.
+ *
+ * This split landed in Track B Session 8d-routes-2 to fix a Vercel
+ * build error: `ValuationWorkbench` (a client component) imported
+ * `PlanTier` from `@/types/plan-tier`, which previously re-exported
+ * from `@/lib/require-tier`, which imports `getAuthSession` from
+ * `auth/session`, which imports `auth` from `@clerk/nextjs/server`.
+ * The Clerk server module is server-only — bundling it into the
+ * client SSR pass made `npm run build` fail with "Client Component
+ * SSR" errors. Inverting the import direction (this file is now the
+ * source; require-tier consumes it) breaks the chain.
  */
 
-import { TIER_METADATA, type PlanTier } from "@/lib/require-tier";
+export type PlanTier = "free" | "developer" | "executive" | "enterprise";
 
-export type { PlanTier } from "@/lib/require-tier";
-export { TIER_METADATA, tierAtLeast } from "@/lib/require-tier";
+const TIER_ORDER: Record<PlanTier, number> = {
+  free: 0,
+  developer: 1,
+  executive: 2,
+  enterprise: 3,
+};
+
+export const TIER_METADATA: Record<PlanTier, { displayName: string }> = {
+  free: { displayName: "Free" },
+  developer: { displayName: "Developer" },
+  executive: { displayName: "Executive" },
+  enterprise: { displayName: "Enterprise" },
+};
+
+export function tierAtLeast(actual: PlanTier, required: PlanTier): boolean {
+  return TIER_ORDER[actual] >= TIER_ORDER[required];
+}
 
 /**
  * LTM exposes a `TIER_DISPLAY_NAMES` lookup keyed by tier id; OB derives

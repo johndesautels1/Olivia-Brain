@@ -1,5 +1,5 @@
 /**
- * Tier-gated route protection.
+ * Tier-gated route protection — **server-only** auth helpers.
  *
  * **Pre-Clerk shape (Track F Session 18 lands the real Clerk integration).**
  *
@@ -13,37 +13,35 @@
  * When Track F lands Clerk + UserProfile + PlanTier, replace the body with
  * a real `prisma.userProfile.findUnique` lookup keyed off the Clerk user ID,
  * resolve the planTier, and run the standard `tierAtLeast` comparison. The
- * exported shape (`PlanTier`, `tierAtLeast`, `TierCheckResult`,
- * `requireTier`, `getUserTier`) is stable and matches the LTM contract so
- * route code does not need to change.
+ * exported shape (`PlanTier`, `tierAtLeast`, `TIER_METADATA`,
+ * `TierCheckResult`, `requireTier`, `getUserTier`) is stable and matches
+ * the LTM contract so route code does not need to change.
  *
  * The `featureName` parameter is preserved for symmetry with LTM and is used
  * in error messages once tier enforcement turns on.
+ *
+ * **Server-only.** This file imports from `@/lib/auth/session` which
+ * pulls `@clerk/nextjs/server`. Importing it from a client component
+ * fails the Next.js build. Pure types + helpers (`PlanTier`,
+ * `TIER_METADATA`, `tierAtLeast`, `TIER_DISPLAY_NAMES`) live in
+ * `@/types/plan-tier` instead — client components import from there.
  */
+
+import "server-only";
 
 import { NextResponse } from "next/server";
 
 import { getAuthSession } from "@/lib/auth/session";
+import {
+  TIER_METADATA,
+  tierAtLeast,
+  type PlanTier,
+} from "@/types/plan-tier";
 
-export type PlanTier = "free" | "developer" | "executive" | "enterprise";
-
-const TIER_ORDER: Record<PlanTier, number> = {
-  free: 0,
-  developer: 1,
-  executive: 2,
-  enterprise: 3,
-};
-
-export const TIER_METADATA: Record<PlanTier, { displayName: string }> = {
-  free: { displayName: "Free" },
-  developer: { displayName: "Developer" },
-  executive: { displayName: "Executive" },
-  enterprise: { displayName: "Enterprise" },
-};
-
-export function tierAtLeast(actual: PlanTier, required: PlanTier): boolean {
-  return TIER_ORDER[actual] >= TIER_ORDER[required];
-}
+// Re-export the pure types/helpers so existing server callers that
+// imported from `@/lib/require-tier` keep working.
+export { TIER_METADATA, tierAtLeast };
+export type { PlanTier };
 
 export type TierCheckResult =
   | {
