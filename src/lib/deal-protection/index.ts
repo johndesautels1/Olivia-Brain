@@ -174,3 +174,26 @@ export {
   type GenerateEmailDraftOptions,
   generateEmailDraft,
 } from './email-drafts';
+
+export {
+  type CounterChange,
+  type CounterDraftPayload,
+  type CounterDraftResult,
+  COUNTER_DRAFT_LIMITS,
+  CounterChangeSchema,
+  CounterDraftPayloadSchema,
+  CounterDraftPostBodySchema,
+} from './counter-term-sheet-types';
+
+export {
+  type GenerateCounterDraftOptions,
+  generateCounterDraft,
+  renderCounterMarkdown,
+} from './counter-term-sheet';
+
+export {
+  type CounterTemplateContext,
+  renderTemplateCounterDraft,
+} from './counter-term-sheet-templates';
+
+export { buildCounterDraftPrompt } from './counter-term-sheet-prompts';

@@ -21,6 +21,8 @@ export interface WarRoomProps {
   buyerType: BuyerType;
   enterpriseValue: ValuationBand;
   valuationRunId: string | null;
+  /** Optional — when present, the briefing mounts the Deal Protection panel for this subject (P6). */
+  valuationSubjectId?: string;
   acquisitionMirror: AcquisitionMirrorResult | null;
   negotiationAnchors: {
     walkAway: number;
@@ -42,6 +44,7 @@ export default function WarRoom({
   buyerType,
   enterpriseValue,
   valuationRunId,
+  valuationSubjectId,
   acquisitionMirror,
   negotiationAnchors,
   evidenceChain,
@@ -337,6 +340,7 @@ export default function WarRoom({
         acquisitionMirror={acquisitionMirror}
         expandedChallenge={expandedChallenge}
         setExpandedChallenge={setExpandedChallenge}
+        valuationSubjectId={valuationSubjectId}
         onEnterSession={() => setSessionActive(true)}
         onExit={onExit}
       />

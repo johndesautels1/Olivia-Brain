@@ -1951,11 +1951,64 @@ model DealAnalysis {
   generatedAt DateTime @default(now())
   isArchived  Boolean  @default(false)
 
-  valuationSubject ValuationSubject @relation(fields: [valuationSubjectId], references: [id], onDelete: Cascade)
+  valuationSubject  ValuationSubject   @relation(fields: [valuationSubjectId], references: [id], onDelete: Cascade)
+  counterTermSheets CounterTermSheet[]
 
   @@index([userId, generatedAt])
   @@index([valuationSubjectId, generatedAt])
   @@map("deal_analyses")
+}
+
+/// Cascade-drafted founder-side counter term sheet for a Deal Protection
+/// run. Append-only with a per-analysis `versionNumber` so the founder
+/// can iterate on the counter as the negotiation evolves. Cascading
+/// delete from deal_analyses so counters don't orphan a soft-deleted
+/// analysis. Cross-doc inheritance: company / sector / round context
+/// flow through from the parent ValuationSubject + DealAnalysis at
+/// generation time; this row stores only the redline output.
+model CounterTermSheet {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Owner — references Clerk user ID directly.
+  userId         String @db.Uuid
+  /// Parent Deal Protection analysis. Cascading delete.
+  dealAnalysisId String @db.Uuid
+
+  /// Per-analysis version number — increments with each new draft so
+  /// the negotiation history is auditable. 1 for the first counter,
+  /// 2 for the next regeneration, etc.
+  versionNumber Int @default(1)
+
+  /// Rendered redlined markdown — the document the founder copies
+  /// into their email / lawyer's redlines. Includes preamble +
+  /// per-clause counter language + closing.
+  redlinedMarkdown String @db.Text
+
+  /// Structured changes for UI rendering — array of
+  /// `{ clauseType, originalText, counterText, rationale }` records.
+  /// Lets a side-by-side viewer or tracked-changes overlay render
+  /// without re-parsing the markdown.
+  changesJson Json?
+
+  /// Optional founder notes attached to this draft (e.g. "after legal
+  /// review, drop item 3"). Editable by the founder; persisted on save.
+  founderNotes String? @db.Text
+
+  /// Cascade trail (provider + model + per-attempt durationMs / success).
+  /// Same shape as `conversation_turns.metadata.attempts`.
+  modelTrailJson Json?
+
+  /// "live" | "mock" — surfaces in the UI so a deterministic-template
+  /// fallback is never mistaken for a cascade-drafted counter.
+  runtimeMode String @default("mock")
+
+  generatedAt DateTime @default(now())
+  isArchived  Boolean  @default(false)
+
+  dealAnalysis DealAnalysis @relation(fields: [dealAnalysisId], references: [id], onDelete: Cascade)
+
+  @@index([userId, generatedAt])
+  @@index([dealAnalysisId, versionNumber])
+  @@map("counter_term_sheets")
 }
 
 /// Investor reputation entry. Lookup table seeded with London-ecosystem

@@ -1,5 +1,6 @@
 import type { BuyerType, ValuationBand, AcquisitionMirrorResult } from '@/lib/valuation/types';
 import type { ChallengeResponse } from '@/components/valuation/NegotiationAnchorCard';
+import WarRoomDealProtection from '@/components/valuation/WarRoomDealProtection';
 import {
   formatCurrency,
   getScoreColor,
@@ -30,6 +31,8 @@ export interface WarRoomBriefingProps {
   acquisitionMirror: AcquisitionMirrorResult | null;
   expandedChallenge: number | null;
   setExpandedChallenge: (i: number | null) => void;
+  /** Optional — when present, the briefing mounts the Deal Protection panel (P6). */
+  valuationSubjectId?: string;
   onEnterSession: () => void;
   onExit: () => void;
 }
@@ -56,6 +59,7 @@ export default function WarRoomBriefing({
   acquisitionMirror,
   expandedChallenge,
   setExpandedChallenge,
+  valuationSubjectId,
   onEnterSession,
   onExit,
 }: WarRoomBriefingProps) {
@@ -493,7 +497,15 @@ export default function WarRoomBriefing({
           </section>
         </div>
 
-        {/* ── Section 9: Footer ── */}
+        {/* ── Section 9 (P6): Deal Protection panel ── */}
+        {valuationSubjectId ? (
+          <WarRoomDealProtection
+            valuationSubjectId={valuationSubjectId}
+            companyName={companyName}
+          />
+        ) : null}
+
+        {/* ── Section 10: Footer ── */}
         <footer className="glass-elevated rounded-2xl p-6">
           <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-4">
             Method Weighting, Assumptions &amp; Known Gaps
