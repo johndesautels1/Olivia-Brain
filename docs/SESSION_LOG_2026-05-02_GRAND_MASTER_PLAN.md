@@ -2105,3 +2105,61 @@ Coverage spans: prompt builder for both axes (manifest, archetype list, fact ser
 Both migrations are paste-into-Supabase-SQL-Editor-and-Run, identical workflow to 01 / 02 / 03 / 04. **Apply both before opening Track Q to founder traffic.**
 
 **Next track:** **Track P — Deal Protection Engine + Gap Closures (Sessions P1–P7).** P1 adds `DealAnalysis` + `InvestorReputation` Prisma models + Smart Score module; P2 ports clause classifier; P3 builds term-sheet parser + analyze API; P4 seeds Investor Reputation DB + admin CRUD; P5 ports multi-round dilution + band-specific email drafts; P6 wires WarRoom Deal Protection tab + counter-term-sheet auto-draft; P7 closes with negotiation rehearsal + term sheet versioning + multi-LLM consensus. Per BUILD_SEQUENCE.
+
+---
+
+## Part 44 — 2026-05-08 — Track P Session P1: Schema + Smart Score module (Track P opens)
+
+**HEAD before:** `f9f3e36` (Q7 docs handoff — Track Q closed; 642/642 across 50 suites). **HEAD after P1 code:** `bb58863`. **HEAD after P1 docs:** (this commit). **Tests:** 642/642 → **676/676** across **50 → 51 suites** (+34 new across 1 new suite). Typecheck clean.
+
+### Standing-rule change observed for the first time
+
+P1 is the first session under the new "print SQL migrations inline" feedback memory (locked 2026-05-08 after Q1/Q5/Q7 silently accumulated unrun migrations). The full body of `06-add-deal-protection-foundation.sql` was printed inline in the P1 feat-commit chat alongside the file write — no file-path pointer, no operator-action-table at session close. Going forward this is mandatory whenever a `prisma/sql/*.sql` file is created or modified.
+
+### Schema + SQL migration
+
+Two new Prisma models + a hand-written SQL migration:
+
+- `model DealAnalysis` — single Deal Protection run on a term sheet, append-only. Fields: smartScore (Decimal 5,2), smartBand (string id), bandLanguage / recommendedAction / investorSignal (text), termSheetText (optional, P3 parser populates), investorNamesJson + clauseAnalysisJson (P2/P3/P4 populate), confidenceScore (Decimal 3,2 from V3 confidence math), modelTrailJson (cascade attempts trail), runtimeMode (live | mock). Cascading FK to `valuation_subjects`.
+- `model InvestorReputation` — lookup table with unique `name` + `slug`. Fields: investorType, geographicFocus, stageFocusJson + sectorFocusJson (focus arrays), reputationScore (Decimal 5,2), reputationBand (same ladder as DealAnalysis.smartBand), patternsJson (vocabulary list of observed deal patterns), notes (text), source enum (seed | admin | founder_submitted), isActive + isArchived for soft-deletion.
+- `ValuationSubject` extended with `dealAnalyses DealAnalysis[]` reverse relation (additive — doesn't disturb V1's existing relations).
+- `prisma/sql/06-add-deal-protection-foundation.sql` — 2 CREATE TABLEs + 6 indexes + 1 CASCADE FK constraint to `valuation_subjects`. Hand-written in the same style as Q1/V1/Q7 so the migration history reads coherently.
+
+### Smart Score module
+
+| File | Surface |
+|---|---|
+| `src/lib/deal-protection/types.ts` | `SmartBand` (`red | orange | yellow | blue | green`), `RecommendedAction` (`walk_away | major_concerns | negotiate_hard | counter_minor | sign`), `SmartBandRecord` interface bundling band id + score range + recommended-action enum + UI label + plain-language template + investor-signal tag + design-system color token. `SMART_BANDS_ORDERED` stable list. |
+| `src/lib/deal-protection/bands.ts` | Canonical 5-band ladder: red 0-19 (Predatory) → orange 20-39 (Aggressive) → yellow 40-59 (Mixed) → blue 60-79 (Standard) → green 80-100 (Founder-friendly). Module-load runtime invariants verify uniqueness + contiguous 0..100 coverage so future schema drift is caught at boot. Color tokens from § 1.4 semantic accent set. |
+| `src/lib/deal-protection/smart-score.ts` | Pure helpers: `clampSmartScore` (0..100; non-finite → 0 predatory floor), `getSmartBand` (treats each band's range as `[minScore, nextMin)` so fractional scores map cleanly), `getSmartBandRecord`, `getSmartBandRecordById`, `getSmartBandRecordByAction`, `bandsAgree` for cross-version comparisons. |
+| `src/lib/deal-protection/index.ts` | Barrel. |
+
+### Tests
+
+| Suite | New cases |
+|---|---|
+| `__tests__/smart-score.test.ts` | 34 |
+
+Coverage: catalog invariants (5 bands, contiguous 0..100 coverage, unique action enums, lookup-table mirror), boundary scores at every band edge (0/19/20/39/40/59/60/79/80/100), fractional score routing, out-of-range clamping, non-finite handling, lookup helpers across all band ids and action enums, `bandsAgree` across boundaries, per-band copy invariants (deal-level not clause-level), color-token assertions per band.
+
+### Decisions / judgment-call trail
+
+1. **Score ranges are `[min, nextMin)`, not `[min, max]`.** First test run caught `getSmartBand(79.999) === 'red'` because integer `maxScore=79` excluded the fractional value. Fix: each band absorbs everything below the next band's minimum, the final band absorbs the closed `100` upper. Cleaner than rounding the input.
+2. **Non-finite scores collapse to 0 (predatory floor), not 50 (yellow).** A cascade glitch returning `NaN` should never silently look like a "mixed" deal; floor to red so the founder is forced to investigate.
+3. **`InvestorReputation` seed deferred to P4.** Spec referenced `D:\Deal_Doc_Engine\deal_protection_engine\london\investor_db.json` but that path doesn't exist on disk (only `Business Proposal Review/`, `CLAUDE_CODE_DELIVERABLES.md`, `Negotiation.crdownload`). P4 will design the seed list from scratch using London-tech-ecosystem public deal data; P1 ships the table only.
+4. **Color tokens from semantic accent set, not Aurum.** Aurum is reserved for canonical decisions per UI design system § 1.3. Bands use coral / amber / sky / aether / mint per § 1.4. Visual hierarchy: founder sees a red band → coral chrome → matches the form's existing discrepancy-chip language.
+5. **Module-load runtime invariants in `bands.ts`.** Future drift (e.g. someone adds a sixth band but forgets to extend coverage to 0..100) throws at import time — never reaches prod.
+
+### Build status at session-P1 close
+
+**Green.** Tests: **676/676** passing across **51 suites** (+34 new). Typecheck: clean. **Track P 1/7 ✅.**
+
+### Operator action surfaced (DB push)
+
+| Migration | Status |
+|---|---|
+| `prisma/sql/06-add-deal-protection-foundation.sql` (P1) | **NEW — APPLY** before any DealAnalysis or InvestorReputation persistence runs. |
+
+SQL body printed inline in the P1 feat-commit chat (`bb58863`). Paste into Supabase SQL Editor and Run.
+
+**Next session:** **Track P Session P2 — Clause classifier.** New `src/lib/deal-protection/clause-intel.ts` with 20-clause `ClauseType` enum, toxicity 0-100, founder-friendly alternative, cascade-driven (Anthropic primary, Opus judge for high-stakes). Per BUILD_SEQUENCE Track P row P2.

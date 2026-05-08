@@ -2,8 +2,8 @@
 
 > **Snapshot of every shipped capability + the remaining roadmap.**
 >
-> Last refreshed: **2026-05-08** at HEAD `5b47efb` (post-Q7 feat commit). **Track Q closed.**
-> Test gate: **642/642 across 50 suites**. Typecheck: **clean**.
+> Last refreshed: **2026-05-08** at HEAD `bb58863` (post-P1 feat commit). **Track Q closed; Track P 1/7 ✅.**
+> Test gate: **676/676 across 51 suites**. Typecheck: **clean**.
 >
 > This file is a snapshot — refresh it at end of each batch (after the SESSION_LOG entry lands) so the next session opens to a current view of the codebase. It's a complement to `BUILD_SEQUENCE.md` (which is the session-by-session plan) and `HANDOFF.md` (which is the resume-point doc).
 
@@ -80,6 +80,7 @@
 | `quantara/metamorphic/` | Q5 round-axis (buyer-class map + section reorder + 18 supplementary fields) + Q6 vertical-axis (5 verticals + 20 vertical fields + projection); shared `MetamorphicFieldShape` powers a single field renderer across both axes | SHIPPED |
 | `quantara/voice/` | Q7 cascade-driven voice extraction — prompt builder with field manifest + filled hints + transcript truncation; `extractFromTranscript` orchestrator with 3-soft-failure-mode fallback to empty extractions (mock-mode / parse failure / schema failure — never fabricates) | SHIPPED |
 | `quantara/personas/` | Q7 cascade-driven persona synthesis — `CombinedPersonaPayloadSchema` (bounded archetype + risk-tolerance enums); prompt builder; deterministic mock fallback; `synthesizePersonas` orchestrator with 3-soft-failure-mode fallback that always preserves the cascade attempts trail for ops review | SHIPPED |
+| `deal-protection/` | Track P Smart Score primitives — 5-band ladder (red/orange/yellow/blue/green) covering 0-100 contiguously with module-load runtime invariants; pure helpers `clampSmartScore` / `getSmartBand` / `getSmartBandRecord` / `bandsAgree`; per-band UI copy + design-system color tokens. P2 clause classifier + P3 cascade analyzer + P4 investor reputation seed land in subsequent sessions. | SHIPPED (P1) |
 | `queries/` | Calendar queries (CRUD, filters, sync) | SHIPPED |
 | `rag/` | Citation-first RAG with source ranking | SHIPPED |
 | `realtime/` | Unified transport: LiveKit, Twilio, Vapi, Retell | SHIPPED |
