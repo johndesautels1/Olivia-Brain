@@ -3,34 +3,30 @@
 /**
  * `RecentWorkStrip` — Claude-Artifacts-style strip of recent work.
  *
- * U1 stub: static placeholder cards. U4 wires to:
- *   - DealAnalysis (recent), ValuationRun (recent), Document (recent),
- *     OliviaPresentation (recent gamma decks), agent_runs (recent agentic actions)
+ * Live data via `useHomeDashboard()` → `/api/home/dashboard`. Sourced
+ * from `DealAnalysis`, `ValuationRun`, `Document` (status=ready), and
+ * `OliviaPresentation` (status=completed). Renders nothing when the
+ * dashboard hasn't returned yet OR when the user has no recent work
+ * (empty-state copy explains).
  */
 
-const KIND_GLYPH: Record<string, string> = {
-  acquisition: "▤",
-  autofill: "◐",
+import type { RecentItem } from "@/hooks";
+
+const KIND_GLYPH: Record<RecentItem["kind"], string> = {
   deal: "◇",
+  valuation: "◉",
   doc: "▦",
-  cascade: "◉",
+  deck: "▤",
 };
 
-interface RecentItem {
-  id: string;
-  kind: keyof typeof KIND_GLYPH;
-  title: string;
-  meta: string;
+export interface RecentWorkStripProps {
+  items?: readonly RecentItem[] | null;
+  loading?: boolean;
 }
 
-const STUB: RecentItem[] = [
-  { id: "1", kind: "acquisition", title: "Mercer Acquisition Mirror", meta: "2h ago · valuation" },
-  { id: "2", kind: "autofill", title: "Q3 Auto-fill: TechCo", meta: "4h ago · 38/56 fields" },
-  { id: "3", kind: "deal", title: "DealRisk: Acme term sheet", meta: "Yesterday · Series A" },
-  { id: "4", kind: "doc", title: "Pitch deck — Founder narrative v3", meta: "Yesterday · 12 slides" },
-];
+export function RecentWorkStrip({ items, loading }: RecentWorkStripProps) {
+  const hasItems = items && items.length > 0;
 
-export function RecentWorkStrip() {
   return (
     <section aria-label="Recent work" style={{ display: "grid", gap: 12 }}>
       <header
@@ -60,73 +56,118 @@ export function RecentWorkStrip() {
             textTransform: "uppercase",
           }}
         >
-          Last 24h
+          Live
         </span>
       </header>
 
-      <div
-        role="list"
+      {!hasItems && (
+        <p
+          style={{
+            margin: 0,
+            padding: 24,
+            borderRadius: "var(--radius-lg)",
+            border: "1px dashed var(--border-default)",
+            color: "var(--fg-tertiary)",
+            fontSize: "var(--text-sm)",
+            textAlign: "center",
+          }}
+        >
+          {loading
+            ? "Loading recent work…"
+            : "No recent work yet. Ask Olivia anything to get started — pitch decks, valuations, deal analyses, and documents will surface here."}
+        </p>
+      )}
+
+      {hasItems && (
+        <div
+          role="list"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 10,
+          }}
+        >
+          {items!.map((item) => (
+            <RecentCard key={item.id} item={item} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RecentCard({ item }: { item: RecentItem }) {
+  const inner = (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          aria-hidden="true"
+          style={{
+            width: 28,
+            height: 28,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "var(--radius-md)",
+            background: "var(--surface-2)",
+            color: "var(--aurum-primary)",
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-md)",
+          }}
+        >
+          {KIND_GLYPH[item.kind]}
+        </span>
+        <span
+          style={{
+            color: "var(--fg-primary)",
+            fontWeight: 500,
+            fontSize: "var(--text-sm)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+          }}
+        >
+          {item.title}
+        </span>
+      </div>
+      <span
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: 10,
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--text-2xs)",
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--fg-tertiary)",
         }}
       >
-        {STUB.map((item) => (
-          <article
-            key={item.id}
-            role="listitem"
-            style={{
-              display: "grid",
-              gap: 8,
-              padding: 14,
-              borderRadius: "var(--radius-lg)",
-              background: "var(--canvas-recess)",
-              border: "1px solid var(--border-subtle)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 28,
-                  height: 28,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: "var(--radius-md)",
-                  background: "var(--surface-2)",
-                  color: "var(--aurum-primary)",
-                  fontFamily: "var(--font-display)",
-                  fontSize: "var(--text-md)",
-                }}
-              >
-                {KIND_GLYPH[item.kind]}
-              </span>
-              <span
-                style={{
-                  color: "var(--fg-primary)",
-                  fontWeight: 500,
-                  fontSize: "var(--text-sm)",
-                }}
-              >
-                {item.title}
-              </span>
-            </div>
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "var(--text-2xs)",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "var(--fg-tertiary)",
-              }}
-            >
-              {item.meta}
-            </span>
-          </article>
-        ))}
-      </div>
-    </section>
+        {item.meta}
+      </span>
+    </>
+  );
+
+  const styleBase: React.CSSProperties = {
+    display: "grid",
+    gap: 8,
+    padding: 14,
+    borderRadius: "var(--radius-lg)",
+    background: "var(--canvas-recess)",
+    border: "1px solid var(--border-subtle)",
+    textDecoration: "none",
+    color: "inherit",
+    transition:
+      "border-color var(--duration-micro) var(--ease-out-quart), background var(--duration-micro) var(--ease-out-quart)",
+  };
+
+  if (item.href) {
+    return (
+      <a role="listitem" href={item.href} style={styleBase}>
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <article role="listitem" style={styleBase}>
+      {inner}
+    </article>
   );
 }

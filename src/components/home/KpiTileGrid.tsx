@@ -3,13 +3,27 @@
 /**
  * `KpiTileGrid` — three-tile KPI strip (Today / Agents / Next).
  *
- * U1 stub: static placeholder. U4 wires to live data sources:
- *   - Today: agent_runs (calls / deals / verdicts today)
- *   - Agents: /api/admin/agents (online count + briefings)
- *   - Next: CalendarPrepTask + agent_briefings (upcoming work)
+ * Live data from `useHomeDashboard()` → `/api/home/dashboard`.
+ * Falls through to "—" placeholders during initial fetch / DB outage.
  */
 
-export function KpiTileGrid() {
+import type { KpiBlock } from "@/hooks";
+
+const PLACEHOLDER: KpiBlock = {
+  primary: "—",
+  primaryUnit: "—",
+  rows: [],
+};
+
+export interface KpiTileGridProps {
+  /** Optional dashboard snap. When undefined, all three tiles render placeholders. */
+  data?: { today: KpiBlock; agents: KpiBlock; next: KpiBlock } | null;
+}
+
+export function KpiTileGrid({ data }: KpiTileGridProps) {
+  const today = data?.today ?? PLACEHOLDER;
+  const agents = data?.agents ?? PLACEHOLDER;
+  const next = data?.next ?? PLACEHOLDER;
   return (
     <section
       aria-label="Workspace KPIs"
@@ -19,48 +33,14 @@ export function KpiTileGrid() {
         gap: 16,
       }}
     >
-      <KpiTile
-        eyebrow="Today"
-        primary="14"
-        primaryUnit="calls"
-        rows={[
-          { label: "deals", value: "3" },
-          { label: "verdicts", value: "1" },
-        ]}
-      />
-      <KpiTile
-        eyebrow="Agents"
-        primary="247"
-        primaryUnit="online"
-        rows={[
-          { label: "briefings", value: "6" },
-          { label: "uptime", value: "99.4 %" },
-        ]}
-      />
-      <KpiTile
-        eyebrow="Next"
-        primary="3"
-        primaryUnit="prep tasks"
-        rows={[
-          { label: "today", value: "—" },
-          { label: "briefings ready", value: "6" },
-        ]}
-      />
+      <KpiTile eyebrow="Today" block={today} />
+      <KpiTile eyebrow="Agents" block={agents} />
+      <KpiTile eyebrow="Next" block={next} />
     </section>
   );
 }
 
-function KpiTile({
-  eyebrow,
-  primary,
-  primaryUnit,
-  rows,
-}: {
-  eyebrow: string;
-  primary: string;
-  primaryUnit: string;
-  rows: { label: string; value: string }[];
-}) {
+function KpiTile({ eyebrow, block }: { eyebrow: string; block: KpiBlock }) {
   return (
     <article
       style={{
@@ -95,7 +75,7 @@ function KpiTile({
             color: "var(--fg-primary)",
           }}
         >
-          {primary}
+          {block.primary}
         </span>
         <span
           style={{
@@ -106,42 +86,44 @@ function KpiTile({
             textTransform: "uppercase",
           }}
         >
-          {primaryUnit}
+          {block.primaryUnit}
         </span>
       </div>
-      <ul
-        style={{
-          margin: 0,
-          padding: 0,
-          listStyle: "none",
-          display: "grid",
-          gap: 6,
-          borderTop: "1px solid var(--border-subtle)",
-          paddingTop: 12,
-        }}
-      >
-        {rows.map((row) => (
-          <li
-            key={row.label}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontFamily: "var(--font-mono)",
-              fontSize: "var(--text-2xs)",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
-          >
-            <span style={{ color: "var(--fg-tertiary)" }}>{row.label}</span>
-            <span
-              className="tabular-nums"
-              style={{ color: "var(--fg-secondary)", fontWeight: 600 }}
+      {block.rows.length > 0 && (
+        <ul
+          style={{
+            margin: 0,
+            padding: 0,
+            listStyle: "none",
+            display: "grid",
+            gap: 6,
+            borderTop: "1px solid var(--border-subtle)",
+            paddingTop: 12,
+          }}
+        >
+          {block.rows.map((row) => (
+            <li
+              key={row.label}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-2xs)",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
             >
-              {row.value}
-            </span>
-          </li>
-        ))}
-      </ul>
+              <span style={{ color: "var(--fg-tertiary)" }}>{row.label}</span>
+              <span
+                className="tabular-nums"
+                style={{ color: "var(--fg-secondary)", fontWeight: 600 }}
+              >
+                {row.value}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </article>
   );
 }

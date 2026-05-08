@@ -28,6 +28,7 @@ import { KpiTileGrid } from "./KpiTileGrid";
 import { RecentWorkStrip } from "./RecentWorkStrip";
 import type { AvatarOrbState } from "@/components/primitives";
 import type { Slide } from "@/lib/studio/types";
+import { useHomeDashboard } from "@/hooks";
 
 export interface HomeCenterProps {
   /** External avatar pulse (header click). Overrides chat state when active. */
@@ -47,6 +48,7 @@ export function HomeCenter({
 }: HomeCenterProps) {
   const [chatState, setChatState] = useState<AvatarOrbState>("idle");
   const [lastReply, setLastReply] = useState<string | null>(null);
+  const dashboard = useHomeDashboard();
 
   const audit = useCallback(
     (text: string) => onAudit?.(text),
@@ -83,8 +85,8 @@ export function HomeCenter({
         onReply={handleReply}
         onAudit={audit}
       />
-      <KpiTileGrid />
-      <RecentWorkStrip />
+      <KpiTileGrid data={dashboard?.kpi} />
+      <RecentWorkStrip items={dashboard?.recent} loading={!dashboard} />
 
       {appliedSummary && (
         <AppliedBreadcrumb summary={appliedSummary} slides={slides} />
