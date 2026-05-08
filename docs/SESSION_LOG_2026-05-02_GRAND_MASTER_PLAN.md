@@ -2531,3 +2531,93 @@ Visual styling is deliberately minimal — uses inline styles + Aurum/Aether CSS
 2. Carry-forward (unchanged): apply migration 06 + run the investor seed once 06 lands.
 
 **Next session:** **Track P Session P7 — Negotiation rehearsal + term sheet versioning + multi-LLM consensus.** Three new modes: (1) Rehearsal — Olivia role-plays the investor pushing back on the founder's counter-proposal so founder can practice; (2) Versioning — V1 → V2 → V3 tracked over time, Olivia flags new red flags + re-scores; (3) Consensus — for high-stakes offers (>£5M, buyout), same offer through Sonnet + GPT-5.4 + Gemini + Grok in parallel, Opus renders consensus + dissent breakdown. **Track P CLOSED** at P7 end.
+
+---
+
+## Part 50 — 2026-05-08 — Track P Session P7: Rehearsal + versioning + consensus (TRACK P CLOSED)
+
+**HEAD before:** `eff4454` (post-P6 docs — 839/839 across 70 suites). **HEAD after P7 code:** `a6d78ed`. **HEAD after P7 docs:** (this commit). **Tests:** 839/839 → **875/875** across **70 → 76 suites** (+36 new across 6 new suites). Typecheck clean. **Track P CLOSED.**
+
+### What ships
+
+#### A. Negotiation rehearsal (cascade-driven, stateless)
+
+The founder writes a counter; Olivia plays the **investor** responding. Multi-turn — caller passes prior history each turn. Server-side stateless (UI owns the thread).
+
+| File | Surface |
+|---|---|
+| `rehearsal-types.ts` | `RehearsalTurn` (founder/investor + content), `RehearsalRequest`, `RehearsalResponse` (stance: pushback/concede/walk/neutral), `RehearsalPostBodySchema`, `REHEARSAL_LIMITS`, per-band stance map. |
+| `rehearsal-prompts.ts` | `buildRehearsalPrompt` — embeds band-derived voice ("Investor is digging in"/"…enthusiastic"), critical issues, recent history (last 10 turns), founder's latest turn. Strict JSON output `{ investorMessage, stance }`. |
+| `rehearsal.ts` | `generateRehearsalTurn` orchestrator. Three soft-failure modes (mock / JSON parse / schema) → deterministic per-band fallback; red fallback explicitly states "we cannot revisit", green expresses readiness for definitive docs. |
+
+Route: `POST /api/deal-protection/rehearsal` — 20/min rate limit. Loads own DealAnalysis, reconstructs band + critical issues + clauses, calls orchestrator, returns `{ investorMessage, stance, runtimeMode }`.
+
+#### B. Term sheet versioning (pure-function diff)
+
+| File | Surface |
+|---|---|
+| `versioning.ts` | `compareAnalyses(prior, current)` returns `AnalysisDiff`: `scoreDelta`, `bandTransition` (or null), `criticalIssueDelta` (newCriticalIssues + resolvedCriticalIssues, partitioned by clauseType), `clauseDiffs` (per-clause severity / toxicity shifts sorted by abs(toxicityDelta) desc), `summary` (deterministic narrative composed from the deltas), `overallDirection` (better/worse/unchanged, ±0.5 threshold). |
+
+No cascade calls. The narrative is deterministic + repeatable, which makes the versioning surface testable without an LLM in the loop. When the same clauseType appears multiple times in a version, the diff uses the highest-toxicity entry as the canonical (the one that drove the smart score in the aggregator).
+
+Route: `POST /api/deal-protection/versioning` — 30/min. Body `{ priorAnalysisId, currentAnalysisId }`. Verifies both analyses belong to the caller, runs the diff, returns the structured shape.
+
+#### C. Multi-LLM consensus (parallel evaluators + Opus judge)
+
+| File | Surface |
+|---|---|
+| `consensus-types.ts` | `EvaluatorVerdict`, `ConsensusVerdict` (consensusScore + consensusBand + dissentSummary + agreementLevel), `ConsensusResult`, Zod schemas, `CONSENSUS_DEFAULT_EVALUATORS = 3`. |
+| `consensus-prompts.ts` | `buildEvaluatorPrompt` (per-evaluator scoring prompt with 0-100 scale + smart-band reference), `buildOpusJudgePrompt` (Cristiano synthesizes consensus from N evaluator verdicts; defines the 4 agreement bands by score-spread). |
+| `consensus.ts` | `generateConsensus` orchestrator. Runs N (2-5) evaluators in parallel via `Promise.all`. Each evaluator gets a different `intent` from `[operations, questionnaire, research, judge, operations]` so the cascade biases toward different primary providers. Opus judge synthesizes via `intent: 'judge'`. Three soft-failure modes; **deterministic median-of-evaluators fallback** on judge mock-out (median + score-spread → agreement level). |
+
+Route: `POST /api/deal-protection/consensus` — **3/min** rate limit (expensive; N+1 cascade calls). Body `{ dealAnalysisId, evaluatorCount? }`. Caller decides when to invoke (high-stakes offers, buyouts).
+
+Aggregate `runtimeMode = 'live'` only when **every** evaluator AND the Opus judge stayed live. One mock evaluator → mock; judge mock → mock. UI surfaces this so a partial-fallback consensus is never mistaken for a fully-cascaded verdict.
+
+### Tests (36 new across 6 new suites)
+
+- **`rehearsal.test.ts`** (6) — happy path with parsed `{ investorMessage, stance }`; mock fallback; invalid-JSON fallback; schema-rejection fallback (body too short); green fallback expresses concession; red fallback signals firm pushback.
+- **`versioning.test.ts`** (10) — score-delta direction (better/worse/unchanged with ±0.5 threshold); band transition reported / null; new vs resolved critical issues partitioned by clauseType; per-clause diffs sorted by abs(delta); same-clauseType-multiple-entries uses highest-toxicity; narrative includes both labels + delta + direction; flags NEW critical concerns prominently.
+- **`consensus.test.ts`** (8) — happy path with strong agreement; evaluator-count override; clamping below 2 → 2; all-evaluators-mock → mock-mode with deterministic median; one-evaluator-mock → aggregate mock; judge-mock → deterministic consensus from evaluator median + agreement level; agreement strong (±5); agreement split (>25 spread).
+- **3 route surface tests** (4 each = 12) — module surface; invalid JSON; missing required fields; route-specific edge cases (rehearsal missing founderTurn; versioning identical-ids rejection; consensus evaluatorCount > 5 rejection).
+
+### Decisions / judgment-call trail
+
+1. **All three modes stateless (no persistence).** Rehearsal threads are ephemeral (UI owns history); versioning diffs are cheap to recompute; consensus is expensive to run but cheap to redo when actually needed. Avoids three new tables that would each need their own audit + retention policies.
+2. **Deterministic narrative in versioning (vs cascade).** The diff math is repeatable; the founder UX benefits from a stable summary that doesn't change across re-runs of the same comparison. A future Olivia-narrated layer can wrap this with cascade-driven prose, but the structured shape is the contract downstream consumers bind to.
+3. **Per-clause-type single-entry rule in versioning.** When a clauseType appears multiple times in a version (e.g. two veto-rights clauses), the diff uses the highest-toxicity entry — that's the one that drove the smart-score aggregation, so the comparison is consistent with how the founder thinks about the deal.
+4. **Different intents bias provider diversity in consensus (vs direct provider selection).** The cascade owns provider routing; bypassing it would fork the orchestration architecture. Using `[operations, questionnaire, research, judge]` intents gives directional model-diversity while keeping all the cascade's soft-failure + retry logic intact.
+5. **Deterministic consensus fallback uses median (not mean).** Median is robust to outliers (one miscalibrated evaluator can't pull the consensus). Mean would have over-weighted that evaluator.
+6. **Agreement-level thresholds locked.** Strong = ±5, moderate = ±15, low = ±25, split = >25. Conservative on `strong` so a unanimous verdict means something. The `dissentSummary` carries the substantive reasoning regardless of level.
+7. **Aggregate consensus runtimeMode = 'live' iff every sub-call live.** One mock evaluator means the verdict is partially deterministic — surface that. Founders need to know whether they're looking at "real cascade said X" or "fixture fallback inferred X."
+8. **Per-band rehearsal voice (vs generic investor tone).** A green-band founder asking practice questions deserves an enthusiastic investor partner; a red-band founder facing a predatory term sheet deserves an unyielding adversarial training partner. Single-tone investor voice would teach the wrong reflex.
+9. **Rehearsal stateless with caller-provided history (vs server-side thread persistence).** The rehearsal thread is practice — it doesn't need to survive a tab refresh. Persistence would require a new `rehearsal_threads` table + retention policy + GDPR considerations, none of which are in P7 scope.
+
+### Build status at session-P7 close
+
+**Green.** Tests: **875/875** across **76 suites** (+36 new across 6 new suites). Typecheck: clean. **Track P 7/7 ✅ — TRACK CLOSED.**
+
+### Operator actions surfaced
+
+**None new.** No SQL migration, no env vars, no operator step. Track P carry-forwards remain:
+1. Apply `prisma/sql/06-add-deal-protection-foundation.sql` to Supabase (P1 — gates analyze + counter persistence).
+2. Apply seed via `prisma/sql/seed-investor-reputations.sql` (P4 — populates 15 archetypes).
+3. Apply `prisma/sql/07-add-counter-term-sheets.sql` (P6 — gates counter-draft persistence).
+
+All three SQL bodies were pasted inline in the chat at file-creation time per `feedback_inline_sql_migrations`.
+
+### Track P closure summary (P1 → P7)
+
+| Session | Surface |
+|---|---|
+| **P1** | Schema (`DealAnalysis` + `InvestorReputation`) + Smart Score 5-band ladder + module-load runtime invariants. |
+| **P2** | 20-clause taxonomy + severity ladder + 20 fixture clauses + two-pass cascade (Sonnet primary + Opus judge for critical) + three-mode soft-failure. |
+| **P3** | Heuristic-first hybrid parser + severity-weighted aggregation with hard caps (any critical → ≤39, any high → ≤79) + DealRiskReport contract + analyze API + walk-away derivation + confidence scoring. |
+| **P4** | 15-archetype anonymized seed + slug-based reputation lookup with DB-failure soft fallback + cap-aware reputation tilt (±8 max; caps win over positive tilt) + analyzer wiring + admin CRUD + moderation queue + public submission. |
+| **P5** | Multi-round dilution projection (share-based, full-ratchet + WA broad/narrow with proper share base) + 5-tone band-specific email drafts (cascade-driven, deterministic per-band template fallback). |
+| **P6** | `CounterTermSheet` model + cross-doc-inheritance counter-draft generator (cascade with deterministic template fallback that pulls counter language from P2 founderFriendlyAlternative — no fabrication) + WarRoom Deal Protection panel mounted in WarRoomBriefing. |
+| **P7** | Negotiation rehearsal (cascade with per-band voice + deterministic fallback) + pure-function term sheet versioning diff + multi-LLM consensus (parallel evaluators + Opus judge with deterministic median fallback). |
+
+**Total Track P:** 13 new Prisma models / extensions + 13 new API routes + 7-file deal-protection library expansion + WarRoom integration + admin UI + 250+ new tests across 26+ suites. Olivia Brain offer-evaluation surface complete.
+
+**Next session:** **CHECK IN FIRST.** Track P is closed; no specific next session is pre-locked. Likely candidates per BUILD_SEQUENCE: Track F Session 18 (Clerk auth — closes W-015 stub used across all of P3-P7); Track B Session 8 (deferred Studio engine port); Track C Sessions 11-14 (Studio UI rebuild remainder); Track G Sessions 19-20 (cascade orchestrator port). Founder picks priority.

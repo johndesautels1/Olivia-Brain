@@ -1,8 +1,8 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-08 — end of Q5 → P2 batch.
-> **HEAD:** `757933f` on `main`.
-> **Test gate:** 697/697 across 52 suites. Typecheck clean.
+> **Last updated:** 2026-05-08 — end of P3 → P7 batch. **Track P is now CLOSED (7/7 ✅).**
+> **HEAD will be:** the docs commit that ships alongside this file (after `a6d78ed` post-P7 feat).
+> **Test gate:** 875/875 across 76 suites. Typecheck clean.
 
 ---
 
@@ -22,11 +22,11 @@ git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"
 
 | Path | Repo | Status |
 |---|---|---|
-| `D:\London-Tech-Map` | https://github.com/johndesautels1/london-tech-map | **READ-ONLY from OB**. Confirm URL with the founder before cloning — don't guess from training data. |
+| `D:\London-Tech-Map` | https://github.com/johndesautels1/london-tech-map | **READ-ONLY from OB**. Confirm URL with the founder before cloning. |
 | `D:\Studio-Olivia` | local prototypes (not a git repo) | reference only |
-| `D:\Clues Main` | https://github.com/johndesautels1/Clues-Main | docs canonical, code stale per `04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md` |
+| `D:\Clues Main` | https://github.com/johndesautels1/Clues-Main | docs canonical, code stale |
 
-**Verify on arrival:** run `git log --oneline -5` from `D:\Olivia Brain`. The top commit must be `757933f` (P2 docs). If it isn't, `git pull origin main`. Run `npm test` and `npm run typecheck` — both must come back green (697/697 + clean) before you write a single new line.
+**Verify on arrival:** run `git log --oneline -5` from `D:\Olivia Brain`. The top commit should be the P7 docs commit (the one that includes this file). If it isn't, `git pull origin main`. Run `npm test` and `npm run typecheck` — both must come back green (875/875 + clean) before you write a single new line.
 
 ---
 
@@ -39,70 +39,84 @@ Read in this exact order. Don't skim. Don't paraphrase. Don't rely on what train
 ### Mandatory pre-coding read order
 
 1. **`docs/OLIVIA_NORTH_STAR.md`** — the single question every commit must answer **yes** to. Six product surfaces, three modes (embedded / gateway / standalone), bicycle-wheel hub. Locked 2026-05-07. Read this **before anything else**, every session.
-2. **`docs/00_PRODUCT_TRUTH.md`** — eternal source of truth for the Olivia / CLUES product universe. Bicycle-wheel architecture, priority order, what each product actually is. Non-negotiable. Read this **second**, every session.
+2. **`docs/00_PRODUCT_TRUTH.md`** — eternal source of truth for the Olivia / CLUES product universe. Bicycle-wheel architecture, priority order, what each product actually is. Non-negotiable.
 3. **`docs/01_UI_DESIGN_SYSTEM.md`** — Aurum gold + Aether indigo, LCH color space, no raw hex in components, WCAG 2.2 AA + APCA, modular workspace, multi-agent visualization. Read this **before any UI work**.
-4. **`docs/02_COMPETITIVE_FEATURE_MATRIX.md`** — what we steal from 22 surveyed competitors and what we explicitly reject. Skim if you're not doing UI work; read in full if you are.
+4. **`docs/02_COMPETITIVE_FEATURE_MATRIX.md`** — what we steal from 22 surveyed competitors and what we explicitly reject. Skim if you're not doing UI work.
 5. **`docs/03_BRAIN_ENRICHMENT_ENGINE.md`** — universal auto-enrichment primitive. Read this **before any cross-spoke or multi-app sync work**.
-6. **`docs/04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md`** — flagship architecture. Read **before any cluesintelligence / questionnaire-engine work**. Subject-to-change banner inline; respect it.
+6. **`docs/04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md`** — flagship architecture. Read **before any cluesintelligence / questionnaire-engine work**.
 7. **`docs/BOOTSTRAP.md`** — implementation context, sacred files, doc reading order, standing constraints.
-8. **`docs/BUILD_SEQUENCE.md`** — session-by-session plan. Find the row marked next-up (currently **P3**) and read its exit criteria + "DEFERRED" / "DONE" caveats on prior rows.
-9. **`docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md`** — last 4 Parts (42 → 45) cover Q6, Q7, P1, P2 in detail. The decision-trail subsections matter; the build-context isn't reproducible from code alone.
-10. **`README.md`** (repo root) — capability domain map, weakness backlog (W-001 through W-017), architecture quick-ref, protected-repo boundaries.
+8. **`docs/BUILD_SEQUENCE.md`** — session-by-session plan. Track Q ✅, Track V ✅, Track P ✅. Find the row marked next-up (founder picks — Track P is now closed).
+9. **`docs/SESSION_LOG_2026-05-02_GRAND_MASTER_PLAN.md`** — last 5 Parts (46 → 50) cover P3, P4, P5, P6, P7 in detail. The decision-trail subsections matter; the build-context isn't reproducible from code alone.
+10. **`README.md`** (repo root) — capability domain map, weakness backlog, architecture quick-ref, protected-repo boundaries.
 
 **Founder-level memories** (already loaded into your context if you're using the same harness): user-level notes are in `~/.claude/projects/C--Users-broke/memory/MEMORY.md`. The protocols there carry standing weight — print SQL migrations inline as you create them, never revert without permission, batch session pattern only with explicit "build X to Y" pre-authorisation, etc.
 
-If you finish reading and your mental model still has "Olivia is a chat assistant," "lifescore is a top-level product," "the GrandMaster Studio is Olivia's homepage," or "Track Q is still open" — read again. You missed it.
+If you finish reading and your mental model still has "Olivia is a chat assistant," "lifescore is a top-level product," "the GrandMaster Studio is Olivia's homepage," or "Track P is still open" — read again. You missed it.
 
 ---
 
 ## § 2. Where to resume coding
 
-**Next session: Track P Session P3 — Term sheet parser + analyze API.** Per `docs/BUILD_SEQUENCE.md` Track P row P3:
+**TRACK P IS CLOSED.** No specific next session is pre-locked. Olivia Brain's offer-evaluation surface (analyze, parser, classifier, smart score, investor reputation, dilution projection, email drafts, counter term sheet, WarRoom panel, rehearsal, versioning, consensus) is feature-complete.
 
-> P3 | Term sheet parser + analyze API. New `src/lib/deal-protection/parser.ts` (text + PDF → structured `TermSheetTerms` shape per Python `parser.py` design). New API `POST /api/deal-protection/analyze` (parse → clause-intel → smart-score → optional quant via existing V3 engine in scenario mode → `DealAnalysis` record persisted).
-> Exit: end-to-end paste term sheet text → returns `DealRiskReport` with smart score + clause analyses + critical issues + walk-away reasons. Typecheck clean.
+**Likely candidates per BUILD_SEQUENCE — founder picks priority:**
 
-**Concretely, P3 needs:**
+| Track | Sessions | Why pick this |
+|---|---|---|
+| **Track F — Clerk auth (S18)** | 1 | **Closes W-015** (the `getAuthSession()` stub used across all of Q4-Q7 + V7-V9 + P3-P7). One-line swap inside `lib/auth/session.ts`; route code stays identical. After this, OB can deploy auth-using routes to production. |
+| **Track B Session 8** | 1 | Deferred since Session 7 (the documents engine port hit Clerk dep + 3 missed LTM utility files; see manifest § K). Pulling Track F forward unblocks this. |
+| **Track C — Studio UI rebuild (S11–S14)** | 4 | UI-heavy; the GrandMaster three-region shell is in place (S9-S10 ✅), remaining sessions wire the engine + library + sections + tabs. Style-fidelity gaps W-011/12/13 close as part of this. |
+| **Track G — Cascade orchestrator port (S19–S20)** | 2 | LangGraph wrapping + LTM cascade prompts → OB. Independent of UI. |
+| **Track H — Agents consolidation (S21–S23)** | 3 | Port LTM's ~120 named agents into `src/lib/agents/impl/`. Reconcile with the existing registry. |
+| **Track L — cluesintelligence Unification** | ~10 | Flagship product. Track L is post-clueslondon-launch per the strategic priority lock; pulling it forward is a founder decision. |
 
-- `src/lib/deal-protection/parser.ts` — accepts term-sheet text (PDF parsing is a stretch goal; ship text-first); returns a structured `TermSheetTerms` shape with extracted clauses (one entry per clause boundary). Cascade-driven extraction is fine; the existing `runModelCascade` with `intent: "operations"` handles it.
-- `src/app/api/deal-protection/analyze/route.ts` — POST. Input: `{ subjectId, termSheetText }`. Pipeline: parser → `classifyClauses` (P2) → aggregate clause toxicity into a 0-100 `smartScore` → `getSmartBandRecord` (P1) for the band copy → persist a `DealAnalysis` row → return the bundled report. Mirror the auth + rate-limit + soft-failure patterns from `/api/founder-intake/personas`.
-- Tests covering parser unit behaviour, the aggregation formula, and the route's surface contract (validation branches that return BEFORE Prisma is hit).
-
-The Track P row in BUILD_SEQUENCE has full exit-criterion language. P3's `DealRiskReport` shape and the aggregation formula are open design decisions — the founder hasn't locked them. Propose your shape in the first response (or in a quick AskUserQuestion) before coding.
-
-**P3 needs no new SQL migration** — the `deal_analyses` table from P1 already accommodates it.
+**Recommended:** ask the founder which track to pick before coding. The June 8 demo target is `clueslondon` (LTM-canonical with OB port-back), so the path of least resistance to a demo is: Track F (Clerk) → Track C remainder (UI polish) → Track K hardening. But the founder may want to pull Track L forward instead if cluesintelligence is the demo target.
 
 ---
 
-## § 3. What shipped in this batch (Q5 → P2, ten commits)
+## § 3. What shipped in this batch (P3 → P7, 10 commits + 1 chore + 1 seed)
 
-Track Q closed, Track P 2/7 ✅. Each commit pair is `feat: …` + `docs: …`:
+Track P fully closed. Each session = `feat: …` + `docs: …` pair.
 
 | Session | Feat | Docs | Net |
 |---|---|---|---|
-| Q5 — Investor-class metamorphic UI | `1791395` | `7526294` | round-axis metamorphism (`f23 targetRoundType` → section reorder + 18 supplementary fields) |
-| Q6 — Vertical-specific schedules | `58fad87` | `8918139` | parallel vertical axis (5 verticals × 5 fields = 20 + Generic) — shared `MetamorphicFieldShape` powers one renderer across both axes |
-| Q7 — Voice + persona synthesis | `5b47efb` | `f9f3e36` | voice extraction (Whisper transcribe → cascade → Q3-shape suggestions) + persona synthesis (`FounderPersona` + `CompanyPersona` Prisma models, gated at ≥ 80% completeness) |
-| P1 — Deal Protection schema + Smart Score | `bb58863` | `22d3624` | new `DealAnalysis` + `InvestorReputation` Prisma models; 5-band ladder with module-load runtime invariants |
-| P2 — Clause classifier | `fb5eba6` | `757933f` | 20-value `ClauseType` enum, two-pass cascade (Sonnet primary + Opus judge for critical), 3-mode soft-failure fixture fallback |
+| P3 — Term sheet parser + analyze API | `96324f0` | `21c2dad` | heuristic-first hybrid parser + severity-weighted aggregation with hard caps + DealRiskReport contract + analyze route |
+| P4 — Investor reputation + smart-score integration | `97b789e` | `71e2766` | 15-archetype seed + slug lookup + cap-aware ±8 reputation tilt + admin CRUD + moderation + public submission |
+| (P4 chore) — Idempotent seed SQL | `ca9a2d2` | — | `prisma/sql/seed-investor-reputations.sql` (paste-into-Supabase shape) |
+| P5 — Multi-round dilution + email drafts | `6840302` | `4b304d6` | share-based forward dilution math (full ratchet + WA broad/narrow) + 5-tone band-specific email drafts |
+| P6 — Counter term sheet + WarRoom panel | `1f082a0` | `eff4454` | `CounterTermSheet` model + migration 07 + cascade-driven counter draft (no fabrication) + WarRoom Deal Protection panel |
+| P7 — Rehearsal + versioning + consensus | `a6d78ed` | (this commit) | cascade-driven rehearsal with per-band voice + pure-function versioning diff + N-parallel multi-LLM consensus |
 
-**Test growth across the batch:** 510/510 (post-Q4) → 697/697 (post-P2). +187 tests across 7 new suites.
+**Test growth across the batch:** 697/697 (post-P2) → **875/875** (post-P7). +178 tests across 24 new suites.
 
 **Architectural takeaways the next agent needs in working memory:**
-- The `quantaraJson` extension column on `valuation_subjects` hosts FOUR namespaces: canonical net-new-field subkeys + `supplementary[roundType]` (Q5) + `vertical[verticalId]` (Q6) + the `persona` linkage isn't here (personas have their own tables).
-- Q5/Q6 share `MetamorphicFieldShape` as a structural type so `IntakeSupplementaryField` renders both axes' fields without duplication. Don't fork that.
-- All cascade-driven endpoints in this batch follow a 3-soft-failure-mode pattern: cascade mock-mode, JSON parse failure, schema/calibration violation → graceful fallback (mock fixture or empty array — never throws). P3 should follow the same pattern.
+
+- **`/api/deal-protection/*` is now 9 routes** (analyze + investor-submission + dilution + email-draft + counter-draft + counter-draft/[id] + rehearsal + versioning + consensus). Plus 4 admin investor routes. All use the `getAuthSession()` Clerk stub (W-015).
+- **The smart-score formula has 3 layers:** (a) P3 severity-weighted toxicity with hard caps (any critical → ≤39, any high → ≤79), (b) P4 cap-aware reputation tilt (±8 max; positive tilt cannot lift past clause caps), (c) P7 multi-LLM consensus mode runs N parallel evaluators that produce their own scores and an Opus judge synthesizes.
+- **Cap-wins-over-positive-tilt is the founder-protective invariant.** A famous investor on a deal with a critical clause cannot lift the score out of orange. Tested directly. Don't rip this out.
+- **All cascade-driven Track P modules follow the three-soft-failure-mode pattern** (Q7 / P2 / P3 / P5 / P6 / P7): cascade mock-mode → fallback; JSON parse failure → fallback; Zod schema rejection → fallback. Never throws on the happy path. Apply this pattern to every new cascade-driven module.
+- **No fabrication in deterministic fallbacks.** Counter-draft templates pull counter language from P2 `founderFriendlyAlternative`; rehearsal fallbacks use per-band canned voice anchored in the actual deal context; consensus fallback uses median-of-evaluators (no synthesized verdict).
+- **Versioning is pure-function deterministic** (no cascade calls). The diff structure is repeatable across re-runs of the same comparison. If you wrap it in cascade-driven Olivia narration later, do it as a separate layer.
 
 ---
 
-## § 4. Operator actions outstanding
+## § 4. Operator actions outstanding (THREE migrations + one seed)
 
-**Database:** all migrations 01–05 are applied (founder confirmed). **Migration 06 — `prisma/sql/06-add-deal-protection-foundation.sql` — needs to be applied before any DealAnalysis or InvestorReputation persistence runs.** Its SQL body was printed inline in the P1 feat-commit chat; the file is also on disk. Paste into Supabase SQL Editor when ready for Track P to be live.
+**These ALL need to be applied before the corresponding routes can persist.** SQL bodies pasted inline in the chat earlier this batch (per the `feedback_inline_sql_migrations` rule); files are also on disk.
 
-**No env-var changes needed by Q5–P2.** P3 may need a PDF parser library if PDF support is in scope; ship text-first and decide.
+Apply in order:
+
+1. **`prisma/sql/06-add-deal-protection-foundation.sql`** (P1) — gates `DealAnalysis` + `InvestorReputation`. Without this, all P3-P7 routes 500 on persistence. **REQUIRED** for any production use.
+2. **`prisma/sql/seed-investor-reputations.sql`** (P4 chore) — populates 15 archetype investor records. Without this, the analyzer runs with reputation tilt always at 0 (no harm; reputation is purely additive). Idempotent — re-run safe; preserves admin edits to `isActive` / `isArchived` / `notes`.
+3. **`prisma/sql/07-add-counter-term-sheets.sql`** (P6) — gates `CounterTermSheet`. Without this, `POST /api/deal-protection/counter-draft` 500s on persistence; everything else works.
+
+All three: paste into Supabase SQL Editor → Run. Verification queries in the seed file.
+
+**No env-var changes needed by P3-P7.** All routes use the existing `STUB_USER_ID` env (Preview) or throw clearly in production (W-015 — closed by Track F Session 18).
 
 **Pending feature work flagged elsewhere:**
-- W-017 (deferred since Q5) — Organization-records investor-bias for the metamorphism axis. Lands when Track L or Track J introduces a real LTM ecosystem-data consumer.
+- W-017 — Organization-records investor-bias for Quantara metamorphism axis (deferred since Q5).
+- W-018 (NEW from P4) — Composing investor reputation with `Organization` records (LTM domain) requires the UKP bridge, not direct schema imports. Lands when LTM ecosystem-data flows in.
 - Evidence Room clickable citations (`D:\London-Tech-Map\docs\EVIDENCE_ROOM_CITATIONS.md`) — LTM repo, separate session.
 
 ---
@@ -121,20 +135,23 @@ These are non-negotiable. Every prior agent who broke one of these caused real c
 8. **PII never enters spans, traces, or logs.** Only metadata.
 9. **One concern per commit.** Mixed-concern commits are forbidden.
 10. **One task at a time.** After completing each session's deliverable, stop and check in with the founder. The "OB batch session pattern" memory permits sequential execution **only** when the founder explicitly pre-authorises a multi-session batch (e.g. "build P3-P5"). A single "yes" or "continue" authorises ONE session.
-11. **`UserCompanyDeadline` privacy contract.** Critical-date data (license / trademark / patent / tax / annual filing / regulatory / insurance / board / investor / cap-table) lives in private `UserCompanyDeadline`, NEVER `UserCompanyProfile`. The `loadCompanyProfile` selector and `/directory` consumer must never project these columns. (Repo-wide standing rule from `~/CLAUDE.md`.)
-12. **Print SQL migrations inline as you write them.** When a session creates or alters `prisma/sql/*.sql`, print the full SQL body as a `\`\`\`sql` block in the same chat message — don't make the founder open the file. Locked into memory as `feedback_inline_sql_migrations.md` after Q1/Q5/Q7 silently accumulated unrun migrations.
+11. **`UserCompanyDeadline` privacy contract.** Critical-date data lives in private `UserCompanyDeadline`, NEVER `UserCompanyProfile`. (Repo-wide standing rule from `~/CLAUDE.md`.)
+12. **Print SQL migrations inline as you write them.** When a session creates or alters `prisma/sql/*.sql` OR a data seed, print the full SQL body as a `\`\`\`sql` block in the same chat message — don't make the founder open the file. **Re-paste owed migrations** whenever the operator-action surface mentions them. Updated 2026-05-08 to extend to seeds (not just migrations) and to require re-pasting prior-session migrations on follow-up sessions.
 13. **Never revert code without explicit permission, even defensively.** When a safety concern surfaces about a recent change, ASK before changing anything.
 
 ---
 
 ## § 6. Gotchas the next agent will probably hit if not warned
 
-- **`MediaRecorder` in JSDOM tests.** Q7's `VoiceCaptureCard` uses MediaRecorder, which JSDOM doesn't ship. The component falls back gracefully (`if (!("MediaRecorder" in window))` → error state) but unit tests around it should mock the API or skip.
-- **Zod v4 enum from dynamic arrays.** Q5/Q6/Q7 use `z.enum(values as unknown as readonly [string, ...string[]])` because Zod v4's generic constraint changed from tuple to `Readonly<Record<string, EnumValue>>`. Cast through `unknown` is the canonical TS escape; not a band-aid.
-- **`runModelCascade` → CascadeResult** has `providerId: ProviderId | "mock"`, not plain string. Tests that mock the cascade need `ProviderAttempt[]` typing on the attempts array — see `synthesize.test.ts` for the canonical pattern.
-- **Cold-import test flakiness.** Full-suite runs sometimes fail one route's "module surface" test on a cold node start (the route imports the entire chain including Prisma + auth). Re-run the suite — the second run is reliable. If it fails twice in a row, dig into the actual error.
-- **Calendar `match_calendar_memory()` SQL function.** Not installed in OB Supabase yet (W-014). Calendar memory semantic search degrades to empty array gracefully; install the function when calendar memory becomes user-facing. LTM reference at `D:\London-Tech-Map\prisma\sql\` (search for `match_calendar_memory`).
-- **Clerk auth is stubbed.** `getAuthSession()` reads `STUB_USER_ID` env var in dev/preview, throws clearly when env unset OR in production (W-015). All API routes use the stub. Track F Session 18 wires Clerk; route code stays identical.
+- **Three migrations + one seed are still owed** (§ 4). If you write code that depends on `DealAnalysis` / `InvestorReputation` / `CounterTermSheet` and 500s on persistence, that's why. The orchestrator libraries themselves run cleanly — only the Prisma writes need the migrations.
+- **`getAuthSession()` is a Clerk stub** (W-015). It reads `STUB_USER_ID` env in dev/preview, throws in production. Track F Session 18 wires Clerk; route code stays identical.
+- **Cap-aware reputation tilt is asymmetric.** Negative tilt always allowed; positive tilt cannot lift past CRITICAL_CEILING (39) or HIGH_CEILING (79). Tested directly in `analyze.test.ts`. Don't simplify this away — it's the founder-protective invariant.
+- **Versioning diff is pure-function deterministic.** No cascade. If you want LLM-narrated diffs, wrap `compareAnalyses` in a separate cascade layer; don't replace the structured shape that downstream consumers bind to.
+- **Consensus runtime is expensive.** N+1 cascade calls (default N=3). Rate limit is 3/min for a reason. If a UI calls this on every keystroke, that's a bug.
+- **Three-soft-failure-mode pattern is the established convention** for cascade-driven Track P modules. Cascade mock-mode → deterministic fallback; JSON parse failure → fallback; Zod schema rejection → fallback. Always returns; never throws on happy path. Apply to every new cascade module.
+- **Counter-draft circular import was resolved by removing a re-export.** `counter-term-sheet-templates.ts` does NOT re-export `renderCounterMarkdown` (which lives in `counter-term-sheet.ts`). Consumers import each from its own home file.
+- **Cold-import test flakiness.** Full-suite runs on Windows can stretch the V8 import smoke timeout (`ScenarioDial`, `ValuationWorkbench`). The per-test timeout is bumped to 60s in `workbench.test.ts`. Re-run if a single test times out cold.
+- **Calendar `match_calendar_memory()` SQL function** still not installed in Supabase (W-014). Calendar memory semantic search degrades to empty array gracefully.
 
 ---
 
@@ -145,7 +162,6 @@ From `D:\Olivia Brain`:
 ```bash
 # Confirm you're on the right HEAD
 git log --oneline -5
-# Should show 757933f at the top
 
 # Pull anything that landed since
 git pull origin main
@@ -176,4 +192,4 @@ Olivia is the brain at the hub of a bicycle wheel. Every commit either makes her
 
 The founder operates at ~4 sessions/day; every session you waste re-reading what you skipped, re-discovering what's already shipped, or re-building what's already in the schema is a session not spent moving the brain forward.
 
-Welcome. Get the READMEs in your head, then ship P3.
+**Track P is closed.** The offer-evaluation surface is complete. Welcome to the next track — get the READMEs in your head, then ask the founder where to point.
