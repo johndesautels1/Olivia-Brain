@@ -2821,3 +2821,74 @@ Single-session port. Closes the documents-engine write-surface DATA layer + ROUT
 Single-session bounded port. One concern (documents write-surface data layer + API routes). One feat commit (`241cc89`) + one docs commit (this one). 14 source/test files / 1 SQL / +1213 LOC in feat. Five docs files in docs (`README.md` W-009 ▲ rendering closed + write-surface data layer, `BUILD_SEQUENCE.md` Track B Session 8b-routes ▲ data layer with new S8b-routes-components row, `FEATURE_INVENTORY.md` refresh, `HANDOFF.md` updates, this `SESSION_LOG` Part 54).
 
 **Next session:** **CHECK IN FIRST.** Open candidates: **Session 8b-routes-components** (the 14 LTM component ports that consume the routes shipped in this session — natural follow-up that finishes the workspace UX), **Session 8c** (Studio v1 engine — PreparationStudio + 17 engine-side components), **Session 8d** (documents app routes + Document Prisma model + the real fork logic to replace the 501 stub), **Track C remainder** (Studio UI rebuild S11–S14), **Track G** (cascade orchestrator port S19–S20), **Track L** (cluesintelligence flagship). Founder picks priority. **Four SQL migrations + one seed** remain owed by the operator (06 deal-protection, 07 counter-term-sheets, **08 documents write-surface (new this session)**, plus the investor-reputations seed; paste-into-Supabase shapes all on disk under `prisma/sql/`).
+
+---
+
+## Part 55 — 2026-05-08 — Track B Session 8b-routes LTM-alignment fix + Session 8b-routes-components: 14 LTM component ports (W-009 CLOSED)
+
+Two-commit session rolled into one log entry because they're tightly coupled — the LTM-alignment fix re-shapes the schema that S8b-routes-components consumes, and the components were ported immediately after the fix landed (founder direction "yes continue" + alignment correction).
+
+### Phase 1 — LTM-alignment fix (commit `4a1ef53`)
+
+Founder caught a critical mistake in Session 8b-routes (commit `241cc89`): I designed the 4 documents-write-surface Prisma models from scratch using `userId String` columns, when LTM (the home tenant OB nests in) has all of these models with specific column-name conventions. **Founder direction:** "check what london tech map uses as we need to be consistent with it as the home app this app will nest in." This is load-bearing for the bicycle-wheel architecture.
+
+LTM-aligned shape changes (`prisma/schema.prisma` + `prisma/sql/08-...`):
+- `DocumentBookmark`: `userId` → `userProfileId` (LTM line 1955; LTM FKs to `UserProfile.id`, OB will too in S8d when UserProfile ports — column is named for the destination shape so the FK migration adds without renaming)
+- `DocumentPackage` → renamed to `Package` (LTM line 1461); `userId` → `ownerUserId` (LTM uses raw Clerk userId here directly, not userProfileId); added `summary`, `shareToken (unique)`, `expiresAt`
+- `PackageItem` → renamed to `PackageDocument` (LTM line 1499); `position` → `sortOrder`; added `isRequired`, `customIntro`; FK delete behaviour changed to `onDelete: Restrict` (LTM convention — deleting a Package while it has documents is rejected)
+- `DocumentShare`: `userId` → `ownerUserId` (LTM line 1411); added `updatedAt`
+
+Route call-sites updated across 5 files (bookmark, packages, packages/documents, share, share/[shareId]) to match. Tests pass without changes — surface-contract tests don't reference column names.
+
+`HANDOFF.md` gotcha rewritten in commit `96e3b9a` to reframe the userId convention as "LTM alignment" rather than "Clerk-format-divergence" — the rationale is OB-nests-in-LTM consistency, not just Clerk-format pragmatism.
+
+DB unreachable from this dev workstation: `db.lumfvloapckluhzvtgdn.supabase.co:5432` returned P1001 connection error (likely Supabase free-tier auto-pause). Couldn't run `prisma db push` or `prisma migrate deploy`. SQL body pasted inline in chat per the founder's standing rule; founder action: wake the Supabase project + paste via SQL Editor.
+
+### Phase 2 — Session 8b-routes-components (commit `3356279`)
+
+Verbatim ports of the 14 LTM workspace-shell write-surface components.
+
+| Path | Surface |
+|---|---|
+| `BookmarkButton.tsx` | Clerk `useUser()` + `/api/documents/bookmark` toggle. Verbatim |
+| `DocumentActionBar.tsx` | The big one — 600 LOC. Clerk `useUser()` + every action wired (bookmark, read-aloud with SpeechSynthesisUtterance fallback, download, copy, share-link, email, add-to-package, save-to-library, delete with confirm-then-confirm, generate-AI). Mounts SaveToPackageModal on add-to-package. Three layout variants: full / compact / icon-only-dropdown |
+| `DocumentSourcePanel.tsx` | Re-points to bridge providers via `resolveDocumentContent` + `getDocumentStorageUrl` from already-ported `lib/documents/content`. No additional adaptation needed |
+| `SaveToMyDocumentsButton.tsx` + `useSaveToMyDocuments.ts` | Hook + button surface for forking a public template. POSTs `/api/me/documents/save-from-template` (currently the 501 stub from S8b-routes — lights up when S8d ports the Document model) |
+| `SaveToPackageModal.tsx` + `AddToPackageButton.tsx` | Package modal + trigger. Calls `/api/packages` + `/api/packages/documents`. Two modes: select-existing / create-new; auto-switches to create when zero packages |
+| `ShareDocumentModal.tsx` | Two tabs (new link / existing links). POSTs `/api/documents/[id]/share` + DELETEs revoke. Plan-blocked branch surfaces an upgrade panel via the 403+upgradeUrl shape S8b-routes share endpoint already returns |
+| `DocumentFilters.tsx`, `DocumentCard.tsx`, `DocumentQuickView.tsx`, `DocumentQuickViewProvider.tsx`, `PackageProgressBar.tsx`, `PrintButton.tsx` | Pure ports |
+
+OB-only adaptation (one inline comment): DocumentActionBar.tsx — `useRef<ReturnType<typeof setTimeout>>()` → `useRef<ReturnType<typeof setTimeout> \| undefined>(undefined)`. React 19 + TypeScript 6 require an initial value for `useRef`; LTM uses the React 18-permissive zero-arg signature. Inline comment documents the divergence.
+
+### Tests
+
+927/927 across 85 suites unchanged — Clerk-aware component tests defer to a session that adds a Clerk mock to `vitest.setup.ts`. Typecheck verifies the 14 components compile cleanly against the full Clerk + Prisma + ported-route graph.
+
+### Decisions / judgment-call trail
+
+1. **Split the LTM-alignment fix from the components port (vs one combined session).** The alignment fix touches schema + SQL + 5 route call-sites; the component port is 14 net-new files. Committing them together would have made the diff harder to review and the LTM-divergence rationale less prominent. Two clear commits surface what each one is for.
+2. **Verbatim port of DocumentSourcePanel (no ADAPT today).** The manifest § C marked DocumentSourcePanel as "PORT+ADAPT — re-point to bridge providers." On reading the LTM source, the actual bridge-provider call is to `resolveDocumentContent` + `getDocumentStorageUrl` — both already ported in Session 8 to OB's `lib/documents/content`. Verbatim port works today; further bridge-provider re-pointing (e.g., for Olivia-self vs LTM-knowledge data sources) lands when those domains diverge in S8d.
+3. **`useRef` adaptation fixes the only React 19 divergence in 14 files.** Worth documenting because future LTM ports will hit the same issue if they predate React 18's typing tightening. Pattern to apply: `useRef<T>()` becomes `useRef<T | undefined>(undefined)` (and adjacent code that reads `.current` already handles `undefined` because the LTM source uses `if (ref.current)` checks anyway).
+4. **No new tests this session.** Component-level tests for the 14 ports require either (a) mocking Clerk's `useUser()` (the Clerk-aware files all gate on `isSignedIn`), or (b) mounting the full ClerkProvider context in jsdom. Both are session-of-its-own work. Typecheck + the 22 route smoke tests cover the load-bearing behaviour today; component coverage lands when a Clerk-mock fixture is added to `vitest.setup.ts`.
+5. **`useRef<T | undefined>(undefined)` over `useRef<T | null>(null)`.** Matches LTM's clear-on-unmount semantics — the original code did `if (toastTimeout.current) clearTimeout(toastTimeout.current)` which works with either. `undefined` is closer to the implicit zero-arg behaviour LTM relied on, so the divergence is minimal.
+
+### Build status at session-Bb-routes-components close
+
+**Green.** Tests: **927/927 across 85 suites** (unchanged from S8b-routes — no new tests this session). Typecheck: **clean**. **W-009 CLOSED.** Documents UX rendering chain complete: atoms → workspace shell → write-surface data layer + routes → write-surface components.
+
+### Operator actions surfaced
+
+**No new actions this session.** Carry-forwards (4 SQL files + 1 seed) remain owed by the operator. Critically: the **DB unreachable issue** surfaced in Phase 1 — Supabase project at `db.lumfvloapckluhzvtgdn.supabase.co` returned P1001. Founder action: wake the project from the Supabase dashboard, then either paste each migration into the SQL Editor or run `npx prisma migrate deploy` (or `prisma db push` if comfortable with the data-loss check). All 4 owed migrations are paste-into-Supabase shapes on disk under `prisma/sql/`.
+
+### Track B closure (rendering + write-surface)
+
+| Sub-session | Commit | Net |
+|---|---|---|
+| **S8** atoms | `8d30887` | 18 blocks + DocumentRenderer + DocumentBody + 3 utility files + OrgMapProvider + DocumentWorkspace data spine + lib/studio/engine namespaced. **24 tests across 2 new suites.** OB-only regex divergence in `computeBlockStatus` + `computeFieldStatus` |
+| **S8b** workspace shell | `2abec1a` | DocumentWorkspace component portion + 4 sibling components (DocumentFieldEditor, DocumentTemplatePreview, WorkspaceOliviaPanel, DocumentEditor). **6 tests in 1 new suite.** Workspace shell mounts end-to-end against a stub WorkspaceDocument |
+| **S8b-routes** data layer | `241cc89` then `4a1ef53` LTM-alignment fix | 4 LTM-aligned Prisma models + `prisma/sql/08-add-documents-engine-write-surface.sql` + 6 API routes (bookmark toggle, packages list/create, packages/documents add, share list/create, share revoke, save-from-template 501 stub). **22 surface-contract tests across 6 new suites.** Operator action: apply migration 08 |
+| **S8b-routes-components** | `3356279` | 14 LTM components (BookmarkButton, DocumentActionBar, DocumentCard, DocumentFilters, DocumentQuickView, DocumentQuickViewProvider, DocumentSourcePanel, AddToPackageButton, SaveToPackageModal, PackageProgressBar, ShareDocumentModal, SaveToMyDocumentsButton, useSaveToMyDocuments hook, PrintButton) — verbatim ports with one OB-only React 19 useRef adaptation in DocumentActionBar |
+
+**Total Track B (rendering + write-surface):** 4 sub-sessions, 6 commits (4 feat + 2 fix/docs), 70+ files / +12,400 LOC, +52 tests across 9 new suites. **W-009 closed.**
+
+**Next session:** **CHECK IN FIRST.** **Session 8d** is the natural follow-up — Document Prisma model + UserProfile model + 13 documents app routes + real fork logic to replace the 501 stub. Closes Track B fully. **Session 8c** (Studio v1 engine), **Track C remainder**, **Track G**, **Track L** also open.
