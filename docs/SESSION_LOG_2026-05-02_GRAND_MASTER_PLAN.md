@@ -2672,3 +2672,54 @@ Until the keys are added, Production routes that call `getAuthSession()` throw o
 Single-session track. One concern (Clerk integration). One feat commit (`c206bd3`) + one docs commit (this one). Five files touched in feat (3 created/edited code + `package.json` + lockfile + `.env.example`); five docs files touched in docs (`README.md` W-015 ✅, `BUILD_SEQUENCE.md` Track F ✅, `FEATURE_INVENTORY.md` refresh, `HANDOFF.md` updates, this `SESSION_LOG` Part 51).
 
 **Next session:** **CHECK IN FIRST.** Track F closed. Open candidates per `BUILD_SEQUENCE.md`: **Track B Session 8** (deferred documents engine port — now unblocked by Clerk landing); **Track C Sessions 11-14** (Studio UI rebuild remainder); **Track G Sessions 19-20** (cascade orchestrator port + LangGraph wrap); **Track L** (cluesintelligence Unification, post-launch). Founder picks priority. Three SQL migrations + one seed remain owed by the operator (paste-into-Supabase shapes already on disk under `prisma/sql/`).
+
+---
+
+## Part 52 — 2026-05-08 — Track B Session 8: Documents engine atoms (atoms-only port; W-009 partial)
+
+Single-session port of the LTM documents-rendering layer plus the studio question engine. Atoms-only scope per founder direction (option B from the scope review): 18 blocks + DocumentRenderer + DocumentBody + 3 missed utility files + OrgMapProvider + DocumentWorkspace data spine + 3 lib/studio engine files namespaced under `engine/`. Workspace shell + Studio v1 engine + app routes carry forward to Sessions 8b / 8c / 8d. **W-009 partially closed.**
+
+### Files (32 staged, +5557 LOC)
+
+| Path | Surface |
+|---|---|
+| `package.json` + `package-lock.json` | `react-markdown@*` + `remark-gfm@*` added (DocumentBody uses both for markdown + GFM tables/checklists) |
+| `src/types/blocks.ts` | 19 block-data interfaces + `DocumentBlock` discriminated union + `BlockDocument` wrapper. Verbatim from LTM |
+| `src/lib/autolinker.tsx` | `OrgLink` type + `EXTERNAL_ENTITIES` map (UK gov, regulators, London institutions, major tech, industry bodies, data standards) + `autoLinkText()` + `autoLinkMarkdown()` + `renderInlineMarkdown()`. Verbatim from LTM. With an empty orgMap the autolinker resolves only the EXTERNAL_ENTITIES list — internal `/directory/{slug}` links are inert until OB's directory routes ship (W-008) |
+| `src/lib/documents/content.ts` | `DocumentContentKind` (empty / external_link / stored_file / block_json / rich_text) + resolution helpers + `resolveDocumentStudioAccess` + `getDocumentStorageUrl`. Verbatim |
+| `src/components/documents/OrgMapProvider.tsx` | React context wrapping the orgMap. `createContext<OrgLink[]>([])` default keeps the context legal without a Provider mount, so 4 blocks (Paragraph / Callout / List / DocumentBody) compile + render without explicit setup. Verbatim |
+| `src/components/documents/DocumentRenderer.tsx` | Routes `WorkspaceBlock` → block-type component for all 18 block types. Verbatim |
+| `src/components/documents/DocumentBody.tsx` | Static markdown-rendered body wrapper. Imports `react-markdown` + `remark-gfm` + `autoLinkMarkdown` + `resolveDocumentContent`. Verbatim |
+| `src/components/documents/blocks/*.tsx` × 18 | All 18 blocks (Hero, Section, Paragraph, List, Callout, Quote, Divider, Table, ComparisonTable, BarChart, PieChart, MetricCards, StatCard, TeamCard, Timeline, ProductCard, LogoBanner, Footer). Verbatim |
+| `src/components/documents/DocumentWorkspace.tsx` | **Data-spine extract** — types (`WorkspaceBlock`, `WorkspaceDocument`, `EditableField`) + helpers (`computeBlockStatus`, `getEditableFields`) + `countPlaceholders` parity helper from LTM lines 1–208. The React component portion (LTM lines 257–612) is deferred to Session 8b because it imports 3 deferred sibling files (DocumentFieldEditor, DocumentTemplatePreview, WorkspaceOliviaPanel) |
+| `src/lib/studio/engine/types.ts` | `QuestionState` + `Suggestion` + `BayesianPrior` + `ConsistencyFlag` + `EngagementMetrics` + `SessionMetrics` + `StudioConfig`. Verbatim from LTM `lib/studio/types.ts`, namespaced under `engine/` to avoid colliding with OB's existing `lib/studio/types.ts` (which holds Library/scoring/Deck types from Track C — entirely different surface) |
+| `src/lib/studio/engine/entityModes.ts` | 6 entity modes (VC / Accelerator / Acquirer / Angel / Corporate / general) with priority blocks, supplementary blocks, persona hints, key questions, tone label. Verbatim |
+| `src/lib/studio/engine/questionMapper.ts` | `mapBlocksToQuestions(blocks, entityMode?)` + `applyAnswerToBlocks(blocks, question, value)` + `computeCompletionFromQuestions(questions)` + `computeFieldStatus()` + impact-score heuristic + entity-emphasis classification. Verbatim from LTM (with the regex divergence noted below) |
+
+### Tests (24 new across 2 new suites)
+
+- **`src/components/documents/__tests__/blocks.test.tsx`** (18 cases) — smoke renders every block with valid `*BlockData` props + the canonical Aurum accent. Asserts container is non-empty + an obvious text-content keyword present (e.g. "Olivia Brain", "Donald Knuth", "Founders", "ARR", "Beta launch"). DividerBlock exercises its 3 style variants (`diamond`, `gradient`, `dots`).
+- **`src/lib/studio/engine/__tests__/questionMapper.test.ts`** (6 cases) — paragraph round-trip → 100% completion; divider is decorative (zero questions); `team_card` emits 3 questions for `bio` + `role` + `name`; VC entity mode boosts metrics priority and de-prioritises footer (priority +15 / supplementary -20); `applyAnswerToBlocks(null)` reverts to the template value; partial completion 1-of-3 yields a fractional percentage.
+
+### Decisions / judgment-call trail
+
+1. **Atoms-only over full § K.4 plan.** Full § K.4 (atoms + workspace shell + 3 PORT+ADAPT files needing OB API routes) is ~46 files plus net-new bookmark/package/share routes. Founder picked the tighter scope — atoms cleanly verifiable in one bounded session, deferring the route + ADAPT work to a focused 8b. Rejected: pulling the whole shell forward and stubbing the missing API routes with no-op handlers (would have shipped band-aids the next agent has to clean).
+2. **`lib/studio/engine/` namespace (vs merging into existing `lib/studio/`).** OB's existing `lib/studio/types.ts` holds Library/scoring/Deck types from Track C. LTM's `lib/studio/types.ts` holds the question-engine types. Zero overlap; merging would force one to be renamed in OB, breaking Track C imports. Namespacing under `engine/` preserves both surfaces and signals their distinct concern.
+3. **DocumentWorkspace data-spine extract (vs full file port).** LTM's `DocumentWorkspace.tsx` is 612 lines, of which lines 1–208 are pure types + helpers (the spine the engine + renderer + future shell consume) and lines 257–612 are a React component that imports 3 deferred sibling files. Porting the full file would require either (a) porting the 3 sibling files (out of scope for Session 8) or (b) shipping a stub for each (band-aid). Extract preserves the load-bearing exports and clearly marks the deferred portion in the file header. Future Session 8b appends the component back.
+4. **OrgMapProvider verbatim port (no soft-stub).** Manifest § K.2 called for a soft-stub that "renders children verbatim, no entity linking." LTM's actual implementation already has that shape: `createContext<OrgLink[]>([])` default + a Provider that just mounts `OrgMapContext.Provider`. Without an injected `orgMap`, the autolinker iterates an empty internal-org list and resolves only the EXTERNAL_ENTITIES public-URL list. No code change needed.
+5. **Fixed an LTM `lastIndex`-stateful regex bug in OB only (LTM source untouched).** LTM's `hasPlaceholders()` calls `.test()` on a module-level `/.../g` regex. JS regex `g`-flag `.test()` advances `lastIndex` between calls, and resets to 0 only when a search runs off the end of a shorter string. In sequence: block N's call advances `lastIndex`; block N+1's call on a shorter string finds `lastIndex > length`, returns false, resets to 0. The field is mis-classified as "complete" when it actually has unfilled placeholders. Caught by the partial-completion case in `questionMapper.test.ts`. Fix: local regex literal in OB's `computeBlockStatus` (`DocumentWorkspace.tsx`) and `computeFieldStatus` (`lib/studio/engine/questionMapper.ts`). Inline divergence comment in each spot — tells the next agent why the code differs from LTM and that LTM source is read-only. The bracket character class is preserved verbatim. This is a real bug; preserving LTM behaviour byte-for-byte would have shipped a known-wrong completion percentage for any document with two or more placeholder fields of decreasing length. Rejected: relaxing the test bound to match observed-buggy behaviour (would have been a test-side band-aid).
+6. **No `app/documents/*` routes.** Per § K.4 step 6, those defer to Session 9 / Track C. The atoms ship without consumers; that's fine — they'll be mounted by the workspace shell session and by Track C's GrandMaster Studio rebuild.
+
+### Build status at session-B-S8 close
+
+**Green.** Tests: **899/899 across 78 suites** (+24 new across 2 new suites). Typecheck: **clean**. **Track B Session 8 ▲ atoms-only — W-009 partially closed.** Atoms portion shipped; workspace shell + Studio v1 engine + app routes remain in BUILD_SEQUENCE as Sessions 8b / 8c / 8d.
+
+### Operator actions surfaced
+
+**None new.** Track P SQL carry-forwards (3 files) + Track F Vercel Clerk-keys action remain unchanged. The atoms portion needs no operator action — it's pure rendering + pure-function engine math, with all data flowing through the bridge providers when the workspace shell mounts.
+
+### Session 8 closure summary
+
+Single-session bounded port. One concern (documents engine atoms). One feat commit (`8d30887`) + one docs commit (this one). 32 source files / 24 tests / +5557 LOC in feat. Five docs files in docs (`README.md` W-009 ▲ partial, `BUILD_SEQUENCE.md` Track B Session 8 ▲ atoms with new 8b/8c/8d rows, `STUDIO_PORT_MANIFEST.md` § K.4 execution log + new § K.5 Studio v1 engine carry-forward, `FEATURE_INVENTORY.md` refresh, this `SESSION_LOG` Part 52, `HANDOFF.md` updates).
+
+**Next session:** **CHECK IN FIRST.** W-009 atoms portion closed; the workspace shell port (Session 8b) is the natural follow-up because it unblocks the entire documents UX and was the original Session 7 deliverable. Track C remainder (Studio UI rebuild S11–S14), Track G (cascade orchestrator port S19–S20), Track L (cluesintelligence flagship), and Session 8c (Studio v1 engine — PreparationStudio + 17 engine-side components) are all open candidates. Founder picks priority.

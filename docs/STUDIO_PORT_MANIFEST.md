@@ -363,16 +363,22 @@ Manifest § C.2 marks `OrgMapProvider.tsx` as **REFERENCE** (LTM-specific, skip)
 | Next 16 typed routes on `/documents/${id}` and `/documents/${id}/edit` strings | `DocumentCard`, `DocumentEditor`, `DocumentFilters`, `PackageProgressBar`, `DocumentActionBar` | `next.config.ts` already has `typedRoutes: false`; stale `.next/types` cache caused false errors during Session 7. Session 8 needs to confirm clean baseline. |
 | `DocumentRenderer.tsx` routes to every block — deferring any block breaks the renderer | `DocumentRenderer.tsx` + 18 blocks | Session 8 ports all 18 blocks together OR comments out routes for unported blocks (band-aid) |
 
-### K.4 Recommended Session 8 plan
+### K.4 Recommended Session 8 plan — execution log
 
-1. Pull Clerk forward (or stub) before any documents work — gates auth-using files.
-2. Port `OrgMapProvider` as a soft-stub component (renders children verbatim, no entity linking) so the 4 blocks unblock.
-3. Port the 3 missed LTM utility files (`types/blocks`, `lib/autolinker`, `lib/documents/content`).
-4. Install `react-markdown` + `remark-gfm`.
-5. Port all 18 blocks + 18 top-level documents files + `DocumentRenderer` together — partial ports break renderer.
-6. App route ports (`app/documents/*`, 13 files) defer to Session 9 or Track C.
-7. Vitest snapshot tests on the 18 block components (original Session 7 exit criterion).
-8. `mapBlocksToQuestions()` round-trip test.
+(Updated 2026-05-08 with Session 8 atoms-only port status — commit `8d30887`.)
+
+1. ✅ **Done in Track F Session 18** (commit `c206bd3`) — Clerk wired with presence-gated `clerkMiddleware()` + conditional `<ClerkProvider>` + three-mode `getAuthSession()` resolution. Documents work no longer blocked on Clerk.
+2. ✅ **Done in Session 8** — `OrgMapProvider.tsx` ported verbatim (LTM's already-shippable shape: context default `[]` means the autolinker resolves only its EXTERNAL_ENTITIES list of public URLs without an injected orgMap; no soft-stub diff was needed).
+3. ✅ **Done in Session 8** — `src/types/blocks.ts`, `src/lib/autolinker.tsx`, `src/lib/documents/content.ts` ported verbatim from LTM.
+4. ✅ **Done in Session 8** — `react-markdown` + `remark-gfm` installed.
+5. ▲ **Partially done in Session 8** — 18 blocks + DocumentRenderer + DocumentBody + DocumentWorkspace.tsx **data-spine portion** (types + helpers, LTM lines 1–208) shipped together; the renderer compiles cleanly. The **workspace shell component** (LTM lines 257–612) and the 16 sibling top-level files (DocumentEditor, DocumentFieldEditor, BookmarkButton, DocumentActionBar, SaveToPackageModal, ShareDocumentModal, etc.) defer to **Session 8b**, where they'll land alongside OB-side bookmark/package/share API routes (none exist yet).
+6. ⏳ **Deferred to Session 8d / Track C.** App route ports (`app/documents/*`, 13 files).
+7. ✅ **Done in Session 8** — 18 block smoke renders in `src/components/documents/__tests__/blocks.test.tsx`.
+8. ✅ **Done in Session 8** — `mapBlocksToQuestions()` round-trip test in `src/lib/studio/engine/__tests__/questionMapper.test.ts` (6 cases: paragraph→complete, divider skipped, multi-field team_card, VC entity emphasis, null-revert, partial percentage). Surfaced an LTM `hasPlaceholders` `lastIndex`-stateful regex bug; fix landed in OB-only (LTM source untouched per the never-edit-LTM founder rule).
+
+### K.5 Studio v1 engine carry-forward (added 2026-05-08)
+
+The original BUILD_SEQUENCE Session 8 row described a Studio v1 engine port (`PreparationStudio.tsx` + 17 engine-side components: StudioAnswerEditor, StudioFormattingToolbar, PitchPolishModal, SuggestionChips, WhyThisPanel, DeepResearchPanel, ResearchHistory, EntityBriefCard, EntityPerspectiveModal, MicroReward, SkipNudgeModal, CompletionCeremony, DocumentTransition, PreSubmitCheck, CristianoReEvaluation, AnswerRibbon, StoryReview). That scope was **not part of Session 8 atoms** — the atoms scope ports the documents block engine (section C), not the studio engine (section A). Studio v1 engine work moves to a new **Session 8c** row in BUILD_SEQUENCE.
 
 ---
 
