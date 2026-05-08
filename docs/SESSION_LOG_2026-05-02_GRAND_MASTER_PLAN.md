@@ -2621,3 +2621,54 @@ All three SQL bodies were pasted inline in the chat at file-creation time per `f
 **Total Track P:** 13 new Prisma models / extensions + 13 new API routes + 7-file deal-protection library expansion + WarRoom integration + admin UI + 250+ new tests across 26+ suites. Olivia Brain offer-evaluation surface complete.
 
 **Next session:** **CHECK IN FIRST.** Track P is closed; no specific next session is pre-locked. Likely candidates per BUILD_SEQUENCE: Track F Session 18 (Clerk auth — closes W-015 stub used across all of P3-P7); Track B Session 8 (deferred Studio engine port); Track C Sessions 11-14 (Studio UI rebuild remainder); Track G Sessions 19-20 (cascade orchestrator port). Founder picks priority.
+
+---
+
+## Part 51 — 2026-05-08 — Track F Session 18: Clerk auth (TRACK F CLOSED)
+
+Single-session swap. Replaces the `getAuthSession()` Clerk stub introduced for C4 / Q1-Q7 / V7-V9 / P3-P7 with real Clerk integration. The route-side shape (`{ userId } = await getAuthSession()`) is unchanged across **all 78 callsites**, so calendar, founder-intake, valuation, deal-protection, admin-investors and olivia-* routes inherit Clerk transparently — zero route code touched.
+
+### Files
+
+| File | Surface |
+|---|---|
+| `package.json` + `package-lock.json` | `@clerk/nextjs@^7.3.2` added |
+| `middleware.ts` (new at repo root) | `clerkMiddleware()` wrapped behind a `CLERK_SECRET_KEY`-presence gate; no-ops to a passthrough `NextResponse.next()` middleware in dev/preview when the secret is unset, so the existing `STUB_USER_ID` flow continues to serve. App Router matcher follows Clerk's official Next.js pattern — skips static assets, runs on every page + API route. |
+| `src/app/layout.tsx` | Conditional `<ClerkProvider>` wrap: active when `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is set, skipped otherwise. Lets fresh checkouts run `npm run dev` without provisioning Clerk locally. |
+| `src/lib/auth/session.ts` | Three-mode resolution: real Clerk `auth()` when both keys are set; `STUB_USER_ID` fallback in dev/test/preview when keys are unset; hard throw in production with neither configured (so a route can never ship auth-less by accident). File-level comment + JSDoc updated to reflect post-swap state. |
+| `.env.example` | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` + `STUB_USER_ID` documented inline with operator-action note (Production + Preview, marked Sensitive per `~/CLAUDE.md`). |
+
+### Tests
+
+No new tests — the swap is non-breaking by design. Vitest tests do not run through Next middleware, and `CLERK_SECRET_KEY` is unset in the test env, so `getAuthSession()` resolves via the `STUB_USER_ID` path. **875/875 across 76 suites.** Typecheck clean.
+
+### Decisions / judgment-call trail
+
+1. **Conditional Clerk gate (vs unconditional install).** A naive Clerk install would force every contributor to provision Clerk keys before `npm run dev` works. The presence-gated pattern preserves the existing dev workflow and lets the founder add Clerk to Vercel without breaking local checkouts. Standard pattern in Clerk's Next.js docs.
+2. **Two env-var keys, both checked.** `getAuthSession()` only flips to Clerk when **both** `CLERK_SECRET_KEY` **and** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` are set. Either alone produces a half-broken state (server has session but client has no provider, or vice versa), and Clerk's `auth()` would error inside a context that never had `<ClerkProvider>` mounted. Symmetric gate avoids that class of bug.
+3. **Tests inherit STUB_USER_ID without changes.** Many route-handler tests directly invoke `getAuthSession()` and rely on a non-null `userId`. Forcing them all to mock Clerk would be a 78-callsite migration. The presence-gate keeps them on the existing stub — no test churn — and prod still gets real Clerk.
+4. **Production guard kept loud.** With both Clerk keys absent in `NODE_ENV === "production"`, `getAuthSession()` throws explicitly rather than falling back to `STUB_USER_ID`. A silent stub-in-prod is the worst outcome (auth-less routes that look authorized); a clear throw makes the misconfiguration visible at first request.
+5. **`requireAdminKey` / `withTenantContext` left out of scope.** BUILD_SEQUENCE Track F's wider scope (admin-key migration on the 2 liveavatar routes + tenant-context middleware on every API route) is genuinely multi-session work and was de-scoped to this session by founder direction 2026-05-08. The 78-callsite W-015 stub was the load-bearing item; the other two surfaces remain on follow-up agendas.
+
+### Build status at session-F close
+
+**Green.** Tests: **875/875 across 76 suites** (unchanged — non-breaking swap by design). Typecheck: **clean**. **Track F 1/1 ✅ — TRACK CLOSED.** W-015 closed. OB can deploy auth-using routes to production once Clerk keys are provisioned on Vercel.
+
+### Operator actions surfaced
+
+**One new, reversible.** Provision a Clerk app at clerk.com, then add the keys to Vercel:
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` → All Environments (designed to be public)
+- `CLERK_SECRET_KEY` → **Production + Preview only, marked Sensitive** (per `~/CLAUDE.md` — never set Sensitive secrets to All Environments; never include in Development env)
+
+Until the keys are added, Production routes that call `getAuthSession()` throw on first request, and Preview falls back to `STUB_USER_ID` if that env var is also set on Vercel. Local dev unaffected.
+
+**Track P carry-forwards remain unchanged** (3 SQL files still owed):
+1. `prisma/sql/06-add-deal-protection-foundation.sql`
+2. `prisma/sql/seed-investor-reputations.sql`
+3. `prisma/sql/07-add-counter-term-sheets.sql`
+
+### Track F closure summary
+
+Single-session track. One concern (Clerk integration). One feat commit (`c206bd3`) + one docs commit (this one). Five files touched in feat (3 created/edited code + `package.json` + lockfile + `.env.example`); five docs files touched in docs (`README.md` W-015 ✅, `BUILD_SEQUENCE.md` Track F ✅, `FEATURE_INVENTORY.md` refresh, `HANDOFF.md` updates, this `SESSION_LOG` Part 51).
+
+**Next session:** **CHECK IN FIRST.** Track F closed. Open candidates per `BUILD_SEQUENCE.md`: **Track B Session 8** (deferred documents engine port — now unblocked by Clerk landing); **Track C Sessions 11-14** (Studio UI rebuild remainder); **Track G Sessions 19-20** (cascade orchestrator port + LangGraph wrap); **Track L** (cluesintelligence Unification, post-launch). Founder picks priority. Three SQL migrations + one seed remain owed by the operator (paste-into-Supabase shapes already on disk under `prisma/sql/`).

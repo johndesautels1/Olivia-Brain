@@ -2,7 +2,7 @@
 
 > **Snapshot of every shipped capability + the remaining roadmap.**
 >
-> Last refreshed: **2026-05-08** at HEAD `a6d78ed` (post-P7 feat commit). **Track Q closed; Track P CLOSED (7/7 ✅).**
+> Last refreshed: **2026-05-08** at HEAD `c206bd3` (post-Track-F feat commit). **Track Q closed; Track P CLOSED (7/7 ✅); Track F CLOSED (1/1 ✅).**
 > Test gate: **875/875 across 76 suites**. Typecheck: **clean**.
 >
 > This file is a snapshot — refresh it at end of each batch (after the SESSION_LOG entry lands) so the next session opens to a current view of the codebase. It's a complement to `BUILD_SEQUENCE.md` (which is the session-by-session plan) and `HANDOFF.md` (which is the resume-point doc).
@@ -48,7 +48,7 @@
 | `admin/` | Audit logging, integration test results, dashboard data | SHIPPED |
 | `agents/` | 250-agent registry + handlers + execution engine | SHIPPED |
 | `analysis/` | Cristiano synergy valuation bridge | SHIPPED |
-| `auth/` | Auth session helper (Clerk stub, W-015) | STUB |
+| `auth/` | Clerk session helper. Track F Session 18 ✅ — Clerk wired via `@clerk/nextjs`; presence-gated fallback to `STUB_USER_ID` for dev/test/preview without keys. | SHIPPED |
 | `avatar/` | Unified avatar interface; Simli/HeyGen/D-ID fallback | SHIPPED |
 | `bridge/` | Universal Knowledge Protocol; provider registry | SHIPPED |
 | `calendar/` | Olivia engine: NLP parsing, prep plans, daily briefs | SHIPPED |
@@ -202,7 +202,7 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 | **Track P (Deal Protection)** | **CLOSED** | All 7 sessions ✅. Olivia Brain offer-evaluation surface complete (P1 schema + Smart Score · P2 clause classifier · P3 parser + analyze API · P4 investor reputation · P5 dilution + email · P6 counter draft + WarRoom panel · P7 rehearsal + versioning + consensus). |
 | **Track D (Studio↔Brain wiring)** — S15-S16 | **2** | Re-point Studio "Ask Olivia / Analyze / Optimize" to OB cascade |
 | **Track E (Voice input, S17)** | **1** | Voice-driven Studio capture |
-| **Track F (Clerk auth, S18)** | **1** | Replace `getAuthSession` stub with real Clerk — closes W-015 |
+| **Track F (Clerk auth, S18)** | **CLOSED** | ✅ S18 — `@clerk/nextjs` wired with presence-gated middleware + conditional `<ClerkProvider>` + three-mode `getAuthSession()` resolution. W-015 closed. |
 | **Track G (Cascade orchestrator)** — S19-S20 | **2** | Port LTM `lib/cascade/` orchestrator + 8 providers; LangGraph wrap |
 | **Track H (Agents consolidation)** — S21-S23 | **3** | Port LTM's 94 named agents; agent dashboard UI; auto-learning |
 | **Track I (Multi-tenant + adaptive surface suppression, S24)** | **1** | Tenant isolation enforcement; white-label CSS; suppress Olivia surfaces in hosts that ship their own (LTM map/calendar) |
@@ -223,13 +223,13 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 
 | Metric | Value |
 |---|---|
-| **Sessions complete** | 42 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P7) |
-| **Sessions remaining (priorities 1-4 + Track L)** | **~43** |
+| **Sessions complete** | 43 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P7 + Track F S18) |
+| **Sessions remaining (priorities 1-4 + Track L)** | **~42** |
 | **Total sessions in plan** | ~85 |
 | **% complete** | ~49% by session count |
 | **Tests passing** | 875/875 across 76 suites |
 | **Typecheck** | clean |
-| **Open weaknesses** | 4 (W-013/14/15/16) |
+| **Open weaknesses** | 3 (W-013/14/16) |
 | **Library subsystems** | 50 (43 shipped, 1 LTM-ported, 2 partial, 3 stub, 1 pending) |
 | **API routes** | 86 across 16 domains |
 | **UI pages** | 9 |

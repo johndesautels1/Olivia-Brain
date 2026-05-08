@@ -184,13 +184,15 @@ Olivia speaks; needs to hear.
 |---------|-------------|
 | **17** | Browser mic capture → `MediaRecorder` chunks → `/api/voice/transcribe` (Whisper or Deepgram, both already abstracted in `src/lib/voice/`) → text → `/api/olivia/chat` → reply → avatar speaks. End-to-end on `/test-avatar` plus a Studio composer hook. |
 
-### Track F — Auth (Session 18)
+### Track F ✅ — Auth (Session 18 closed)
 
-Replace `ADMIN_API_KEY` shim with Clerk org-shared identity per Q4 decision.
+Replace the `getAuthSession()` Clerk stub with real Clerk integration. (The wider migration of `requireAdminKey` callsites and `withTenantContext()` middleware was de-scoped to follow-up sessions per founder direction 2026-05-08; the load-bearing W-015 stub used by 78 callsites was the actual single-session target.)
 
-| Session | Deliverable |
-|---------|-------------|
-| **18** | Clerk wired into `tenant/context.ts`. `withTenantContext()` middleware on every API route. `requireAdminKey` callsites replaced with `auth()`. Smoke test page no longer needs the `?key=` query param. |
+| Session | Deliverable | Status |
+|---------|-------------|--------|
+| **18** ✅ | `@clerk/nextjs@^7.3.2` installed. New `middleware.ts` runs `clerkMiddleware()` behind a `CLERK_SECRET_KEY`-presence gate (no-ops in dev/preview without Clerk keys). `<ClerkProvider>` conditionally wraps `src/app/layout.tsx`. `getAuthSession()` body now resolves Clerk when both keys are set, falls back to `STUB_USER_ID` in dev/test/preview, hard-throws in production with neither. **78 route callsites unchanged** — Calendar / Founder-intake / Valuation / Deal-protection / Admin-investors / Olivia-* all inherit Clerk transparently. **W-015 closed.** | ✅ commit `c206bd3` (2026-05-08) |
+
+**Out-of-scope carry-forward** (de-scoped from Session 18 by founder direction): the 2 `requireAdminKey` callsites on `/api/olivia/liveavatar/*` still use Bearer `ADMIN_API_KEY`, and `withTenantContext()` AsyncLocalStorage scoping is defined-but-unused. Both are genuinely multi-session migrations and land in their own session when a real consumer needs them.
 
 ### Track G — Cascade orchestrator port (Sessions 19–20)
 

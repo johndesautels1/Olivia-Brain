@@ -1,7 +1,7 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-08 — end of P3 → P7 batch. **Track P is now CLOSED (7/7 ✅).**
-> **HEAD will be:** the docs commit that ships alongside this file (after `a6d78ed` post-P7 feat).
+> **Last updated:** 2026-05-08 — end of Track P (P3 → P7) batch + single-session Track F (Clerk auth). **Track P CLOSED (7/7 ✅). Track F CLOSED (1/1 ✅).**
+> **HEAD will be:** the Track F docs commit that ships alongside this file (after `c206bd3` post-Track-F feat).
 > **Test gate:** 875/875 across 76 suites. Typecheck clean.
 
 ---
@@ -57,20 +57,19 @@ If you finish reading and your mental model still has "Olivia is a chat assistan
 
 ## § 2. Where to resume coding
 
-**TRACK P IS CLOSED.** No specific next session is pre-locked. Olivia Brain's offer-evaluation surface (analyze, parser, classifier, smart score, investor reputation, dilution projection, email drafts, counter term sheet, WarRoom panel, rehearsal, versioning, consensus) is feature-complete.
+**TRACK P + TRACK F ARE CLOSED.** No specific next session is pre-locked. Olivia Brain's offer-evaluation surface (analyze, parser, classifier, smart score, investor reputation, dilution projection, email drafts, counter term sheet, WarRoom panel, rehearsal, versioning, consensus) is feature-complete; Clerk auth is wired into the 78-callsite `getAuthSession()` surface (W-015 closed).
 
 **Likely candidates per BUILD_SEQUENCE — founder picks priority:**
 
 | Track | Sessions | Why pick this |
 |---|---|---|
-| **Track F — Clerk auth (S18)** | 1 | **Closes W-015** (the `getAuthSession()` stub used across all of Q4-Q7 + V7-V9 + P3-P7). One-line swap inside `lib/auth/session.ts`; route code stays identical. After this, OB can deploy auth-using routes to production. |
-| **Track B Session 8** | 1 | Deferred since Session 7 (the documents engine port hit Clerk dep + 3 missed LTM utility files; see manifest § K). Pulling Track F forward unblocks this. |
+| **Track B Session 8** | 1 | Deferred since Session 7 (the documents engine port hit Clerk dep + 3 missed LTM utility files; see manifest § K). **Now unblocked** — Clerk landed in Track F. |
 | **Track C — Studio UI rebuild (S11–S14)** | 4 | UI-heavy; the GrandMaster three-region shell is in place (S9-S10 ✅), remaining sessions wire the engine + library + sections + tabs. Style-fidelity gaps W-011/12/13 close as part of this. |
 | **Track G — Cascade orchestrator port (S19–S20)** | 2 | LangGraph wrapping + LTM cascade prompts → OB. Independent of UI. |
 | **Track H — Agents consolidation (S21–S23)** | 3 | Port LTM's ~120 named agents into `src/lib/agents/impl/`. Reconcile with the existing registry. |
 | **Track L — cluesintelligence Unification** | ~10 | Flagship product. Track L is post-clueslondon-launch per the strategic priority lock; pulling it forward is a founder decision. |
 
-**Recommended:** ask the founder which track to pick before coding. The June 8 demo target is `clueslondon` (LTM-canonical with OB port-back), so the path of least resistance to a demo is: Track F (Clerk) → Track C remainder (UI polish) → Track K hardening. But the founder may want to pull Track L forward instead if cluesintelligence is the demo target.
+**Recommended:** ask the founder which track to pick before coding. The June 8 demo target is `clueslondon` (LTM-canonical with OB port-back), so the path of least resistance to a demo is: Track B Session 8 (documents engine, now unblocked) → Track C remainder (UI polish) → Track K hardening. But the founder may want to pull Track L forward instead if cluesintelligence is the demo target.
 
 ---
 
@@ -112,7 +111,10 @@ Apply in order:
 
 All three: paste into Supabase SQL Editor → Run. Verification queries in the seed file.
 
-**No env-var changes needed by P3-P7.** All routes use the existing `STUB_USER_ID` env (Preview) or throw clearly in production (W-015 — closed by Track F Session 18).
+**Vercel env-vars now needed by Track F Session 18** (one new, reversible operator action):
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` → All Environments (designed to be public).
+- `CLERK_SECRET_KEY` → **Production + Preview only, marked Sensitive** (per `~/CLAUDE.md` — never All Environments; never Development).
+- Provision the Clerk app at clerk.com first; copy keys from its dashboard. Until both are set, Production routes that call `getAuthSession()` throw at first request and Preview falls back to `STUB_USER_ID` (if also set on Vercel). Local dev is unaffected — `<ClerkProvider>` and `clerkMiddleware()` are presence-gated so they no-op without keys.
 
 **Pending feature work flagged elsewhere:**
 - W-017 — Organization-records investor-bias for Quantara metamorphism axis (deferred since Q5).
@@ -144,7 +146,7 @@ These are non-negotiable. Every prior agent who broke one of these caused real c
 ## § 6. Gotchas the next agent will probably hit if not warned
 
 - **Three migrations + one seed are still owed** (§ 4). If you write code that depends on `DealAnalysis` / `InvestorReputation` / `CounterTermSheet` and 500s on persistence, that's why. The orchestrator libraries themselves run cleanly — only the Prisma writes need the migrations.
-- **`getAuthSession()` is a Clerk stub** (W-015). It reads `STUB_USER_ID` env in dev/preview, throws in production. Track F Session 18 wires Clerk; route code stays identical.
+- **`getAuthSession()` is presence-gated Clerk** (W-015 ✅, closed Track F Session 18). When `CLERK_SECRET_KEY` + `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` are both set, real Clerk `auth()` resolves the user. When either is unset, falls back to `STUB_USER_ID` in dev/test/preview, hard-throws in production. The 78 callsites consume the same `{ userId }` shape — never branch on which mode is active. `middleware.ts` and `<ClerkProvider>` are also presence-gated, so fresh checkouts can `npm run dev` without provisioning Clerk locally.
 - **Cap-aware reputation tilt is asymmetric.** Negative tilt always allowed; positive tilt cannot lift past CRITICAL_CEILING (39) or HIGH_CEILING (79). Tested directly in `analyze.test.ts`. Don't simplify this away — it's the founder-protective invariant.
 - **Versioning diff is pure-function deterministic.** No cascade. If you want LLM-narrated diffs, wrap `compareAnalyses` in a separate cascade layer; don't replace the structured shape that downstream consumers bind to.
 - **Consensus runtime is expensive.** N+1 cascade calls (default N=3). Rate limit is 3/min for a reason. If a UI calls this on every keystroke, that's a bug.
