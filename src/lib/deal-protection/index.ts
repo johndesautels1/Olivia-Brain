@@ -128,3 +128,49 @@ export {
   applyReputationTilt,
   computeReputationTilt,
 } from './investor-score-impact';
+
+export {
+  type AntiDilutionType,
+  type CapTableEntry,
+  type CapTableSnapshot,
+  type FutureRound,
+  type HolderTrajectory,
+  type HolderType,
+  type OwnershipPoint,
+  type ProjectionInputs,
+  type ProjectionResult,
+  ANTI_DILUTION_TYPES_ORDERED,
+  CapTableEntrySchema,
+  CapTableSnapshotSchema,
+  FutureRoundSchema,
+  HOLDER_TYPES_ORDERED,
+  MAX_PROJECTION_ROUNDS,
+  ProjectionInputsSchema,
+} from './multi-round-types';
+
+export {
+  MAX_RATCHET_FACTOR,
+  applyRound,
+  computeAdjustmentFactor,
+  projectDilution,
+} from './multi-round';
+
+export {
+  type EmailDraftContext,
+  type EmailDraftPayload,
+  type EmailTone,
+  type EmailToneRecord,
+  EMAIL_TONES,
+  renderTemplateDraft,
+} from './email-templates';
+
+export {
+  EMAIL_DRAFT_LIMITS,
+  buildEmailDraftPrompt,
+} from './email-prompts';
+
+export {
+  type EmailDraftResult,
+  type GenerateEmailDraftOptions,
+  generateEmailDraft,
+} from './email-drafts';
