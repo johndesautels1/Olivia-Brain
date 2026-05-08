@@ -2,7 +2,7 @@
 
 > **Snapshot of every shipped capability + the remaining roadmap.**
 >
-> Last refreshed: **2026-05-08** at HEAD `502db7f` (post-Track-B-Session-8d-fork-logic feat commit). **Track Q closed; Track P CLOSED (7/7 ✅); Track F CLOSED (1/1 ✅); Track B Sessions 8 + 8b + 8b-routes + 8b-routes-components + 8d data foundation ✅ — W-009 CLOSED + documents data layer LTM-aligned end-to-end.** Documents UX rendering chain + write-surface routes + Document/UserProfile Prisma models + real fork logic all in place. **What still defers:** 13 documents app routes (`app/documents/*`) carry forward to **Session 8d-routes**.
+> Last refreshed: **2026-05-08** at HEAD `0d59eb3` (post-Track-B-Session-8d-routes-partial feat commit). **Track Q closed; Track P CLOSED (7/7 ✅); Track F CLOSED (1/1 ✅); Track B Sessions 8 + 8b + 8b-routes + 8b-routes-components + 8d data foundation + 8d-routes (partial) ✅ — W-009 CLOSED + documents data + access layer + 5/14 app routes shipped.** Documents UX rendering chain + write-surface routes + Document/UserProfile Prisma models + real fork logic + 2 OB-adapted query modules + 5 documents app routes (loading, error, new, edit, share) all in place. **What still defers:** 4 heavy app routes (index, [id]/detail, saved, workspace/*) carry forward to **S8d-routes-2**; studio/* defers to **S8c** (depends on PreparationStudio).
 > Test gate: **929/929 across 85 suites**. Typecheck: **clean**.
 >
 > This file is a snapshot — refresh it at end of each batch (after the SESSION_LOG entry lands) so the next session opens to a current view of the codebase. It's a complement to `BUILD_SEQUENCE.md` (which is the session-by-session plan) and `HANDOFF.md` (which is the resume-point doc).
@@ -223,8 +223,8 @@ Plus **operator action carried** from Q1: apply `prisma/sql/04-add-quantara-foun
 
 | Metric | Value |
 |---|---|
-| **Sessions complete** | 48 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P7 + Track F S18 + Track B S8 atoms + S8b workspace-shell-atoms + S8b-routes data-layer + S8b-routes-components + S8d data foundation) |
-| **Sessions remaining (priorities 1-4 + Track L)** | **~42** (Track B S8 + S8b + S8b-routes + S8b-routes-components + S8d data foundation shipped; S8c Studio v1 engine + S8d-routes documents app routes carry forward) |
+| **Sessions complete** | 49 (V1-V9 + Track Calendar C2-C6 + Sessions 4-6 chat + 7-10 Studio + S14 + O1 + Q1-Q7 + P1-P7 + Track F S18 + Track B S8 atoms + S8b workspace-shell-atoms + S8b-routes data-layer + S8b-routes-components + S8d data foundation + S8d-routes partial) |
+| **Sessions remaining (priorities 1-4 + Track L)** | **~42** (Track B S8 + S8b + S8b-routes + S8b-routes-components + S8d + S8d-routes partial shipped; S8c Studio v1 engine + S8d-routes-2 heavy routes carry forward) |
 | **Total sessions in plan** | ~85 |
 | **% complete** | ~49% by session count |
 | **Tests passing** | 875/875 across 76 suites |

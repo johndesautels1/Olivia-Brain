@@ -2954,3 +2954,57 @@ Two-commit session (schema + fork logic) closing the documents data foundation. 
 | **S8d-routes** 13 documents app routes | — | ⏳ deferred |
 
 **Next session:** **CHECK IN FIRST.** **Session 8d-routes** is the natural follow-up — the 13 `app/documents/*` route pages mount the workspace shell from a real `/documents/[id]` URL, exercising bookmark/package/share UI end-to-end against the routes shipped in S8b-routes. **Session 8c** (Studio v1 engine), **Track C remainder**, **Track G**, **Track L** also open.
+
+---
+
+## Part 57 — 2026-05-08 — Track B Session 8d-routes (partial): 2 OB-adapted query modules + 5 of 14 documents app routes
+
+Single feat commit closing the data-access layer + the simpler half of the 14 documents app routes. Heavy routes (4 files) defer to S8d-routes-2; studio routes (3 files) defer to S8c.
+
+### Files (7 new, +848 LOC, single feat commit `0d59eb3`)
+
+| Path | Surface |
+|---|---|
+| `src/lib/queries/documents.ts` | OB-adapted port of LTM lib/queries/documents (10 functions). LTM-only-table queries stub to `[]`/`null` (DocumentCollection, Organization, DocumentVersion, DocumentModule, news cascade collections). Real OB queries preserved (Document.findMany with filters, Document.findUnique with packageDocs include, getRelatedDocuments with adapted scoring, getUserDocuments / getUserPackagesForPicker / getUserCopyOfTemplate verbatim). Function signatures stay LTM-compatible so consumers read against the module byte-for-byte. |
+| `src/lib/queries/packages.ts` | OB-adapted port of LTM lib/queries/packages. TargetList / PackageTemplate / PackageRecipient / PackageEvent joins dropped. getPackageTemplates + getTargetListsForPackage stub to `[]`. Core queries (getPackages, getPackageById, createPackage, addDocumentToPackage, removeDocumentFromPackage, updatePackageStatus) ship verbatim. |
+| `src/app/documents/loading.tsx` | Pure-presentation skeleton. Verbatim. |
+| `src/app/documents/error.tsx` | Error boundary. Verbatim minus the unused `error` param to satisfy TS strictness. |
+| `src/app/documents/new/page.tsx` | Create-new-document wizard. Adapted: `auth()` is async in Clerk v7; Olivia Brain branding. |
+| `src/app/documents/[id]/edit/page.tsx` | Edit mode. Adapted: `auth()` async, Next 16 `params` Promise, `doc.collectionId` is `string \| null` in OB. |
+| `src/app/documents/share/[token]/page.tsx` | Public share viewer. Adapted: `headers()` async (Next 16); `params` Promise; `prisma.documentShareEvent.create` removed (DocumentShareEvent not in OB — view tracking degrades to inline `viewCount` + `lastViewedAt` on DocumentShare); `share.document.collection` doesn't exist (collection label falls back to "Olivia Brain"). |
+
+### Tests
+
+929/929 across 85 suites unchanged. Typecheck clean.
+
+### Decisions / judgment-call trail
+
+1. **OB-adapted queries with LTM-compatible function signatures.** Consumers (the documents app routes) read against the module like LTM. This means future port-forwards from LTM are byte-for-byte; only the query module body changes. Rejected: rewriting the function signatures to match OB's narrower data set (would force every consumer to re-adapt).
+2. **Stub LTM-only-table queries to `[]`/`null` (vs throwing).** Routes that depend on these queries (e.g. /documents/new uses getDocumentCollections) render with empty results rather than crashing. The empty-state UI surfaces in DocumentEditor's collection dropdown — fine for today; a follow-up that ports DocumentCollection lights up the dropdown automatically without route changes.
+3. **5-of-14 cut over the full route set.** Each heavy route (index 19.5 KB, detail 16.9 KB, workspace 12+ KB) has substantial LTM-only dependencies that need their own component ports (PackageCard, ReadAloudButton, document-registry constants, lib/analysis/constants). Pulling them into this session would explode scope. Splitting at the dependency boundary keeps the simpler half verifiable today.
+4. **DocumentShareEvent removed from /documents/share/[token].** LTM writes a per-view audit row in addition to incrementing the inline view counter. OB doesn't have DocumentShareEvent yet (LTM line 1444). View tracking degrades to inline `viewCount` + `lastViewedAt` columns — which is good enough for the share-existing-links UI in ShareDocumentModal. The audit table can land in a follow-up if needed for compliance/legal logging.
+5. **Async `auth()` + `headers()` adaptations match OB's Next 16 + Clerk v7 stack.** LTM's source uses the older synchronous form. Future LTM ports of Next 14 / Clerk older-version code will hit the same divergence — pattern: append `await` where the LTM source is sync.
+6. **Next 16 `params` is a Promise.** LTM source uses the older `params: { id: string }` shape. OB ports use `params: Promise<{ id: string }>` and `await params` inside the route. Affects every dynamic-segment route.
+
+### Build status at session-8d-routes-partial close
+
+**Green.** Tests: 929/929 across 85 suites unchanged. Typecheck: clean. **Track B Session 8d-routes ▲ partial ✅** — data-access layer + 5 routes shipped. 4 heavy routes + 3 studio routes carry forward.
+
+### Operator actions surfaced
+
+**No new actions this session.** The 5 owed migrations (06 → seed → 07 → 08 → 09) remain owed; DB still unreachable from the dev workstation.
+
+### Track B sub-session progress
+
+| Sub-session | Commit | Status |
+|---|---|---|
+| **S8** atoms | `8d30887` | ✅ |
+| **S8b** workspace-shell-atoms | `2abec1a` | ✅ |
+| **S8b-routes** data layer + LTM-alignment fix | `241cc89` + `4a1ef53` | ✅ |
+| **S8b-routes-components** | `3356279` | ✅ |
+| **S8d** data foundation | `2cb414e` + `502db7f` | ✅ |
+| **S8d-routes** partial (this session) | `0d59eb3` | ✅ partial — 5/14 routes |
+| **S8d-routes-2** heavy routes (index, detail, saved, workspace) | — | ⏳ deferred |
+| **S8c** Studio v1 engine + studio routes | — | ⏳ deferred |
+
+**Next session:** **CHECK IN FIRST.** **Session 8d-routes-2** (4 heavy routes — index/detail/saved/workspace) is the natural follow-up to finish the documents app-routes layer. **Session 8c** (Studio v1 engine + studio routes), **Track C remainder**, **Track G**, **Track L** also open.
