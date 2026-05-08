@@ -6,3 +6,4 @@
 
 export { useAutoSave } from "./useAutoSave";
 export { useKeyboardNav, useArrowNav } from "./useKeyboardNav";
+export { useScoreChips } from "./useScoreChips";

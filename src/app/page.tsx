@@ -19,7 +19,7 @@ import {
   WorkspaceShell,
   type InspectorTab,
 } from "@/components/workspace";
-import { HomeCenter } from "@/components/home";
+import { CommandPaletteButton, HomeCenter } from "@/components/home";
 import { LibraryTab } from "@/components/studio/LibraryTab";
 import { SectionNav } from "@/components/studio/SectionNav";
 import { DocumentTree } from "@/components/studio/DocumentTree";
@@ -38,7 +38,7 @@ import {
   STORAGE_KEY,
   type WorkspaceSnapshot,
 } from "@/lib/studio/persistence";
-import { useAutoSave, useKeyboardNav } from "@/hooks";
+import { useAutoSave, useKeyboardNav, useScoreChips } from "@/hooks";
 import type {
   ActiveDoc,
   NavSection,
@@ -109,6 +109,26 @@ export default function HomePage() {
 
   /* S19 — selected slide for J/K nav. */
   const [selectedSlide, setSelectedSlide] = useState<number>(0);
+
+  /* U3 — live score chips for the header (Bloomberg-style). */
+  const scoreSnap = useScoreChips();
+  const headerScoreChips = useMemo(
+    () => [
+      {
+        label: "CSC",
+        value: scoreSnap.csc !== null ? scoreSnap.csc : "—",
+      },
+      {
+        label: "AGO",
+        value: scoreSnap.ago !== null ? scoreSnap.ago : "—",
+      },
+      {
+        label: "CSR",
+        value: scoreSnap.csr !== null ? `${scoreSnap.csr}%` : "—",
+      },
+    ],
+    [scoreSnap.csc, scoreSnap.ago, scoreSnap.csr],
+  );
 
   /* S19 — one-shot restore via useAutoSave's onRestore. Validates the
    * version + shape before applying to avoid feeding stale schemas back
@@ -333,6 +353,8 @@ export default function HomePage() {
           crumb={["Workspace"]}
           avatarState={avatarPulse ? "thinking" : "idle"}
           onAvatarClick={() => setAvatarPulse((v) => !v)}
+          scoreChips={headerScoreChips}
+          actions={<CommandPaletteButton />}
         />
       }
       rail={
