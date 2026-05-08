@@ -1,0 +1,53 @@
+/**
+ * Responsive shell — Track U Session U7.
+ *
+ * The workspace shell ships as a three-region desktop-first layout
+ * (header + rail + center + inspector). For smaller viewports we
+ * progressively shed the side rails so the center stays usable:
+ *
+ *   - <= 1280px : inspector hidden (Olivia chat still reachable via
+ *                ⌘K → "Open Olivia chat")
+ *   - <= 1024px : rail also hidden (use ⌘K for navigation)
+ *   - <=  768px : center padding tightens, hero orb shrinks
+ *
+ * No JS — pure CSS using `[data-workspace-shell]` and `aside[aria-label]`
+ * selectors so the shell primitives (`WorkspaceShell`, `RailLeft`,
+ * `Inspector`) require zero changes.
+ */
+
+@media (max-width: 1280px) {
+  [data-workspace-shell] aside[aria-label="Inspector"] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  [data-workspace-shell] aside[aria-label="Primary navigation"] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  [data-workspace-shell] main {
+    padding: 12px !important;
+  }
+  /* Hero zone tightens — orb still readable but no longer dominating. */
+  [data-workspace-shell] section[aria-label="Olivia hero zone"] {
+    padding-block: 16px !important;
+    gap: 12px !important;
+  }
+  [data-workspace-shell] section[aria-label="Workspace KPIs"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Reduced motion respect — soften animations site-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

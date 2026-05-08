@@ -43,6 +43,7 @@ export interface CommandContext {
 }
 
 const NAVIGATE_TARGETS: { href: string; label: string; hint: string }[] = [
+  { href: "/voice", label: "Voice mode — Olivia", hint: "Pi-orb full-screen takeover" },
   { href: "/calendar", label: "Calendar", hint: "Daily briefs + voice scheduling" },
   { href: "/map", label: "Map — London tech", hint: "28 districts, sector filtering" },
   { href: "/test-avatar", label: "Live Avatar", hint: "Lip-sync smoke test" },
