@@ -36,6 +36,12 @@ export interface InspectorProps {
   onTabChange: (id: string) => void;
   /** Whether the inspector is open. Closed = 0 width. */
   open?: boolean;
+  /**
+   * Optional footer below the active tab body. Track U mounts the
+   * LiveAgentStream here so the activity ticker is always visible
+   * regardless of which tab is open.
+   */
+  footer?: ReactNode;
 }
 
 export function Inspector({
@@ -43,6 +49,7 @@ export function Inspector({
   activeTabId,
   onTabChange,
   open = true,
+  footer,
 }: InspectorProps) {
   const tablistId = useId();
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -154,6 +161,9 @@ export function Inspector({
       >
         {activeTab?.content}
       </div>
+
+      {/* ── Optional footer (LiveAgentStream lands here in Track U). ── */}
+      {footer && <div style={{ flexShrink: 0 }}>{footer}</div>}
     </aside>
   );
 }

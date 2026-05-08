@@ -19,7 +19,7 @@ import {
   WorkspaceShell,
   type InspectorTab,
 } from "@/components/workspace";
-import { CommandPaletteButton, HomeCenter } from "@/components/home";
+import { CommandPaletteButton, HomeCenter, LiveAgentStream } from "@/components/home";
 import { LibraryTab } from "@/components/studio/LibraryTab";
 import { SectionNav } from "@/components/studio/SectionNav";
 import { DocumentTree } from "@/components/studio/DocumentTree";
@@ -38,7 +38,7 @@ import {
   STORAGE_KEY,
   type WorkspaceSnapshot,
 } from "@/lib/studio/persistence";
-import { useAutoSave, useKeyboardNav, useScoreChips } from "@/hooks";
+import { useAutoSave, useHomeDashboard, useKeyboardNav, useScoreChips } from "@/hooks";
 import type {
   ActiveDoc,
   NavSection,
@@ -76,7 +76,9 @@ const RAIL_LINKS: { href: string; label: string; description: string }[] = [
 ];
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState("library");
+  /* U5 — Olivia is the protagonist, not a sub-tab. Default to "olivia"
+   * so a first-time visitor lands directly on the chat surface. */
+  const [activeTab, setActiveTab] = useState("olivia");
   const [avatarPulse, setAvatarPulse] = useState(false);
 
   /* Minimal slides state for the Library Apply flow (S16). The full
@@ -110,7 +112,11 @@ export default function HomePage() {
   /* S19 — selected slide for J/K nav. */
   const [selectedSlide, setSelectedSlide] = useState<number>(0);
 
-  /* U3 — live score chips for the header (Bloomberg-style). */
+  /* U3/U4/U5 — live home dashboard (KPI tiles + recent work + agent
+   * stream) and header score chips. The dashboard polls every 60s; the
+   * chips poll every 30s. We share the dashboard snapshot with the
+   * Inspector footer (LiveAgentStream) so it doesn't fetch twice. */
+  const dashboard = useHomeDashboard();
   const scoreSnap = useScoreChips();
   const headerScoreChips = useMemo(
     () => [
@@ -295,6 +301,9 @@ export default function HomePage() {
 
   useKeyboardNav({ onNext: handleNext, onPrev: handlePrev });
 
+  /* U5 — order matters. Olivia chat sits first as the default tab so
+   * the protagonist is one tap away. Artifacts replaces "Preview" with
+   * the same panel content but the Claude-style framing. */
   const inspectorTabs = useMemo<InspectorTab[]>(
     () => [
       {
@@ -303,13 +312,8 @@ export default function HomePage() {
         content: <OliviaChatTab onAuditEntry={pushAudit} />,
       },
       {
-        id: "library",
-        label: "Library",
-        content: <LibraryTab onApplyArchetype={handleApplyArchetype} />,
-      },
-      {
-        id: "preview",
-        label: "Preview",
+        id: "artifacts",
+        label: "Artifacts",
         content: (
           <PreviewTab
             navSection={navSection}
@@ -319,6 +323,11 @@ export default function HomePage() {
             themeName={activeTheme}
           />
         ),
+      },
+      {
+        id: "library",
+        label: "Library",
+        content: <LibraryTab onApplyArchetype={handleApplyArchetype} />,
       },
       {
         id: "themes",
@@ -464,6 +473,7 @@ export default function HomePage() {
             appliedSummary={appliedSummary}
             slides={slides}
             onAudit={pushAudit}
+            dashboard={dashboard}
           />
         </Center>
       }
@@ -472,6 +482,7 @@ export default function HomePage() {
           tabs={inspectorTabs}
           activeTabId={activeTab}
           onTabChange={setActiveTab}
+          footer={<LiveAgentStream items={dashboard?.recent} />}
         />
       }
     />
