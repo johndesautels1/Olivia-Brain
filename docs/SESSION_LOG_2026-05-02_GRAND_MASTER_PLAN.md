@@ -2892,3 +2892,65 @@ OB-only adaptation (one inline comment): DocumentActionBar.tsx — `useRef<Retur
 **Total Track B (rendering + write-surface):** 4 sub-sessions, 6 commits (4 feat + 2 fix/docs), 70+ files / +12,400 LOC, +52 tests across 9 new suites. **W-009 closed.**
 
 **Next session:** **CHECK IN FIRST.** **Session 8d** is the natural follow-up — Document Prisma model + UserProfile model + 13 documents app routes + real fork logic to replace the 501 stub. Closes Track B fully. **Session 8c** (Studio v1 engine), **Track C remainder**, **Track G**, **Track L** also open.
+
+---
+
+## Part 56 — 2026-05-08 — Track B Session 8d data foundation: Document + UserProfile + 12 LTM enums + ensureUserProfile + real fork logic
+
+Two-commit session (schema + fork logic) closing the documents data foundation. With this, `/api/me/documents/save-from-template` returns real forked Document rows instead of a 501 stub, and the bookmark route's `userProfileId` FK constraint resolves cleanly via `ensureUserProfile()`. Routes session (8d-routes — the 13 `app/documents/*` pages) splits out for tighter session bounds.
+
+### Files (7 new + 4 modified, +726 LOC across 2 feat commits)
+
+**Schema commit (`2cb414e`):**
+
+| Path | Surface |
+|---|---|
+| `prisma/schema.prisma` (modified) | 12 new enums (PlanTier, OutreachGoal, PackageStatus, DocumentType 22-value, DocAudienceType, PurposeType, FormatType, ContentSourceType, ConfidentialityLevel, DocStatus, DocAuthoringState, DocSourceKind) — all byte-for-byte from LTM. Document model (LTM line 1189, minimum-viable subset — all scalar fields + enums, optional `collectionId`, self-rel `sourceTemplate`, relations to bookmarks + shares + packageDocs, 11 indexes + compound unique on `(ownerUserId, sourceTemplateId)`). UserProfile model (LTM line 1694, minimum-viable subset — id cuid, clerkUserId unique, displayName, optional fields, planTier enum, Stripe wiring). Existing 4 models updated: DocumentBookmark adds userProfile + document relations, Package outreachGoal/packageStatus tightened from `String` to enum, PackageDocument adds document relation, DocumentShare adds document relation. |
+| `prisma/sql/09-add-documents-foundation.sql` (new) | 12 CREATE TYPE + 2 CREATE TABLE (user_profiles + documents) + 4 ALTER TABLE FK constraints on existing 08 tables + 2 ALTER COLUMN tightening packages.outreachGoal/packageStatus from TEXT to enum. Order: AFTER 08. |
+| `src/app/api/packages/route.ts` (modified) | Zod `outreachGoal: z.string()` → `z.nativeEnum(OutreachGoal)` so validation rejects unknown enum values at parse time. Imports OutreachGoal from `@prisma/client`. |
+
+**Fork-logic commit (`502db7f`):**
+
+| Path | Surface |
+|---|---|
+| `src/lib/users/ensure-user-profile.ts` (new) | Idempotent lookup-or-create helper for UserProfile keyed off Clerk's userId. Race-safe via `prisma.userProfile.upsert`. Today's `displayName` is a placeholder (the Clerk userId itself); future Clerk webhook integration hydrates from real user data. |
+| `src/app/api/documents/bookmark/route.ts` (modified) | Both GET + POST now call `ensureUserProfile(auth.userId)` before reading/writing bookmark state. The route's external shape is unchanged; callers continue to pass `documentId` only. |
+| `src/app/api/me/documents/save-from-template/route.ts` (rewritten) | The 501 stub from S8b-routes is replaced with the real fork: load template Document; verify isTemplate+null-owner; ensureUserProfile for the caller; idempotency check via `(ownerUserId, sourceTemplateId)` compound unique returning `{ alreadyOwned: true, document: existing }`; otherwise generate fresh slug via `crypto.randomBytes(6).toString("base64url")` + create new Document copying every relevant field with `ownerUserId = userId`, `sourceTemplateId = templateId`, `isTemplate = false`, `authoringState = draft`, `status = draft`, `sourceKind = null` (the dashboard derives the "forked from template" chip from sourceTemplateId, not sourceKind). |
+| `src/app/api/me/documents/save-from-template/__tests__/route.test.ts` (rewritten) | 5 surface-contract tests (module surface; invalid JSON; missing templateId; empty templateId; auth-unavailable 503). Replaces the prior "returns 501 with pendingSession" test now that the stub is gone. Persistence-side cases (404 / 403 / idempotency / fresh-fork) defer to a Prisma-mock-fixture session or real-DB integration tests. |
+
+### Tests
+
+**929/929 across 85 suites passing** (+2 new save-from-template validation tests). Typecheck clean.
+
+### Decisions / judgment-call trail
+
+1. **Two-commit sequence (schema + fork logic) over a single mega-commit.** Schema changes are the load-bearing piece — if they're wrong, every downstream call breaks. Splitting the commits surfaces the schema-only diff cleanly and lets a reviewer verify the LTM alignment in isolation before checking the fork logic that depends on it.
+2. **Document model minimum-viable subset (vs full LTM port).** LTM's Document has FK relations to DocumentCollection (required), DocumentVersion, DocumentModule, DocumentRelationship, plus consumers in TargetList/Package — porting all of those would balloon S8d into multi-day work. OB's Document drops the LTM-only relations and makes `collectionId` optional + un-FK'd until DocumentCollection ports. The column shape is preserved so a future migration adds the FK without renaming.
+3. **UserProfile minimum-viable subset.** LTM's UserProfile has 20+ relations to LTM-only tables (DistrictFollow, EventRsvp, salutations, comments, etc.). OB ports just the scalar fields + planTier + Stripe wiring + the `documentBookmarks` relation. Cross-product relations port when their tables port.
+4. **`displayName` placeholder = clerkUserId itself.** Real Clerk webhook integration (a future session) will hydrate displayName + headline + bio from Clerk's user data. Today's placeholder is good enough for FK pressure (the column is `NOT NULL`) without leaking PII or requiring a Clerk-side lookup on every first-touch.
+5. **Idempotent fork via the (ownerUserId, sourceTemplateId) compound unique.** A second call with the same template returns the existing copy instead of creating a duplicate. Matches LTM's compound unique on the same columns. Without this, a user clicking "Save to My Documents" twice in quick succession would create two private copies.
+6. **Fresh slug generation via `crypto.randomBytes(6).toString("base64url")`.** Document.slug is unique-globally; forks need a guaranteed-fresh slug. URL-safe base64 matches the share-token convention from S8b-routes — same encoding everywhere makes the slug debuggable. 6 bytes = 8-char suffix = 2.8 trillion combinations (collision-resistant).
+7. **`sourceKind = null` on forked rows.** None of LTM's six DocSourceKind values (`user_upload`, `business_library`, `general_library`, `studio_olivia`, `voice_dictation`, `authored`) cleanly maps to "forked from a template". Setting it null is honest about the origin; the dashboard "My Documents" tile derives the "Forked from template" chip from `sourceTemplateId IS NOT NULL`, not from sourceKind.
+8. **`ensureUserProfile` via upsert (not findUnique-then-create).** A naive findUnique+create has a race window where two concurrent first-touch requests both miss the find and both attempt the create — one succeeds and the other hits the unique-constraint error. Upsert routes both callers to the same row atomically.
+
+### Build status at session-8d-data-foundation close
+
+**Green.** Tests: **929/929 across 85 suites** (+2 new save-from-template cases). Typecheck: **clean**. **Track B Session 8d ▲ data foundation ✅** — schema + helper + real fork logic shipped. Documents data layer is now LTM-aligned end-to-end with full FK pressure.
+
+### Operator actions surfaced
+
+**One new SQL file owed:** `prisma/sql/09-add-documents-foundation.sql` (this session). Apply AFTER 08. Together with the 4 prior owed migrations, the apply order is: **06 → seed → 07 → 08 → 09**. DB still unreachable from the dev workstation; founder action is to wake the Supabase project and apply via SQL Editor or `npx prisma migrate deploy` from a connected terminal.
+
+### Track B closure progress
+
+| Sub-session | Commit | Status |
+|---|---|---|
+| **S8** atoms | `8d30887` | ✅ |
+| **S8b** workspace-shell-atoms | `2abec1a` | ✅ |
+| **S8b-routes** data layer + LTM-alignment fix | `241cc89` + `4a1ef53` | ✅ |
+| **S8b-routes-components** | `3356279` | ✅ |
+| **S8d** data foundation (this session) | `2cb414e` + `502db7f` | ✅ |
+| **S8c** Studio v1 engine | — | ⏳ deferred |
+| **S8d-routes** 13 documents app routes | — | ⏳ deferred |
+
+**Next session:** **CHECK IN FIRST.** **Session 8d-routes** is the natural follow-up — the 13 `app/documents/*` route pages mount the workspace shell from a real `/documents/[id]` URL, exercising bookmark/package/share UI end-to-end against the routes shipped in S8b-routes. **Session 8c** (Studio v1 engine), **Track C remainder**, **Track G**, **Track L** also open.
