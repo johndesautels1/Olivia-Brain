@@ -36,3 +36,10 @@ export {
   type Citation,
   type CitationsParseResult,
 } from "./CitationStrip";
+export {
+  TimelineFromSpec,
+  parseTimelineSpec,
+  type TimelineFromSpecProps,
+  type TimelineEntry,
+  type TimelineParseResult,
+} from "./TimelineFromSpec";

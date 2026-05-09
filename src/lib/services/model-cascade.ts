@@ -211,6 +211,9 @@ function buildSystemPrompt(intent: RouteIntent, vertical?: VerticalId) {
        surface the source list as a `sources` fence so the UI can
        render a citation strip beneath the narrative. */
     "When citing external sources (Tavily research, Perplexity citations, regulatory documents, peer-reviewed studies), append a fenced ```sources block with a JSON array `[{ title: string, url: string, source?: string }]`. The UI renders a numbered citation strip; in-prose `[1]` / `[2]` references map to entries by position. Always include sources for factual claims sourced from web research.",
+    /* Timeline manifest — chronological narratives where dates are
+       the axis but values aren't directly comparable. */
+    "When the response is a chronological narrative (funding history, regulatory milestones, project plans, hiring timeline), use a fenced ```timeline block with a JSON array `[{ date: string, title: string, detail?: string, tone?: \"neutral\"|\"positive\"|\"warning\"|\"danger\" }]`. Use timeline NOT chart when dates are the axis but the entries are events rather than measurements.",
     verticalAddendum,
   ]
     .filter(Boolean)

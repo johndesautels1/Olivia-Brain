@@ -27,6 +27,7 @@ import { ChartFromSpec } from "./ChartFromSpec";
 import { parseChartSpec } from "./chart-spec";
 import { GammaCard, parseGammaSpec } from "./GammaCard";
 import { CitationStrip, parseCitations } from "./CitationStrip";
+import { TimelineFromSpec, parseTimelineSpec } from "./TimelineFromSpec";
 
 export interface MarkdownReplyProps {
   text: string;
@@ -117,6 +118,22 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
             }
             return (
               <CodeBlock raw={raw} lang={lang} note={`Invalid sources block: ${parsed.error}`} />
+            );
+          }
+
+          /* Timeline manifest (Track N). */
+          if (lang === "timeline") {
+            const parsed = parseTimelineSpec(raw);
+            if (parsed.ok) {
+              return (
+                <TimelineFromSpec
+                  entries={parsed.entries}
+                  maxWidth={maxChartWidth}
+                />
+              );
+            }
+            return (
+              <CodeBlock raw={raw} lang={lang} note={`Invalid timeline spec: ${parsed.error}`} />
             );
           }
 
