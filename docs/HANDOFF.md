@@ -1,9 +1,24 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 (final) — full Track O5c batch (S1 + S2 + S3 + admin/investors test backport).
-> **Working tree:** clean on `main`. tsc exit 0; 37/37 avatar tests pass across 5 files (5 tavus + 8 eval-scripts + 4 liveavatar + 13 decision-rubric + 7 runs route).
-> **Latest HEAD:** the S3 commit (run `git log -1` to confirm).
-> **Status:** demo-ready, ops-instrumented. Vercel deploys cleanly. Track O fully closed; O5c sessions 1+2+3 shipped. Only the `OliviaVideoAvatar` 867-line abstraction lift was scope-cut to a follow-up "Track O5c-Lift" — it's a refactor of working production code, not a weakness-closure.
+> **Last updated:** 2026-05-09 (final) — full Track O5c batch (S1 + S2 + S3) plus a 6-commit polish wave that closed every operator-side gap S1–S3 left open.
+> **Working tree:** clean on `main`. tsc exit 0; 50+/50+ avatar tests pass across 8 files (5 tavus + 8 eval-scripts + 4 liveavatar + 13 decision-rubric + 11 runs collection route + 4 runs [id] route + 5 status helper + 4 status route).
+> **Latest HEAD:** the polish-wave tip (run `git log -1` to confirm).
+> **Status:** demo-ready, ops-instrumented. Vercel deploys cleanly. Track O fully closed; O5c sessions 1+2+3 + polish wave shipped. Only the `OliviaVideoAvatar` 867-line abstraction lift was scope-cut to a follow-up "Track O5c-Lift" — it's a refactor of working production code, not a weakness-closure.
+
+### Today's full batch (10 commits since `4808d6c`)
+
+1. `fb85c3f` — **O5c S1**: Tavus adapter + `AvatarEvalRun` Prisma model + `TAVUS_API_KEY` env var + 5 smoke tests
+2. `059c248` — **O5c S2**: 30-script catalog + `/api/admin/avatar-eval/runs` (GET+POST) + `/admin/avatar-eval` harness UI + 15 tests
+3. `c5ee644` — `admin/investors` test pre-warm backport (eliminates the cold-start flake observed in S1's verify)
+4. `c35b72d` — **O5c S3**: decision rubric + `/admin/avatar-eval/decision` + LiveAvatar live trigger + Tavus phoneme claim verified false + 17 tests
+5. `a14555c` — vendor health endpoint (`/api/admin/avatar-vendors/status`) + per-vendor wiring panel on the harness; LiveAvatar key-missing state on the live-trigger button; pre-warm backports to two more avatar test files
+6. `0cebf77` — graceful "migration not applied" handling on both `/admin/avatar-eval` and `/admin/avatar-eval/decision` (banner + machine-readable 503 instead of generic 500)
+7. `10029b3` — `/admin/tools` operator landing page (indexes every admin surface, reads vendor health inline)
+8. `b3e7a0e` — `scripts/seed-avatar-eval-demo.ts` + `scripts/README.md` (idempotent demo seeder, `--clean` flag wipes only `metadata.demo === true` rows)
+9. `87f7c8e` — per-run DELETE (`/api/admin/avatar-eval/runs/[id]`) + harness ✕ undo button with `window.confirm`
+10. `a5e3a56` — `Cache-Control: private, max-age=5–10, stale-while-revalidate=30` on the two read-mostly admin endpoints (mirrors Track K's pattern)
+
+The harness, decision rubric, vendor health, demo seed, per-run delete, and friendly migration error all ship together. A clean operator demo of the avatar A/B comparison is now end-to-end ready: apply `prisma/sql/10`, optionally seed via `npx tsx scripts/seed-avatar-eval-demo.ts`, navigate from `/admin/tools`.
 >
 > **⚠ Read this if you're walking in cold:** the prior handoff (the one that ended at `de4fef7`) claimed clean state, but verification showed 7 typecheck errors + 3 failing tests. This session opened by fixing those before doing any new work — the pattern HANDOFF.md §7 explicitly warns about. Always run the §0 verify commands; do not trust a handoff's "clean" claim without proof.
 
