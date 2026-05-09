@@ -61,6 +61,18 @@ interface AvatarEvalRunRow {
   createdAt: string;
 }
 
+interface VendorHealthRow {
+  vendor: string;
+  configured: boolean;
+  notes?: string;
+}
+
+interface VendorStatusResponse {
+  ok: boolean;
+  vendors?: VendorHealthRow[];
+  error?: string;
+}
+
 interface RunsApiResponse {
   ok: boolean;
   runs?: AvatarEvalRunRow[];
@@ -79,6 +91,7 @@ export default function AvatarEvalPage() {
   const [liveCapturing, setLiveCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [runs, setRuns] = useState<AvatarEvalRunRow[]>([]);
+  const [vendorHealth, setVendorHealth] = useState<VendorHealthRow[]>([]);
 
   const script = useMemo(
     () => EVAL_SCRIPTS.find((s) => s.id === scriptId) ?? EVAL_SCRIPTS[0],
@@ -99,6 +112,33 @@ export default function AvatarEvalPage() {
   useEffect(() => {
     void loadRuns();
   }, [loadRuns]);
+
+  // Vendor health is read-once per mount — env doesn't change between
+  // page loads. If the operator sets a key in Vercel and wants the
+  // harness to reflect it, they refresh the page.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/avatar-vendors/status");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as VendorStatusResponse;
+        if (!cancelled) setVendorHealth(data.vendors ?? []);
+      } catch {
+        // Non-fatal — the panel just stays empty if the endpoint
+        // is unreachable. The harness still works for manual entry.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const liveAvatarConfigured = useMemo(
+    () =>
+      vendorHealth.find((v) => v.vendor === "liveavatar")?.configured ?? false,
+    [vendorHealth],
+  );
 
   const submit = useCallback(async () => {
     setError(null);
@@ -304,11 +344,22 @@ export default function AvatarEvalPage() {
         </span>
         {EVAL_VENDORS.map((v) => {
           const active = v === vendor;
+          const health = vendorHealth.find((h) => h.vendor === v);
+          const configured = health?.configured ?? null;
           return (
             <button
               key={v}
               type="button"
               onClick={() => setVendor(v)}
+              title={
+                health?.notes
+                  ? health.notes
+                  : configured === true
+                    ? `${v} is configured`
+                    : configured === null
+                      ? "wiring status not loaded yet"
+                      : ""
+              }
               style={{
                 padding: "6px 14px",
                 borderRadius: "var(--radius-full)",
@@ -323,13 +374,105 @@ export default function AvatarEvalPage() {
                 textTransform: "uppercase",
                 fontWeight: 600,
                 cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
               {v}
+              {configured === false && (
+                <span
+                  aria-hidden="true"
+                  title="not configured"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: "var(--coral-down)",
+                  }}
+                />
+              )}
+              {configured === true && (
+                <span
+                  aria-hidden="true"
+                  title="configured"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: "var(--mint-up)",
+                  }}
+                />
+              )}
             </button>
           );
         })}
       </section>
+
+      {/* Vendor wiring-status panel — collapsed by default, expanded
+          to show per-vendor notes when the operator wants them. */}
+      {vendorHealth.length > 0 && (
+        <details
+          style={{
+            padding: 12,
+            borderRadius: "var(--radius-lg)",
+            background: "var(--surface-1)",
+            border: "1px solid var(--border-default)",
+          }}
+        >
+          <summary
+            style={{
+              cursor: "pointer",
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-2xs)",
+              letterSpacing: "0.10em",
+              textTransform: "uppercase",
+              color: "var(--fg-tertiary)",
+            }}
+          >
+            Vendor wiring · {vendorHealth.filter((v) => v.configured).length}/
+            {vendorHealth.length} configured
+          </summary>
+          <ul
+            style={{
+              margin: "10px 0 0",
+              padding: 0,
+              listStyle: "none",
+              display: "grid",
+              gap: 6,
+            }}
+          >
+            {vendorHealth.map((v) => (
+              <li
+                key={v.vendor}
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "baseline",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "var(--text-2xs)",
+                  color: "var(--fg-secondary)",
+                }}
+              >
+                <span
+                  style={{
+                    minWidth: 90,
+                    color: v.configured ? "var(--mint-up)" : "var(--coral-down)",
+                  }}
+                >
+                  {v.configured ? "✓ ready" : "✗ missing"}
+                </span>
+                <span style={{ minWidth: 90, color: "var(--aurum-primary)" }}>
+                  {v.vendor}
+                </span>
+                {v.notes && (
+                  <span style={{ color: "var(--fg-tertiary)" }}>{v.notes}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {/* Two-column layout: script picker + capture form */}
       <section
@@ -491,24 +634,37 @@ export default function AvatarEvalPage() {
                 <button
                   type="button"
                   onClick={() => void runLive()}
-                  disabled={liveCapturing}
-                  title="POST the script to /api/olivia/liveavatar/speak-stream and time the request-start to first PCM byte. Auto-fills latency."
+                  disabled={liveCapturing || !liveAvatarConfigured}
+                  title={
+                    !liveAvatarConfigured
+                      ? "LiveAvatar isn't configured — set LIVEAVATAR_API_KEY + LIVEAVATAR_OLIVIA_AVATAR_ID in Vercel"
+                      : "POST the script to /api/olivia/liveavatar/speak-stream and time the request-start to first PCM byte. Auto-fills latency."
+                  }
                   style={{
                     padding: "10px 18px",
                     borderRadius: "var(--radius-full)",
-                    background: liveCapturing
-                      ? "var(--surface-2)"
-                      : "var(--canvas-recess)",
-                    color: liveCapturing
-                      ? "var(--fg-tertiary)"
-                      : "var(--aurum-primary)",
-                    border: "1px solid var(--border-aurum)",
+                    background:
+                      liveCapturing || !liveAvatarConfigured
+                        ? "var(--surface-2)"
+                        : "var(--canvas-recess)",
+                    color:
+                      liveCapturing || !liveAvatarConfigured
+                        ? "var(--fg-tertiary)"
+                        : "var(--aurum-primary)",
+                    border: `1px solid ${liveAvatarConfigured ? "var(--border-aurum)" : "var(--border-default)"}`,
                     fontWeight: 600,
                     fontSize: "var(--text-sm)",
-                    cursor: liveCapturing ? "not-allowed" : "pointer",
+                    cursor:
+                      liveCapturing || !liveAvatarConfigured
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                 >
-                  {liveCapturing ? "Capturing…" : "Run live (TTFM)"}
+                  {liveCapturing
+                    ? "Capturing…"
+                    : liveAvatarConfigured
+                      ? "Run live (TTFM)"
+                      : "Run live (key missing)"}
                 </button>
               )}
             </div>

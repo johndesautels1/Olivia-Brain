@@ -9,7 +9,14 @@
  * Each test re-imports the module after stubbing env so the
  * `getServerEnv()` cache picks up the override.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Pre-warm the module so the first per-test cold-start doesn't hit
+// the 15s testTimeout under parallel-suite load on Windows.
+// (Same pattern shipped in O5c S2's avatar-eval/runs route test.)
+beforeAll(async () => {
+  await import("@/lib/avatar/tavus");
+}, 60_000);
 
 describe("src/lib/avatar/tavus — module surface", () => {
   beforeEach(() => {

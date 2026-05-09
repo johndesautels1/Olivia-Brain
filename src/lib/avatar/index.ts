@@ -22,6 +22,7 @@ export * from "./heygen";
 export * from "./did";
 export * from "./tavus";
 export * from "./liveavatar";
+export * from "./status";
 
 import { withTraceSpan } from "@/lib/observability/tracer";
 import type {
