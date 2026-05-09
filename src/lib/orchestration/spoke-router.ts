@@ -46,7 +46,7 @@ const SPOKES: Record<SpokeId, SpokeDescriptor> = {
     label: "Florida Real Estate",
     tone: "amber",
     addendum:
-      "Florida real-estate context. The user's frame is buyer-broker / new-construction / residential market evaluation. Expect MLS / RESO / property data accuracy questions; closing costs (Florida-specific transfer tax, doc stamps, intangible tax, title insurance); insurance pricing post-Ian / Helene; flood zones and FEMA maps. Cite NAR / Florida Realtors data when available.",
+      "Florida real-estate context. The user's frame is buyer-broker / new-construction / residential market evaluation, with particular depth on Tampa Bay markets (Pinellas / St Petersburg / Clearwater / Bradenton). Expect MLS / RESO / property data accuracy questions; closing costs (Florida-specific transfer tax, doc stamps, intangible tax, title insurance); homestead exemption + Save Our Homes 3% cap mechanics; insurance pricing post-Ian / Helene + Citizens Insurance dynamics; sinkhole disclosures; flood zones and FEMA maps; HOA / condo association considerations. Cite NAR / Florida Realtors / Pinellas Realtor Organization data when available.",
   },
   relocation: {
     id: "relocation",
