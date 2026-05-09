@@ -25,6 +25,10 @@ import {
   type CascadeStreamResult,
 } from "@/lib/services/model-cascade";
 import { inferIntent } from "@/lib/orchestration/intent";
+import {
+  detectSpokeFromMessage,
+  getSpokeDescriptor,
+} from "@/lib/orchestration/spoke-router";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -58,15 +62,19 @@ export async function POST(request: NextRequest) {
   }
 
   const intent = inferIntent(payload.message);
+  const spoke = detectSpokeFromMessage(payload.message);
   const conversationId = payload.conversationId ?? cryptoRandomId();
 
   const stream = await runModelCascadeStream({
     conversationId,
     message: payload.message,
     intent,
+    spoke,
     recalledContext: [],
     integrationSnapshot: {},
   });
+
+  const spokeLabel = getSpokeDescriptor(spoke).label;
 
   /* Mock — return full text in one chunk so the client's incremental
    * UI still works without real provider keys. */
@@ -75,14 +83,16 @@ export async function POST(request: NextRequest) {
       async function* () {
         yield stream.text;
       },
-      { provider: "mock", model: "phase1-local-fallback" },
+      {
+        provider: "mock",
+        model: "phase1-local-fallback",
+        spoke,
+        spokeLabel,
+      },
     );
   }
 
-  /* Live — pipe through. The `done` promise on the result settles
-   * after the iterator finishes; we await it to surface any late
-   * provider errors as a final newline-prefixed error chunk
-   * (so the client renders what arrived plus an error indicator). */
+  /* Live — pipe through. */
   return streamingResponse(
     async function* () {
       try {
@@ -95,7 +105,12 @@ export async function POST(request: NextRequest) {
         yield `\n\n[stream error: ${msg}]`;
       }
     },
-    { provider: stream.providerId, model: stream.modelId },
+    {
+      provider: stream.providerId,
+      model: stream.modelId,
+      spoke,
+      spokeLabel,
+    },
   );
 }
 
@@ -107,7 +122,12 @@ function isMock(
 
 function streamingResponse(
   source: () => AsyncGenerator<string, void, unknown>,
-  provenance: { provider: string; model: string },
+  provenance: {
+    provider: string;
+    model: string;
+    spoke: string;
+    spokeLabel: string;
+  },
 ): Response {
   const encoder = new TextEncoder();
   const startedAt = Date.now();
@@ -119,7 +139,8 @@ function streamingResponse(
         }
         /* Trailers aren't well-supported in Vercel's streaming path
          * yet, so duration ships in the body's final no-op marker
-         * (the client strips it). Provider + model went in headers. */
+         * (the client strips it). Provider + model + spoke went in
+         * headers. */
         const durationMs = Date.now() - startedAt;
         controller.enqueue(
           encoder.encode(`\n<!--olivia:duration=${durationMs}-->`),
@@ -137,6 +158,8 @@ function streamingResponse(
       "X-Accel-Buffering": "no",
       "X-Olivia-Provider": provenance.provider,
       "X-Olivia-Model": provenance.model,
+      "X-Olivia-Spoke": provenance.spoke,
+      "X-Olivia-Spoke-Label": provenance.spokeLabel,
     },
   });
 }

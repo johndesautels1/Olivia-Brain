@@ -134,8 +134,26 @@ export function HomeHero({ state, onClick, lastReply, lastProvenance }: HomeHero
                 display: "flex",
                 gap: 12,
                 flexWrap: "wrap",
+                alignItems: "center",
               }}
             >
+              {lastProvenance.spokeLabel &&
+                lastProvenance.spoke &&
+                lastProvenance.spoke !== "general" && (
+                  <span
+                    style={{
+                      padding: "2px 8px",
+                      borderRadius: "var(--radius-full)",
+                      background: "var(--aether-mute)",
+                      border: "1px solid var(--border-aether)",
+                      color: "var(--aether-primary)",
+                      fontWeight: 600,
+                      letterSpacing: "0.06em",
+                    }}
+                  >
+                    {lastProvenance.spokeLabel}
+                  </span>
+                )}
               <span style={{ color: "var(--aurum-primary)" }}>
                 {lastProvenance.provider}
                 {lastProvenance.provider !== lastProvenance.model && (

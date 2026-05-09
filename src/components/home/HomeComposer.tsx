@@ -25,6 +25,10 @@ export interface ReplyProvenance {
   model: string;
   durationMs?: number;
   source: "stream" | "fallback";
+  /** Spoke router result — fl_realestate / relocation / london_tech /
+   *  xscore / heart_recovery / london_transit / general. */
+  spoke?: string;
+  spokeLabel?: string;
 }
 
 export interface HomeComposerProps {
@@ -133,6 +137,8 @@ export function HomeComposer({
 
       const provider = res.headers.get("X-Olivia-Provider") ?? "unknown";
       const model = res.headers.get("X-Olivia-Model") ?? "unknown";
+      const spoke = res.headers.get("X-Olivia-Spoke") ?? undefined;
+      const spokeLabel = res.headers.get("X-Olivia-Spoke-Label") ?? undefined;
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -164,7 +170,14 @@ export function HomeComposer({
       }
 
       const finalText = running || "(no reply)";
-      onReply(finalText, { provider, model, durationMs, source: "stream" });
+      onReply(finalText, {
+        provider,
+        model,
+        durationMs,
+        source: "stream",
+        spoke,
+        spokeLabel,
+      });
       onAudit?.(
         `Olivia replied (${finalText.length} chars, ${provider}${durationMs ? ` ${durationMs}ms` : ""})`,
       );

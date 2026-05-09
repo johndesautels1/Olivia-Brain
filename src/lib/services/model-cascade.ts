@@ -40,6 +40,8 @@ import type {
 import { withTraceSpan } from "@/lib/observability/tracer";
 import { getVerticalAddendum } from "@/lib/orchestration/vertical-adapter";
 import type { VerticalId } from "@/lib/quantara/metamorphic/vertical-types";
+import { getSpokeDescriptor } from "@/lib/orchestration/spoke-router";
+import type { SpokeId } from "@/lib/orchestration/spoke-router";
 
 interface CascadeInput {
   conversationId: string;
@@ -61,6 +63,12 @@ interface CascadeInput {
    *  toward providers that handle that vertical's diligence patterns
    *  better (e.g. Perplexity for HealthTech regulatory citations). */
   vertical?: VerticalId;
+  /** Spoke router context — which of the 6 product spokes this query
+   *  hit (FL real estate / relocation / London tech / xscore / heart
+   *  recovery / London transit / general). System prompt picks up a
+   *  spoke-specific framing addendum. Detection happens upstream from
+   *  `detectSpokeFromMessage`. */
+  spoke?: SpokeId;
 }
 
 interface CascadeResult {
@@ -161,7 +169,11 @@ function providerOrderForIntent(intent: RouteIntent): ProviderId[] {
   }
 }
 
-function buildSystemPrompt(intent: RouteIntent, vertical?: VerticalId) {
+function buildSystemPrompt(
+  intent: RouteIntent,
+  vertical?: VerticalId,
+  spoke?: SpokeId,
+) {
   const intentBrief = (() => {
     switch (intent) {
       case "planning":
@@ -186,6 +198,10 @@ function buildSystemPrompt(intent: RouteIntent, vertical?: VerticalId) {
     vertical && vertical !== "generic"
       ? getVerticalAddendum(vertical).systemPromptAddendum
       : "";
+
+  /* Spoke router addendum — empty for `general` / undefined. */
+  const spokeAddendum =
+    spoke && spoke !== "general" ? getSpokeDescriptor(spoke).addendum : "";
 
   return [
     "You are Olivia Brain, the intelligence and orchestration layer for the CLUES portfolio.",
@@ -214,6 +230,7 @@ function buildSystemPrompt(intent: RouteIntent, vertical?: VerticalId) {
     /* Timeline manifest — chronological narratives where dates are
        the axis but values aren't directly comparable. */
     "When the response is a chronological narrative (funding history, regulatory milestones, project plans, hiring timeline), use a fenced ```timeline block with a JSON array `[{ date: string, title: string, detail?: string, tone?: \"neutral\"|\"positive\"|\"warning\"|\"danger\" }]`. Use timeline NOT chart when dates are the axis but the entries are events rather than measurements.",
+    spokeAddendum,
     verticalAddendum,
   ]
     .filter(Boolean)
@@ -295,7 +312,7 @@ export async function runModelCascade(input: CascadeInput): Promise<CascadeResul
         async () =>
           generateText({
             model: provider.createModel(),
-            system: buildSystemPrompt(input.intent, input.vertical),
+            system: buildSystemPrompt(input.intent, input.vertical, input.spoke),
             prompt: buildPrompt(input),
             temperature: 0.3,
             maxOutputTokens: 900,
