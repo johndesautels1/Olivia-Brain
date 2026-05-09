@@ -17,8 +17,16 @@ import {
   transcribeWithWhisper,
   translateWithWhisper,
 } from "@/lib/voice";
+import { rateLimit } from "@/lib/rate-limit";
+
+/* STT is a paid-vendor endpoint — rate limit so accidental loops or
+ * unauthenticated bursts don't drain Deepgram / Whisper credits. */
+const RATE_LIMIT = { limit: 20, windowMs: 60_000, prefix: "voice.transcribe" } as const;
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimit(request, RATE_LIMIT);
+  if (limited) return limited;
+
   try {
     const status = getVoiceServiceStatus();
 

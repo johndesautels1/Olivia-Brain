@@ -25,10 +25,15 @@ import {
   type CascadeStreamResult,
 } from "@/lib/services/model-cascade";
 import { inferIntent } from "@/lib/orchestration/intent";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 90;
+
+/* Mirror /api/olivia/chat's rate limit (30/min/IP) so a streaming
+ * client can't bypass it by switching endpoints. */
+const RATE_LIMIT = { limit: 30, windowMs: 60_000, prefix: "olivia.chat.stream" } as const;
 
 const RequestSchema = z.object({
   message: z.string().min(1).max(8000),
@@ -37,6 +42,9 @@ const RequestSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimit(request, RATE_LIMIT);
+  if (limited) return limited;
+
   let payload: z.infer<typeof RequestSchema>;
   try {
     payload = RequestSchema.parse(await request.json());

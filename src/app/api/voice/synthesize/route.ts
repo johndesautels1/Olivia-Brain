@@ -17,6 +17,7 @@ import {
   getVoiceProfiles,
   type PersonaId,
 } from "@/lib/voice";
+import { rateLimit } from "@/lib/rate-limit";
 
 interface SynthesizeRequest {
   text: string;
@@ -24,7 +25,14 @@ interface SynthesizeRequest {
   outputFormat?: "mp3" | "pcm" | "opus" | "aac";
 }
 
+/* TTS is a paid-vendor endpoint — rate limit so an accidental loop or
+ * unauthenticated burst doesn't drain ElevenLabs / OpenAI credits. */
+const RATE_LIMIT = { limit: 20, windowMs: 60_000, prefix: "voice.synthesize" } as const;
+
 export async function POST(request: NextRequest) {
+  const limited = rateLimit(request, RATE_LIMIT);
+  if (limited) return limited;
+
   try {
     const status = getVoiceServiceStatus();
 
