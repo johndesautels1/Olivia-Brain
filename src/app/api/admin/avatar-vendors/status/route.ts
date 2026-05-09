@@ -42,5 +42,16 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
 
-  return NextResponse.json({ ok: true, vendors: getAllVendorHealth() });
+  // Vendor wiring is read from `process.env`; it doesn't change
+  // between requests within seconds. Short browser cache + SWR window
+  // saves repeat trips when the operator flips between admin pages
+  // (the harness, the decision view, the tools index all hit this).
+  // Marked `private` because the response includes no per-user data
+  // but is admin-gated and shouldn't ride a shared CDN.
+  const res = NextResponse.json({ ok: true, vendors: getAllVendorHealth() });
+  res.headers.set(
+    "Cache-Control",
+    "private, max-age=10, stale-while-revalidate=30",
+  );
+  return res;
 }

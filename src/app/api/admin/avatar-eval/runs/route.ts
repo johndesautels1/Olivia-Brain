@@ -127,7 +127,16 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
       take: LIST_PAGE_LIMIT,
     });
-    return NextResponse.json({ ok: true, runs: rows });
+    // Short private cache + SWR. Runs accumulate slowly (operator
+    // pace) so a 5s freshness window with a 30s SWR keeps the
+    // harness + decision + tools pages cheap to switch between
+    // without staling the data the operator just recorded.
+    const res = NextResponse.json({ ok: true, runs: rows });
+    res.headers.set(
+      "Cache-Control",
+      "private, max-age=5, stale-while-revalidate=30",
+    );
+    return res;
   } catch (err) {
     if (isMigrationMissing(err)) return migrationMissingResponse();
     console.error("[api/admin/avatar-eval/runs GET] Error:", err);
