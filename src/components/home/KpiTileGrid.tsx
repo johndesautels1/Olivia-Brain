@@ -24,6 +24,9 @@ export function KpiTileGrid({ data }: KpiTileGridProps) {
   const today = data?.today ?? PLACEHOLDER;
   const agents = data?.agents ?? PLACEHOLDER;
   const next = data?.next ?? PLACEHOLDER;
+  /* Loading state when all 3 blocks are placeholders → render
+   * skeleton shimmer instead of em-dashes. */
+  const loading = !data;
   return (
     <section
       aria-label="Workspace KPIs"
@@ -33,14 +36,28 @@ export function KpiTileGrid({ data }: KpiTileGridProps) {
         gap: 16,
       }}
     >
-      <KpiTile eyebrow="Today" block={today} />
-      <KpiTile eyebrow="Agents" block={agents} />
-      <KpiTile eyebrow="Next" block={next} />
+      <KpiTile eyebrow="Today" block={today} loading={loading} />
+      <KpiTile eyebrow="Agents" block={agents} loading={loading} />
+      <KpiTile eyebrow="Next" block={next} loading={loading} />
+      <style>{`
+        @keyframes olivia-kpi-shimmer {
+          0%   { background-position: -200px 0; }
+          100% { background-position: calc(200px + 100%) 0; }
+        }
+      `}</style>
     </section>
   );
 }
 
-function KpiTile({ eyebrow, block }: { eyebrow: string; block: KpiBlock }) {
+function KpiTile({
+  eyebrow,
+  block,
+  loading,
+}: {
+  eyebrow: string;
+  block: KpiBlock;
+  loading?: boolean;
+}) {
   return (
     <article
       style={{
@@ -65,31 +82,57 @@ function KpiTile({ eyebrow, block }: { eyebrow: string; block: KpiBlock }) {
         {eyebrow}
       </span>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span
-          className="tabular-nums"
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "var(--text-4xl)",
-            fontWeight: 500,
-            letterSpacing: "-0.02em",
-            color: "var(--fg-primary)",
-          }}
-        >
-          {block.primary}
-        </span>
-        <span
-          style={{
-            fontSize: "var(--text-xs)",
-            color: "var(--fg-tertiary)",
-            fontFamily: "var(--font-mono)",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-          }}
-        >
-          {block.primaryUnit}
-        </span>
+        {loading ? (
+          <Shimmer width={96} height={36} />
+        ) : (
+          <>
+            <span
+              className="tabular-nums"
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "var(--text-4xl)",
+                fontWeight: 500,
+                letterSpacing: "-0.02em",
+                color: "var(--fg-primary)",
+              }}
+            >
+              {block.primary}
+            </span>
+            <span
+              style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--fg-tertiary)",
+                fontFamily: "var(--font-mono)",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              {block.primaryUnit}
+            </span>
+          </>
+        )}
       </div>
-      {block.rows.length > 0 && (
+      {loading && (
+        <ul
+          style={{
+            margin: 0,
+            padding: 0,
+            listStyle: "none",
+            display: "grid",
+            gap: 8,
+            borderTop: "1px solid var(--border-subtle)",
+            paddingTop: 12,
+          }}
+        >
+          <li>
+            <Shimmer height={10} />
+          </li>
+          <li>
+            <Shimmer height={10} />
+          </li>
+        </ul>
+      )}
+      {!loading && block.rows.length > 0 && (
         <ul
           style={{
             margin: 0,
@@ -125,5 +168,22 @@ function KpiTile({ eyebrow, block }: { eyebrow: string; block: KpiBlock }) {
         </ul>
       )}
     </article>
+  );
+}
+
+function Shimmer({ width, height = 12 }: { width?: number | string; height?: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-block",
+        width: width ?? "100%",
+        height,
+        borderRadius: "var(--radius-sm)",
+        background:
+          "linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 40%, var(--surface-2) 80%) 0 / 200px 100% no-repeat var(--surface-2)",
+        animation: "olivia-kpi-shimmer 1.4s linear infinite",
+      }}
+    />
   );
 }

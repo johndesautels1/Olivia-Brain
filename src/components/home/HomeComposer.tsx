@@ -75,6 +75,20 @@ export function HomeComposer({
     return () => abortRef.current?.abort();
   }, []);
 
+  /* Auto-focus the composer on first mount so a fresh visitor can
+   * type immediately without a click. Skipped if the user is on a
+   * touch-primary device (iOS Safari etc.) so we don't pop the
+   * keyboard up unprompted on phones. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isTouchPrimary =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    if (isTouchPrimary) return;
+    const el = textareaRef.current;
+    el?.focus({ preventScroll: true });
+  }, []);
+
   /* Auto-grow textarea up to 6 lines. */
   useEffect(() => {
     const el = textareaRef.current;
