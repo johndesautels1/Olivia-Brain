@@ -25,6 +25,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Room, RoomEvent, Track, RemoteTrackPublication } from "livekit-client";
+import type { AvatarState } from "@/lib/avatar/types";
 
 // Type for HTML elements with captureStream - use local assertions instead of global declarations
 interface HTMLElementWithCaptureStream {
@@ -86,8 +87,13 @@ export type RecordingError =
   | "encoding_failed"    // Failed to encode recording
   | "unknown";           // Unexpected error
 
-/** Avatar connection state — exported for parent components using hideOverlays */
-export type AvatarState = "disconnected" | "connecting" | "connected" | "speaking" | "error";
+/**
+ * Avatar connection state — re-exported from `@/lib/avatar/types` so
+ * parents using `hideOverlays` can keep importing it from this file.
+ * Track O5c-Lift moved the canonical home to `types.ts` so the new
+ * `LiveAvatarHandle` interface (server-importable) can reference it.
+ */
+export type { AvatarState } from "@/lib/avatar/types";
 
 export interface OliviaVideoAvatarRef {
   // Connection controls — use when hideOverlays={true}
