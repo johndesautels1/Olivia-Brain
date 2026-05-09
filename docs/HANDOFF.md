@@ -1,7 +1,7 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 — **38 commits since the prior batch tip**. 5 tracks closed (D, E, I, J, K); Track N at 4/5; Track O at 2/4 (W-003 + W-004 closed); production runbook shipped; **spoke router** (6-spoke detection + system-prompt augmentation + UI badge) shipped; ~74 new tests.
-> **HEAD:** `ce775b8` (suggestion chips spoke refresh; will move with the next push).
+> **Last updated:** 2026-05-09 — **44 commits since the prior batch tip.** 5 tracks closed (D, E, I, J, K); Track N at 4/5; Track O at 2/4 (W-003 + W-004 closed); production runbook shipped; spoke router (6-spoke detection + UI badge); conversation persistence + multi-turn on streaming; live cascade trace recording; `/admin/traces` dashboard; ~74 new tests.
+> **HEAD:** `398cd26` (trace recording across both chat routes; will move with the next push).
 > Pre-batch tip was `8cacdd8` (Track U handoff docs).
 
 ---
@@ -27,12 +27,17 @@ git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"
 
 ---
 
-## What just shipped — extended continuous batch (38 commits)
+## What just shipped — extended continuous batch (44 commits)
 
 The home page (Track U) was the start. This continuous batch built outward across 4 closed tracks (D, E, I, J) plus partial Track N (3 of 5 manifestation modes), with polish and tests throughout.
 
 | Commit | Track / Session | What landed |
 |---|---|---|
+| `398cd26` | observability | recordTrace from both chat routes (was: only LangGraph). /admin/traces now populates from real production calls. |
+| `03a6249` | polish | Copy-reply button in the provenance row — clipboard copy with mint "Copied" flash. |
+| `d9b45d3` | feat | "New conversation" reset path. ⌘K command, CustomEvent-based plumbing. |
+| `404d899` | feat | Conversation persistence + multi-turn recall on the streaming route. conversationIdRef threads across sends. X-Olivia-Conversation-Id header. |
+| `1dde4c0` | feat | `/admin/traces` — Bloomberg-style live cascade trace viewer. 5s poll. ⌘K nav target added. |
 | `ce775b8` | polish | SuggestionChips refreshed: 6 chips, one per spoke, demonstrating 4 manifest types + 5 spokes. |
 | `8b90641` | **spoke-router** | 6-spoke router (FL real-estate / relocation / london_tech / xscore / heart_recovery / london_transit + general fallback). Cheap regex detection per query. Cascade picks up spoke-specific addendum. UI shows aether-tinted spoke chip in provenance row. 16 tests. |
 | `71088da` | **N-timeline** | New ` ```timeline ` fence — chronological narratives. 4 tone variants. 9 tests. |
@@ -112,6 +117,7 @@ src/components/home/reply-renderer/TimelineFromSpec.tsx           (timeline)
 src/components/home/reply-renderer/TimelineFromSpec.test.ts       (tests, 9)
 src/lib/orchestration/spoke-router.ts                             (spoke-router)
 src/lib/orchestration/spoke-router.test.ts                        (tests, 16)
+src/app/admin/traces/page.tsx                                     (traces page)
 ```
 
 **Test additions: ~74 new tests this batch (14 chart-spec + 11 GammaCard + 16 vertical-adapter + 8 CitationStrip + 9 TimelineFromSpec + 16 spoke-router). All passing.**
