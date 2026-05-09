@@ -135,8 +135,12 @@ export async function createTavusSession(
  * `sendAudioToSimli`). Kept under the same lifecycle name for adapter
  * symmetry; the realtime selector in `index.ts` picks the right call.
  *
- * TODO O5c-S2: when wiring the harness, verify whether Tavus accepts a
- * phoneme/viseme metadata channel alongside text. If yes, re-open O5d.
+ * O5c S3 verification: Tavus's `/v2/conversations/{id}/utterance`
+ * endpoint accepts `{ text }` only — there is no documented phoneme
+ * or viseme metadata channel in their REST conversation API. The
+ * O5d REJECTED conclusion in `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md`
+ * stands for our integration. If Tavus exposes a phoneme channel at
+ * a different SDK tier later, re-open O5d then.
  */
 export async function sendTavusUtterance(
   conversationId: string,

@@ -21,6 +21,7 @@ export * from "./sadtalker";
 export * from "./heygen";
 export * from "./did";
 export * from "./tavus";
+export * from "./liveavatar";
 
 import { withTraceSpan } from "@/lib/observability/tracer";
 import type {

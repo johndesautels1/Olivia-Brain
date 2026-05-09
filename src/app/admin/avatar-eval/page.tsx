@@ -1,17 +1,22 @@
 "use client";
 
 /**
- * `/admin/avatar-eval` — Track O5c session 2.
+ * `/admin/avatar-eval` — Track O5c sessions 2 + 3.
  *
  * Per-vendor MOS-rating harness for the avatar A/B comparison.
- * Operator picks a vendor + a script from the 30-script suite, runs
- * the script through that vendor in their own player (out-of-band for
- * S2 — live capture is S3's abstraction lift), and records latency +
- * MOS + cost back into `AvatarEvalRun` via
- * `/api/admin/avatar-eval/runs`.
+ * Operator picks a vendor + a script from the 30-script suite,
+ * captures TTFM + a 1–5 MOS rating, and records back into
+ * `AvatarEvalRun` via `/api/admin/avatar-eval/runs`.
  *
- * Decision rubric (lands in S3): latency × 0.4 + lip-sync MOS × 0.4 +
- * cost × 0.2. Per `docs/O5_AVATAR_LIPSYNC_RESEARCH.md §5`.
+ * Live trigger (S3): for `liveavatar` only, the "Run live" button
+ * POSTs the script to `/api/olivia/liveavatar/speak-stream` and
+ * captures TTFM (request-start to first PCM byte) via
+ * `performance.now()`. For other vendors, capture stays out-of-band —
+ * drive the vendor's player and paste latency in. The full
+ * `OliviaVideoAvatar` abstraction lift was scoped out of S3.
+ *
+ * Decision rubric: see `/admin/avatar-eval/decision` —
+ * latency × 0.4 + lip-sync MOS × 0.4 + cost × 0.2.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -22,6 +27,7 @@ import {
   type EvalScriptCategory,
   type EvalVendor,
 } from "@/lib/avatar/eval-scripts";
+import { LIVEAVATAR_SPEAK_STREAM_PATH } from "@/lib/avatar/liveavatar";
 
 const CATEGORY_ORDER: readonly EvalScriptCategory[] = [
   "short",
@@ -70,6 +76,7 @@ export default function AvatarEvalPage() {
   const [costCents, setCostCents] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [liveCapturing, setLiveCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [runs, setRuns] = useState<AvatarEvalRunRow[]>([]);
 
@@ -141,6 +148,60 @@ export default function AvatarEvalPage() {
     }
   }, [vendor, scriptId, latencyMs, mosScore, costCents, notes, loadRuns]);
 
+  /**
+   * S3 live-trigger: only meaningful for `liveavatar` today (existing
+   * `/api/olivia/liveavatar/speak-stream` route returns PCM as a
+   * stream; we time request-start to first byte received).
+   *
+   * For Tavus / Simli the live path requires a real WebRTC session
+   * setup that the harness can't drive without dragging in vendor
+   * SDKs — those stay manual-entry until the abstraction lift lands
+   * in a follow-up session.
+   */
+  const runLive = useCallback(async () => {
+    if (vendor !== "liveavatar") return;
+    setError(null);
+    setLiveCapturing(true);
+    const t0 = performance.now();
+    try {
+      const res = await fetch(LIVEAVATAR_SPEAK_STREAM_PATH, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: script.text }),
+      });
+      const contentType = res.headers.get("Content-Type") ?? "";
+      if (contentType.includes("application/json")) {
+        // The route returned its JSON fallback (env missing or
+        // upstream declined). Surface the reason instead of writing a
+        // bogus latency.
+        const data = (await res.json().catch(() => ({}))) as {
+          fallback?: boolean;
+          reason?: string;
+          error?: string;
+        };
+        const reason = data.reason ?? data.error ?? "fallback";
+        throw new Error(`LiveAvatar declined: ${reason}`);
+      }
+      if (!res.ok || !res.body) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const reader = res.body.getReader();
+      const first = await reader.read();
+      const t1 = performance.now();
+      // Cancel after first byte — we only need TTFM, not the full PCM.
+      void reader.cancel().catch(() => {});
+      if (first.done) {
+        throw new Error("Empty response stream");
+      }
+      const ttfm = Math.max(0, Math.round(t1 - t0));
+      setLatencyMs(String(ttfm));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "live trigger failed");
+    } finally {
+      setLiveCapturing(false);
+    }
+  }, [vendor, script.text]);
+
   const runsForSelection = useMemo(
     () => runs.filter((r) => r.vendor === vendor && r.scriptId === scriptId),
     [runs, vendor, scriptId],
@@ -201,10 +262,18 @@ export default function AvatarEvalPage() {
             maxWidth: 720,
           }}
         >
-          Run each script through each vendor, capture time-to-first-mouth-movement
-          plus a 1–5 MOS rating, and the S3 decision rubric (latency × 0.4 + lip-sync
-          MOS × 0.4 + cost × 0.2) ranks them. Live capture stays out-of-band for S2 —
-          drive the vendor's own player and paste the latency in.
+          Run each script through each vendor, capture
+          time-to-first-mouth-movement plus a 1–5 MOS rating, and{" "}
+          <a
+            href="/admin/avatar-eval/decision"
+            style={{ color: "var(--aurum-primary)" }}
+          >
+            the decision rubric
+          </a>{" "}
+          (latency × 0.4 + lip-sync MOS × 0.4 + cost × 0.2) ranks them. The
+          "Run live" button captures TTFM directly for the LiveAvatar vendor;
+          for other vendors, drive the vendor's own player and paste the
+          latency in.
         </p>
       </header>
 
@@ -397,26 +466,52 @@ export default function AvatarEvalPage() {
               />
             </FormField>
 
-            <button
-              type="button"
-              onClick={() => void submit()}
-              disabled={submitting}
-              style={{
-                padding: "10px 18px",
-                borderRadius: "var(--radius-full)",
-                background: submitting
-                  ? "var(--surface-2)"
-                  : "linear-gradient(135deg, var(--aurum-primary), var(--aurum-soft))",
-                color: submitting ? "var(--fg-tertiary)" : "var(--fg-on-accent)",
-                border: "none",
-                fontWeight: 600,
-                fontSize: "var(--text-sm)",
-                cursor: submitting ? "not-allowed" : "pointer",
-                justifySelf: "start",
-              }}
-            >
-              {submitting ? "Saving…" : "Record run"}
-            </button>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => void submit()}
+                disabled={submitting}
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: "var(--radius-full)",
+                  background: submitting
+                    ? "var(--surface-2)"
+                    : "linear-gradient(135deg, var(--aurum-primary), var(--aurum-soft))",
+                  color: submitting ? "var(--fg-tertiary)" : "var(--fg-on-accent)",
+                  border: "none",
+                  fontWeight: 600,
+                  fontSize: "var(--text-sm)",
+                  cursor: submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {submitting ? "Saving…" : "Record run"}
+              </button>
+
+              {vendor === "liveavatar" && (
+                <button
+                  type="button"
+                  onClick={() => void runLive()}
+                  disabled={liveCapturing}
+                  title="POST the script to /api/olivia/liveavatar/speak-stream and time the request-start to first PCM byte. Auto-fills latency."
+                  style={{
+                    padding: "10px 18px",
+                    borderRadius: "var(--radius-full)",
+                    background: liveCapturing
+                      ? "var(--surface-2)"
+                      : "var(--canvas-recess)",
+                    color: liveCapturing
+                      ? "var(--fg-tertiary)"
+                      : "var(--aurum-primary)",
+                    border: "1px solid var(--border-aurum)",
+                    fontWeight: 600,
+                    fontSize: "var(--text-sm)",
+                    cursor: liveCapturing ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {liveCapturing ? "Capturing…" : "Run live (TTFM)"}
+                </button>
+              )}
+            </div>
 
             {error && (
               <p

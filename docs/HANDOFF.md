@@ -1,9 +1,9 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 (latest) — back-to-back single sessions: Track O5c S1 (Tavus adapter foundation) + S2 (avatar A/B harness UI + run/runs API + 30-script catalog).
-> **Working tree:** clean on `main`. tsc exit 0; 20/20 new avatar tests pass (5 tavus + 8 eval-scripts + 7 runs route).
-> **Latest HEAD:** the S2 commit (run `git log -1` to confirm).
-> **Status:** demo-ready, ops-instrumented. Vercel deploys cleanly. Track O fully closed; O5c session 2/3 done — S3 (`OliviaVideoAvatar` abstraction lift + decision rubric + live triggers) remains.
+> **Last updated:** 2026-05-09 (final) — full Track O5c batch (S1 + S2 + S3 + admin/investors test backport).
+> **Working tree:** clean on `main`. tsc exit 0; 37/37 avatar tests pass across 5 files (5 tavus + 8 eval-scripts + 4 liveavatar + 13 decision-rubric + 7 runs route).
+> **Latest HEAD:** the S3 commit (run `git log -1` to confirm).
+> **Status:** demo-ready, ops-instrumented. Vercel deploys cleanly. Track O fully closed; O5c sessions 1+2+3 shipped. Only the `OliviaVideoAvatar` 867-line abstraction lift was scope-cut to a follow-up "Track O5c-Lift" — it's a refactor of working production code, not a weakness-closure.
 >
 > **⚠ Read this if you're walking in cold:** the prior handoff (the one that ended at `de4fef7`) claimed clean state, but verification showed 7 typecheck errors + 3 failing tests. This session opened by fixing those before doing any new work — the pattern HANDOFF.md §7 explicitly warns about. Always run the §0 verify commands; do not trust a handoff's "clean" claim without proof.
 
@@ -76,7 +76,7 @@ After reading, run the verify commands in § 0 again and review the latest `git 
 | **Track I** (Multi-tenant + suppression) | S24 | `ui.suppressedSurfaces` / `ui.brandName` / `ui.accentColor` config keys + `useTenantUi` hook |
 | **Track J** (Vertical adapters) | S25–S26 | 4 vertical addenda (AI/SaaS, HealthTech, ClimateTech, PropTech) + provider preferences + free-form industry detection |
 | **Track K** (Hardening + launch prep) | S27–S29 | Security audit + rate limits on cost vectors; Cache-Control headers (60-80% TTFB drop); `docs/RUNBOOK.md` |
-| **Track O** (Weakness closure) | O3 + O4 + O5a + O5b + O5d + O5e + O5c-S1 + O5c-S2 | W-002 / W-003 / W-004 / W-005 closed. O5d closed REJECTED — vendor surface check showed no integrated vendor accepts phoneme metadata, see `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md`. **O5c S1 + S2 closed** (Tavus adapter + AvatarEvalRun foundation; 30-script catalog + harness UI + run/runs API — see `SESSION_LOG_2026-05-09_O5C_S1_TAVUS_ADAPTER.md` and `SESSION_LOG_2026-05-09_O5C_S2_HARNESS.md`). **O5c S3 (abstraction lift + decision rubric + live triggers, 1 session) remains** — enhancement work, not weakness-closure. |
+| **Track O** (Weakness closure) | O3 + O4 + O5a + O5b + O5d + O5e + O5c-S1 + O5c-S2 + O5c-S3 | W-002 / W-003 / W-004 / W-005 closed. O5d closed REJECTED — vendor surface check showed no integrated vendor accepts phoneme metadata, see `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md`. **O5c S1 + S2 + S3 all shipped** (Tavus adapter + AvatarEvalRun model; 30-script catalog + harness UI + run/runs API; decision rubric + live LiveAvatar triggers + Tavus phoneme verification). 4 SESSION_LOG files document each. **The 867-line `OliviaVideoAvatar` abstraction lift was scope-cut to a follow-up "Track O5c-Lift"** — it's a refactor of working production code, not weakness-closure. Track O is functionally closed. |
 
 ### 🟡 Partial tracks
 | Track | Status | Remaining |
@@ -97,7 +97,17 @@ After reading, run the verify commands in § 0 again and review the latest `git 
 - `e55967b` — **O5e abort + onSpeakError**: speakAbortRef cancels in-flight stream when a new reply arrives (no PCM interleave on the wire); new optional `onSpeakError(reason)` callback fires when both speak paths decline so parents can surface "voice unavailable" instead of leaving the user wondering why the avatar's mouth didn't move.
 - `b4aa78f` — **O5d REJECTED**: `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md`. Investigated all five wired vendors (LiveAvatar LITE, Simli, HeyGen async, D-ID, SadTalker); none accept phoneme/viseme metadata as input. Cost-benefit on phoneme alignment doesn't pay even if a vendor existed. W-005 functionally closed by O5a/b/e (latency dominates user perception). Reopen if O5c surfaces a vendor that DOES accept phoneme input (Tavus claim is uncertain — verify).
 
-**O5c sessions 1 + 2 closed this batch.** S3 (abstraction lift + decision rubric + live triggers) remains — enhancement work, not weakness-closure.
+**O5c sessions 1 + 2 + 3 all closed this batch.** Only the deferred `OliviaVideoAvatar` 867-line refactor remains, tracked as a separate "Track O5c-Lift" follow-up.
+
+### Follow-up session #4 (2026-05-09 — Track O5c S3, 1 commit since the backport)
+
+- `src/lib/avatar/liveavatar.ts` — thin adapter (`isLiveAvatarConfigured`, `getLiveAvatarPublicConfig`, `LIVEAVATAR_SPEAK_STREAM_PATH`). The WebSocket lifecycle stays inside `OliviaVideoAvatar` until the full lift lands.
+- `src/lib/avatar/decision-rubric.ts` — pure ranking math (`aggregateRunsByVendor` + `rankVendors` with default weights `latency 0.4 / MOS 0.4 / cost 0.2`). One real bug caught by the tests: ties in latency/cost would silently zero those components when inversion happened after `normalise`. Fix: push inversion inside `normalise` so ties → 1.0 regardless of direction.
+- `/admin/avatar-eval/decision` page — read-only ranked table with per-component breakdown; vendors lacking MOS data show in a separate "Awaiting MOS" panel (excluded from ranking — composite is incomparable without MOS).
+- `/admin/avatar-eval` page — added "Run live (TTFM)" button visible only when vendor === `liveavatar`. POSTs the script to `/api/olivia/liveavatar/speak-stream`, measures request-start to first PCM byte via `performance.now()`, auto-fills latency. Surfaces JSON-fallback reasons instead of writing bogus latencies.
+- Tavus phoneme claim verified — REST `/v2/conversations/{id}/utterance` accepts `{ text }` only; O5d REJECTED stands. `tavus.ts` TODO marker replaced with the verified finding inline.
+- Tests: `decision-rubric.test.ts` (13) + `liveavatar.test.ts` (4). 37/37 avatar tests across 5 files now pass.
+- See `docs/SESSION_LOG_2026-05-09_O5C_S3_DECISION_AND_TRIGGERS.md` for full S3 manifest + the deferred-lift carry-forward.
 
 ### Follow-up session #3 (2026-05-09 — Track O5c S2, 1 commit since the S1 commit)
 
@@ -171,7 +181,9 @@ Listed in rough leverage order. Each entry is honest about scope.
    - (b) Schema port: add the LTM models to OB's Prisma schema (massive)
    - Recommended: start with (a). Pick 5 agents with the simplest data dependencies and port them through the bridge. Document the pattern.
 
-4. **Track O5c — Tavus + A/B harness (S1 + S2 done; S3 remains).** ✅ **S1**: `src/lib/avatar/tavus.ts` adapter + `AvatarEvalRun` Prisma model + `TAVUS_API_KEY` env var + 5 smoke tests. ✅ **S2**: 30-script catalog at `src/lib/avatar/eval-scripts.ts` + `/api/admin/avatar-eval/runs` (GET+POST) + `/admin/avatar-eval` harness UI + 15 new tests. **S3** = pull `OliviaVideoAvatar` behind the `src/lib/avatar/` abstraction (today it's a direct LiveAvatar LITE consumer; abstracting it lights up Tavus/Simli on the realtime path declaratively) + decision rubric `latency × 0.4 + lip-sync MOS × 0.4 + cost × 0.2` at `/admin/avatar-eval/decision` + live "Run" trigger that captures latency via `performance.mark`. Verify Tavus's phoneme-input claim during the live-trigger work — adapter has a `TODO O5c-S2` marker still pending.
+4. **Track O5c — fully closed (modulo deferred lift).** ✅ **S1** + **S2** + **S3** shipped this batch. Only the 867-line `OliviaVideoAvatar` vendor-pluggable refactor was scope-cut to a follow-up — it's a refactor of working production code (high risk, multi-session) and the user-visible A/B story doesn't depend on it. See "Track O5c-Lift" below if you want to take the lift on.
+
+5. **Track O5c-Lift (follow-up; ~1–2 sessions).** Refactor `src/components/olivia/OliviaVideoAvatar.tsx` (867 lines) to take a `provider` prop and dispatch through the `src/lib/avatar/*` abstraction. Path: extract a `LiveAvatarHandle` interface (`connect / disconnect / speak / interrupt`) into `src/lib/avatar/types.ts`; have each adapter implement it; thread provider into the component. Once the lift lands, the harness's "Run live (TTFM)" button can be enabled for Tavus + Simli too (today it's LiveAvatar-only). Per-tenant default vendor selection via `tenant_configs` falls out of the same lift.
 
 ### 🎯 Single-session wins
 4. **N2 — Mapbox 3D enhancement.** `/map` already has dual Mapbox + Google 3D. Add a "fly to selected district" smooth animation. Read `src/components/map/GoogleMap3DView.tsx` first — risk of breaking the existing surface.
@@ -283,10 +295,13 @@ If you want substantive capability work (multi-session):
 - **Option A:** Track H S21 (port 5 LTM agents through the bridge — simplest data dependencies first)
   - **First read:** `D:\London-Tech-Map\src\lib\agents\impl\g1-005-property-gravity-forecaster.ts` (simpler agent) + `src/lib/bridge/` (the existing UKP)
   - **Plan:** rewrite the agent to fetch district data via `LtmKnowledgeProvider` instead of `prisma.location` directly. Document the pattern. Repeat for 4 more. Don't try to port all 116 in one session.
-- **Option B:** Track O5c S3 (abstraction lift + decision rubric + live triggers) — **recommended**
-  - **First read:** `docs/SESSION_LOG_2026-05-09_O5C_S2_HARNESS.md` (S2 manifest + S3 carry-forwards) + `docs/O5_AVATAR_LIPSYNC_RESEARCH.md §5` (decision rubric) + `src/components/olivia/OliviaVideoAvatar.tsx` (the 867-line file you're going to refactor — read it cold first, the §5 architecture rules in HANDOFF call out what NOT to break).
-  - **State at hand-off:** S1 + S2 shipped. `src/lib/avatar/` has tavus + simli + sadtalker + heygen + did adapters and a unified selector, but `OliviaVideoAvatar` doesn't use the abstraction — it goes straight to LiveAvatar LITE via `/api/olivia/liveavatar/*`. The `/admin/avatar-eval` harness is live; operator can record runs out-of-band but can't trigger live calls per vendor yet. Operator action owed: apply `prisma/sql/10-add-avatar-eval-run.sql` (S1) + set `TAVUS_API_KEY` (matters for S3's live triggers).
-  - **Plan:** (1) Pull `OliviaVideoAvatar`'s vendor branch behind `src/lib/avatar/` so `<OliviaVideoAvatar provider="tavus" … />` works. (2) Add `/admin/avatar-eval/decision` page that ranks vendors via the rubric. (3) Wire a "Run live" button on each script row that triggers the selected vendor and captures TTFM via `performance.mark` (mirror `speak-stream`'s marks). (4) Verify Tavus phoneme-input claim during the live trigger — re-open O5d if it accepts a phoneme channel.
+- **Option B:** Track H S21 (port 5 LTM agents through the bridge — the highest leverage remaining capability work)
+  - **First read:** `D:\London-Tech-Map\src\lib\agents\impl\g1-005-property-gravity-forecaster.ts` (one of the simpler agents) + `src/lib/bridge/` (the existing `LtmKnowledgeProvider`).
+  - **Plan:** rewrite the agent to fetch district data via `LtmKnowledgeProvider` instead of `prisma.location` directly. Document the pattern. Repeat for 4 more. Don't try to port all 116 in one session.
+
+- **Option C:** Track O5c-Lift (deferred refactor; ~1–2 sessions) — close the only loose end on Track O
+  - **First read:** `src/components/olivia/OliviaVideoAvatar.tsx` cold + `docs/SESSION_LOG_2026-05-09_O5C_S3_DECISION_AND_TRIGGERS.md` "Carry-forward" section.
+  - **Plan:** see open-work item #5 above.
 - **Option C:** Track N4 (Generative UI / 3D scenes)
   - **First read:** `src/components/home/reply-renderer/MarkdownReply.tsx` (the existing manifest fence pattern) + `lib/services/model-cascade.ts buildSystemPrompt()` (where new fences get taught to the cascade).
   - **Plan:** pick ~5 safe React components Olivia can reference (Card / Stat / Progress / Button / Form), define the JSON contract, parse + render. Skip eval-time JSX entirely.
@@ -296,7 +311,7 @@ If you want pre-launch readiness:
 - **First read:** `docs/RUNBOOK.md` end-to-end
 - **Action:** apply the 7 SQL migrations in § 4, set the env vars in § 4, run the smoke tests in RUNBOOK § 5
 
-**Recommended pick:** Option B (Track O5c S3 — abstraction lift + decision rubric + live triggers). S1 + S2 shipped the adapter, model, catalog, harness, and persistence; S3 is the closing session that lifts `OliviaVideoAvatar` behind the abstraction (so vendor swaps become declarative), wires the decision rubric, and adds live "Run" buttons that capture latency directly. Once S3 lands, the Tavus phoneme-input claim verification is also natural — re-open or permanently close O5d.
+**Recommended pick:** Option A (Track N4 generative UI / 3D scenes) or Option B (Track H S21 LTM agent port). Track O5c is closed (only the optional `OliviaVideoAvatar` lift remains as Option C). The two non-O5c options are both substantive capability work — pick by appetite for safety vs. depth. N4 is a contained design problem; H S21 starts the long port of LTM's 116 agents.
 
 ---
 
