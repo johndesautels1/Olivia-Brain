@@ -56,6 +56,7 @@ const NAVIGATE_TARGETS: { href: string; label: string; hint: string }[] = [
   { href: "/admin/investors", label: "Investor moderation", hint: "Track P4 surface" },
   { href: "/admin/phase1", label: "Phase-1 status", hint: "Readiness dashboard" },
   { href: "/admin/traces", label: "Cascade traces", hint: "Live LLM routing telemetry" },
+  { href: "/admin/eval", label: "Cascade quality gate", hint: "Golden eval suite — run + report" },
   { href: "/founder-intake", label: "Founder intake — Quantara", hint: "56-field form (Q2-Q7)" },
   { href: "/analysis/valuation", label: "Valuation Workbench", hint: "10-method engine + War Room" },
   { href: "/documents", label: "Document library", hint: "Pitch decks, plans, memos" },
