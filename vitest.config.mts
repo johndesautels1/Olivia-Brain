@@ -15,6 +15,10 @@ import tsconfigPaths from "vite-tsconfig-paths";
  *   `@vitest-environment jsdom` magic comment.
  * - Include is scoped to src so accidental top-level test files do not
  *   get picked up.
+ * - The `server-only` package guard is no-op'd in vitest.setup.ts via
+ *   vi.mock so tests can transitively import server-only modules
+ *   (require-tier, auth/session, etc.) without tripping the
+ *   client/server boundary check.
  */
 export default defineConfig({
   plugins: [tsconfigPaths()],
