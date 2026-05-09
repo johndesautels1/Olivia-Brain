@@ -38,6 +38,9 @@ export interface HomeComposerProps {
    *  Parent uses this to show text appearing live. */
   onReplyChunk?: (running: string) => void;
   onAudit?: (text: string) => void;
+  /** Increment to imperatively reset the in-progress conversationId
+   *  (parent flips it on "New conversation" action). */
+  resetNonce?: number;
   /** Optional external prompt seed (e.g. from suggestion chip click).
    *  When provided, the composer fills + focuses; the parent should
    *  pass a stable string per pick (incrementing nonce or uuid). */
@@ -54,6 +57,7 @@ export function HomeComposer({
   onAudit,
   seedPrompt,
   onActiveChange,
+  resetNonce,
 }: HomeComposerProps) {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -82,6 +86,14 @@ export function HomeComposer({
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
+
+  /* Reset conversation on parent's signal. Bumping resetNonce wipes
+   * the conversationId so the next send starts fresh. */
+  useEffect(() => {
+    if (resetNonce !== undefined) {
+      conversationIdRef.current = null;
+    }
+  }, [resetNonce]);
 
   /* Auto-focus the composer on first mount so a fresh visitor can
    * type immediately without a click. Skipped if the user is on a

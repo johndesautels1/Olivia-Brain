@@ -170,6 +170,17 @@ export function buildCommandRegistry(ctx: CommandContext): PaletteCommand[] {
     },
   });
 
+  cmds.push({
+    id: "action.new-conversation",
+    group: "actions",
+    label: "Start a new conversation",
+    hint: "Reset the active thread; Olivia forgets prior turns",
+    glyph: "↻",
+    run: () => {
+      window.dispatchEvent(new CustomEvent("olivia:new-conversation"));
+    },
+  });
+
   return cmds;
 }
 

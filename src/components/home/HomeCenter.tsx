@@ -20,7 +20,7 @@
  * is enforced via canonical tokens (`tokens.css`). No raw hex.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { HomeHero } from "./HomeHero";
 import { HomeComposer, type ReplyProvenance } from "./HomeComposer";
 import { ActivityTicker } from "./ActivityTicker";
@@ -55,6 +55,7 @@ export function HomeCenter({
   const [lastProvenance, setLastProvenance] = useState<ReplyProvenance | null>(null);
   const [seedPrompt, setSeedPrompt] = useState<{ value: string; nonce: number } | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [resetNonce, setResetNonce] = useState(0);
 
   const audit = useCallback(
     (text: string) => onAudit?.(text),
@@ -85,6 +86,25 @@ export function HomeCenter({
     setHasInteracted(true);
   }, []);
 
+  const handleNewConversation = useCallback(() => {
+    setResetNonce((n) => n + 1);
+    setLastReply(null);
+    setLastProvenance(null);
+    setHasInteracted(false);
+    setChatState("idle");
+    audit("Started a new conversation");
+  }, [audit]);
+
+  /* Listen for global "olivia:new-conversation" custom events so the
+   * command palette + keyboard shortcut + future affordances can all
+   * trigger the same reset path. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => handleNewConversation();
+    window.addEventListener("olivia:new-conversation", handler);
+    return () => window.removeEventListener("olivia:new-conversation", handler);
+  }, [handleNewConversation]);
+
   const heroState: AvatarOrbState = externalPulse ? "thinking" : chatState;
 
   return (
@@ -112,6 +132,7 @@ export function HomeCenter({
         onAudit={audit}
         seedPrompt={seedPrompt}
         onActiveChange={setHasInteracted}
+        resetNonce={resetNonce}
       />
       <KpiTileGrid data={dashboard?.kpi} />
       <RecentWorkStrip items={dashboard?.recent} loading={!dashboard} />
