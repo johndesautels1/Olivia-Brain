@@ -31,6 +31,11 @@ import {
 } from "@/lib/orchestration/spoke-router";
 import { rateLimit } from "@/lib/rate-limit";
 import { getConversationStore } from "@/lib/memory/store";
+import { recordTrace } from "@/lib/observability/traces";
+import type {
+  FoundationTrace,
+  ProviderAttempt,
+} from "@/lib/foundation/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -145,9 +150,11 @@ export async function POST(request: NextRequest) {
   /* Live — pipe through. Capture the final text via the source
    * generator so we can persist the assistant turn after the stream
    * settles, BEFORE the duration marker. */
+  const startedAt = Date.now();
   return streamingResponse(
     async function* () {
       let finalText = "";
+      let streamError: string | undefined;
       try {
         for await (const chunk of stream.textStream) {
           finalText += chunk;
@@ -155,8 +162,8 @@ export async function POST(request: NextRequest) {
         }
         await stream.done;
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "stream failed";
-        yield `\n\n[stream error: ${msg}]`;
+        streamError = err instanceof Error ? err.message : "stream failed";
+        yield `\n\n[stream error: ${streamError}]`;
       }
       /* Best-effort persistence after the stream settles. */
       try {
@@ -174,6 +181,33 @@ export async function POST(request: NextRequest) {
         });
       } catch {
         /* Ignore. */
+      }
+      /* Record cascade trace so /admin/traces sees streaming calls. */
+      try {
+        const attempt: ProviderAttempt = {
+          providerId: stream.providerId,
+          modelId: stream.modelId,
+          success: !streamError,
+          durationMs: Date.now() - startedAt,
+          ...(streamError ? { error: streamError } : {}),
+        };
+        const trace: FoundationTrace = {
+          id: `trace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          createdAt: new Date().toISOString(),
+          conversationId,
+          intent,
+          runtimeMode: "live",
+          selectedProvider: stream.providerId,
+          selectedModel: stream.modelId,
+          attempts: [attempt],
+          recalledContext,
+          integrationSnapshot: {},
+          userMessage: payload.message,
+          responsePreview: finalText.slice(0, 240),
+        };
+        await recordTrace(trace);
+      } catch {
+        /* Ignore — trace recording shouldn't break the stream. */
       }
     },
     {

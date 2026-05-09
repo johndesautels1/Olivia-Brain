@@ -89,9 +89,11 @@ import type {
 } from "@/lib/foundation/types";
 import { getConversationStore } from "@/lib/memory/store";
 import { withTraceSpan } from "@/lib/observability/tracer";
+import { recordTrace } from "@/lib/observability/traces";
 import { inferIntent } from "@/lib/orchestration/intent";
 import { rateLimit } from "@/lib/rate-limit";
 import { runModelCascade } from "@/lib/services/model-cascade";
+import type { FoundationTrace } from "@/lib/foundation/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -231,10 +233,34 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        /* Record trace so /admin/traces sees this call. Best-effort —
+         * the bucket failure shouldn't fail the user's reply. */
+        try {
+          const trace: FoundationTrace = {
+            id: `trace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            createdAt: new Date().toISOString(),
+            conversationId,
+            intent,
+            runtimeMode,
+            selectedProvider,
+            selectedModel: cascade.modelId,
+            attempts: cascade.attempts,
+            recalledContext,
+            integrationSnapshot: buildIntegrationSnapshot(),
+            userMessage: body.message,
+            responsePreview: cascade.text.slice(0, 240),
+          };
+          await recordTrace(trace);
+        } catch {
+          /* Ignore. */
+        }
+
         return NextResponse.json({
           conversationId,
           messageId: assistantTurn.id,
           reply: cascade.text,
+          providerId: selectedProvider,
+          modelId: cascade.modelId,
         });
       } catch (err) {
         const message =
