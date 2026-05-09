@@ -410,7 +410,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
         res = await fetch("/api/olivia/liveavatar/speak-stream", {
           method: "POST",
           headers: authHeaders(),
-          body: JSON.stringify({ text: text.slice(0, 2000) }),
+          body: JSON.stringify({ text: text.slice(0, 5000) }),
         });
       } catch (err) {
         console.warn("[LiveAvatar] speak-stream fetch failed:", err);
@@ -522,7 +522,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
         const res = await fetch("/api/olivia/liveavatar/speak", {
           method: "POST",
           headers: authHeaders(),
-          body: JSON.stringify({ text: text.slice(0, 2000) }),
+          body: JSON.stringify({ text: text.slice(0, 5000) }),
         });
         const data = await res.json();
 
@@ -555,7 +555,10 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
     [speakReplyStreaming, speakReplyFallback],
   );
 
-  // React to new replies
+  // React to new replies. Track O5b — if a prior reply is still being
+  // spoken when a new one arrives, send `agent.interrupt` to clear the
+  // queue so the user hears the new reply right away instead of waiting
+  // for the old one to finish. (LITE Mode otherwise queues utterances.)
   useEffect(() => {
     if (
       lastReply &&
@@ -563,6 +566,16 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
       (state === "connected" || state === "speaking")
     ) {
       lastSpokenRef.current = lastReply;
+
+      if (state === "speaking" && wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "agent.interrupt",
+            event_id: `int_${Date.now()}`,
+          }),
+        );
+      }
+
       speakReply(lastReply);
     }
   }, [lastReply, state, speakReply]);

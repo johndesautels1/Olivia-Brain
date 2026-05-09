@@ -59,7 +59,12 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           text,
-          model_id: "eleven_multilingual_v2",
+          // Track O5b — turbo halves TTFB vs multilingual_v2 (~250ms
+          // vs ~500ms) at comparable English quality. Track J spoke
+          // routing today emits English-only Olivia replies; revisit
+          // this model selection if/when Mistral spoke output adds
+          // non-English text into this path.
+          model_id: "eleven_turbo_v2_5",
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
