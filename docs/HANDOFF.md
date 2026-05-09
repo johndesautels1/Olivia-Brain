@@ -1,8 +1,8 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 — extended continuous build batch. **5 tracks closed this batch: D, E, I, J, K**. Track N at 3/5; Track O at 2/4; W-003 + W-004 closed; 4 deploy fixes; production runbook shipped.
-> **HEAD:** `607fdf0` (S29 runbook; will move with the next push).
-> Pre-batch tip was `8cacdd8` (Track U handoff docs). This batch added **32 commits** on top.
+> **Last updated:** 2026-05-09 — **38 commits since the prior batch tip**. 5 tracks closed (D, E, I, J, K); Track N at 4/5; Track O at 2/4 (W-003 + W-004 closed); production runbook shipped; **spoke router** (6-spoke detection + system-prompt augmentation + UI badge) shipped; ~74 new tests.
+> **HEAD:** `ce775b8` (suggestion chips spoke refresh; will move with the next push).
+> Pre-batch tip was `8cacdd8` (Track U handoff docs).
 
 ---
 
@@ -27,12 +27,17 @@ git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"
 
 ---
 
-## What just shipped — extended continuous batch (32 commits)
+## What just shipped — extended continuous batch (38 commits)
 
 The home page (Track U) was the start. This continuous batch built outward across 4 closed tracks (D, E, I, J) plus partial Track N (3 of 5 manifestation modes), with polish and tests throughout.
 
 | Commit | Track / Session | What landed |
 |---|---|---|
+| `ce775b8` | polish | SuggestionChips refreshed: 6 chips, one per spoke, demonstrating 4 manifest types + 5 spokes. |
+| `8b90641` | **spoke-router** | 6-spoke router (FL real-estate / relocation / london_tech / xscore / heart_recovery / london_transit + general fallback). Cheap regex detection per query. Cascade picks up spoke-specific addendum. UI shows aether-tinted spoke chip in provenance row. 16 tests. |
+| `71088da` | **N-timeline** | New ` ```timeline ` fence — chronological narratives. 4 tone variants. 9 tests. |
+| `6103ada` | polish | Auto-focus composer on mount + skeleton shimmer on KPI tiles during initial load. |
+| `b20c23e` | polish | Per-message provenance badge — provider · model · ms · source (stream/fallback). |
 | `607fdf0` | **S29 Track K** | Production `RUNBOOK.md` — pre-deploy checklist, env-var inventory by category, smoke tests, rollback, on-call playbook (7 common 5xx causes + fixes), cost-vector dashboards. Track K ✅ CLOSED. |
 | `0a89bb2` | **S28 Track K** | Cache-Control headers on the 3 home aggregator routes (max-age + SWR tuned per polling cadence). Edge dedup; expected 60-80% TTFB drop. |
 | `192d108` | **S27 Track K** | Security audit + rate limits on cost vectors (`/api/olivia/chat/stream`, `/api/voice/synthesize`, `/api/voice/transcribe`). |
@@ -69,7 +74,7 @@ The home page (Track U) was the start. This continuous batch built outward acros
 | **Track D (Studio↔Brain, S15-S16)** | ✅ CLOSED | Pitch routes cascade-routed + PitchCoachTab. |
 | **Track E (voice input, S17)** | ✅ CLOSED | `/voice` STT/chat/TTS chain end-to-end. |
 | **Track I (multi-tenant + suppression, S24)** | ✅ CLOSED | Adaptive surface suppression + brand override. |
-| **Track N (visual manifestation, N1+N3+N5 of 5)** | 🟡 partial | N1 manifest contract ✅ + N3 chart manifestation ✅ + N5 Gamma deck preview ✅. **N2 (Mapbox 3D enhancement) and N4 (generative UI / 3D scenes) remaining.** |
+| **Track N (visual manifestation, N1+N3+N5+timeline of 5)** | 🟡 partial | N1 manifest contract ✅ + N3 chart manifestation ✅ + N5 Gamma deck preview ✅ + extra timeline manifest ✅. **N2 (Mapbox 3D enhancement) and N4 (generative UI / 3D scenes) remaining.** |
 | **Track O (weakness closure)** | 🟡 partial | **O3 ✅** (W-003 perceived voice/chat latency closed via token streaming). **O4 ✅** (W-004 citation-first RAG closed at manifest layer). O2 (Patronus eval), O5 (avatar lip-sync) remaining. |
 | **Track K (Hardening + launch prep)** | ✅ CLOSED | S27 ✅ security audit + rate limits. S28 ✅ perf caching headers. S29 ✅ production runbook. All 3 sessions shipped. |
 | **Track J (vertical adapters S25-S26)** | ✅ CLOSED | All 4 verticals final. AI/SaaS + HealthTech + ClimateTech + PropTech each carry a 5-point investor diligence frame in `lib/orchestration/vertical-adapter.ts`. Free-form industry detector + provider preferences + 16 tests. |
@@ -103,9 +108,13 @@ src/components/home/reply-renderer/CitationStrip.test.ts         (tests, 8)
 src/components/home/KeyboardShortcuts.tsx                        (polish)
 src/app/api/olivia/chat/stream/route.ts                          (O3)
 docs/RUNBOOK.md                                                   (S29)
+src/components/home/reply-renderer/TimelineFromSpec.tsx           (timeline)
+src/components/home/reply-renderer/TimelineFromSpec.test.ts       (tests, 9)
+src/lib/orchestration/spoke-router.ts                             (spoke-router)
+src/lib/orchestration/spoke-router.test.ts                        (tests, 16)
 ```
 
-**Test additions: 49 new tests this batch (14 chart-spec + 11 GammaCard + 16 vertical-adapter + 8 CitationStrip). All passing.**
+**Test additions: ~74 new tests this batch (14 chart-spec + 11 GammaCard + 16 vertical-adapter + 8 CitationStrip + 9 TimelineFromSpec + 16 spoke-router). All passing.**
 
 **Modified additionally this wave:**
 - `src/lib/services/model-cascade.ts` — `runModelCascadeStream` exported (uses AI SDK `streamText`)
