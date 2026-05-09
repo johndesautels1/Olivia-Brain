@@ -51,7 +51,7 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
         }: {
           className?: string;
           children?: ReactNode;
-        } & Record<string, unknown>) => {
+        } & Record<string, any>) => {
           const lang = /language-([\w-]+)/.exec(className ?? "")?.[1];
           const raw = String(children ?? "").replace(/\n$/, "");
           const isInline = !lang;
@@ -140,7 +140,7 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
           /* Generic code block. */
           return <CodeBlock raw={raw} lang={lang} />;
         },
-        a: ({ href, children, ...props }: { href?: string; children?: ReactNode } & Record<string, unknown>) => (
+        a: ({ href, children, ...props }: { href?: string; children?: ReactNode } & Record<string, any>) => (
           <a
             {...props}
             href={href}
