@@ -6,6 +6,25 @@ Olivia is the omnipotent, all-knowing AI executive agent that serves as the fron
 
 ---
 
+## ⚠️ ABSOLUTE RULE FOR EVERY CLAUDE SESSION: INLINE EVERY SQL THE FOUNDER MUST RUN
+
+**If you create a `prisma/sql/*.sql` file, OR reference an unapplied one, OR ask the founder to "apply" anything against the database — you MUST paste the FULL SQL body inline in the same chat message, ready to copy-paste into the Supabase SQL editor.**
+
+Non-negotiable rules:
+
+1. **NEVER write `apply prisma/sql/X.sql` without the SQL body printed in the same message.** The founder is not going to open the file. Pointing at a path = pretending you communicated.
+2. **EVERY time you mention an unapplied migration in a session — even if you printed it earlier — print it again.** Sessions get long. Scrolling sucks. Re-paste it.
+3. **End-of-session summaries that list operator actions MUST include the full SQL of every unapplied migration referenced.** No exceptions.
+4. **If you create a NEW migration file, the SQL goes inline in the chat in the SAME tool-call sequence as the file write.** Not in a follow-up message. Same turn.
+
+Why this is non-negotiable: the founder operates at ~4 sessions/day. Chasing files mid-session is exactly the friction this rule eliminates. Past sessions have repeatedly violated this and it is genuinely enraging. If you find yourself typing "apply prisma/sql/" → STOP, paste the SQL body first, then continue.
+
+This rule lives in the README so it survives context compression and applies regardless of which model picks up the next session. If you read this and STILL ask the founder to "apply prisma/sql/X.sql" without inlining the body, you have failed at your job. Fix it.
+
+See also: `~/CLAUDE.md` "USE PRISMA — NEVER MAKE THE USER PASTE RAW SQL" rule (which forbids ad-hoc SQL files for DATA changes — go through TypeScript scripts instead). This README rule is the COMPLEMENT for the legitimate cases where SQL must be applied: schema changes, one-off migrations.
+
+---
+
 ## Universal Architecture
 
 Olivia is built on a **Three-Layer Architecture** that enables her to:
