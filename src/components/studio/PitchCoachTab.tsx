@@ -121,8 +121,9 @@ export function PitchCoachTab({
         navSection === "plan"
           ? PLAN_SECTIONS[activePlanIdx]?.title ?? "(empty plan)"
           : navSection === "pitch"
-            ? slides.map((s) => `${s.type}: ${JSON.stringify(s.content)}`).join("\n") ||
-              "(empty deck)"
+            ? slides
+                .map((s) => `${s.type}: ${s.text ?? JSON.stringify(s.fields ?? {})}`)
+                .join("\n") || "(empty deck)"
             : "(no active surface)";
       const context =
         navSection === "plan" ? "business plan section" : "pitch deck";
@@ -247,15 +248,8 @@ export function PitchCoachTab({
           slides: slides.map((s) => ({
             id: s.id,
             type: s.type,
-            text: typeof s.content === "string" ? s.content : "",
-            fields:
-              typeof s.content === "object" && s.content
-                ? Object.fromEntries(
-                    Object.entries(s.content as Record<string, unknown>).map(
-                      ([k, v]) => [k, String(v ?? "")],
-                    ),
-                  )
-                : {},
+            text: s.text ?? "",
+            fields: s.fields ?? {},
           })),
           config,
         }),
