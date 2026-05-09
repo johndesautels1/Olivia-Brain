@@ -146,6 +146,48 @@ function generateRecordingFilename(): string {
   return `olivia-session-${timestamp}.webm`;
 }
 
+/**
+ * Track O5a — Streaming pre-roll helpers.
+ *
+ * Encode a PCM chunk to base64 in 32KB sub-batches so we don't blow the
+ * call-stack of `String.fromCharCode.apply` (it has a per-arity ceiling
+ * around 65,535 args in V8 / WebKit). Joining `parts` once at the end
+ * is faster than O(n) string concatenation.
+ */
+function uint8ToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  const parts: string[] = [];
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const slice = bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length));
+    // `apply` accepts array-likes; Uint8Array qualifies. Cast to number[]
+    // to satisfy TS's stricter overload signature.
+    parts.push(String.fromCharCode.apply(null, slice as unknown as number[]));
+  }
+  return btoa(parts.join(""));
+}
+
+/**
+ * Track O5a — pre-roll chunk thresholds.
+ *
+ * PCM 16-bit 24 kHz = 48 bytes/ms. We send the first chunk as soon as
+ * we have ~125 ms of audio (so the avatar's mouth starts moving fast),
+ * then ~250 ms thereafter (smooth, well below the per-message 1 MB cap
+ * that LiveAvatar LITE Mode enforces — see docs/HEYGEN_LTM_CONFIG.md).
+ */
+const FIRST_CHUNK_BYTES = 6_000;
+const TARGET_CHUNK_BYTES = 12_000;
+
+/** Mark a perf event if the API is present. Skipped silently in SSR. */
+function markPerf(name: string): void {
+  if (typeof performance !== "undefined" && typeof performance.mark === "function") {
+    try {
+      performance.mark(name);
+    } catch {
+      // Ignore — duplicates or invalid names just no-op.
+    }
+  }
+}
+
 export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(function OliviaVideoAvatar({
   onReady,
   onDisconnect,
@@ -339,33 +381,179 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
     }
   }, [onReady, onSpeakingChange, disconnectSession, setState, authHeaders]);
 
-  // Send TTS audio when new reply arrives
-  const speakReply = useCallback(async (text: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      return;
-    }
+  /**
+   * Track O5a — streaming pre-roll path.
+   *
+   * Returns true if we successfully streamed all chunks and emitted
+   * `agent.speak_end`. Returns false on any failure (network error,
+   * server fallback JSON, ws closed mid-stream) so the caller can fall
+   * back to the non-streaming `/speak` path. Never throws.
+   *
+   * Performance marks (read via `performance.getEntriesByName(...)`):
+   *   olivia-speak-start          — fetch initiated
+   *   olivia-speak-first-byte     — first PCM byte arrived from server
+   *   olivia-speak-first-chunk    — first `agent.speak` ws message sent
+   *   olivia-speak-done           — speak_end sent
+   * Plus the existing `agent.speak_started` ws event from LiveAvatar
+   * marks the moment lip-sync actually begins. Together they isolate
+   * which segment of the pipeline owns each ms of latency.
+   */
+  const speakReplyStreaming = useCallback(
+    async (text: string): Promise<boolean> => {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return false;
 
-    try {
-      const res = await fetch("/api/olivia/liveavatar/speak", {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({ text: text.slice(0, 2000) }),
-      });
-      const data = await res.json();
+      markPerf("olivia-speak-start");
 
-      if (data.fallback || !data.audio) {
-        return;
+      let res: Response;
+      try {
+        res = await fetch("/api/olivia/liveavatar/speak-stream", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ text: text.slice(0, 2000) }),
+        });
+      } catch (err) {
+        console.warn("[LiveAvatar] speak-stream fetch failed:", err);
+        return false;
       }
 
-      // Send complete PCM audio to LiveAvatar as one message
-      wsRef.current.send(JSON.stringify({
-        type: "agent.speak",
-        audio: data.audio,
-      }));
-    } catch (err) {
-      console.error("[LiveAvatar] Speak error:", err);
-    }
-  }, [authHeaders]);
+      if (!res.ok) return false;
+
+      // Distinguish a real PCM stream from the JSON fallback the server
+      // returns when ElevenLabs is unconfigured / errored before bytes
+      // streamed. Header is more reliable than Content-Type because some
+      // proxies normalize the latter.
+      if (res.headers.get("X-Olivia-Audio-Format") !== "pcm_24000") {
+        return false;
+      }
+
+      if (!res.body) return false;
+
+      const reader = res.body.getReader();
+      let buffer = new Uint8Array(0);
+      let firstChunkSent = false;
+      let firstByteSeen = false;
+
+      const appendToBuffer = (chunk: Uint8Array): void => {
+        const merged = new Uint8Array(buffer.length + chunk.length);
+        merged.set(buffer, 0);
+        merged.set(chunk, buffer.length);
+        buffer = merged;
+      };
+
+      const flushChunk = (chunk: Uint8Array): boolean => {
+        if (ws.readyState !== WebSocket.OPEN) return false;
+        ws.send(
+          JSON.stringify({
+            type: "agent.speak",
+            audio: uint8ToBase64(chunk),
+          }),
+        );
+        if (!firstChunkSent) {
+          firstChunkSent = true;
+          markPerf("olivia-speak-first-chunk");
+        }
+        return true;
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!value || value.length === 0) continue;
+
+          if (!firstByteSeen) {
+            firstByteSeen = true;
+            markPerf("olivia-speak-first-byte");
+          }
+
+          appendToBuffer(value);
+
+          const target = firstChunkSent ? TARGET_CHUNK_BYTES : FIRST_CHUNK_BYTES;
+          while (buffer.length >= target) {
+            const chunk = buffer.slice(0, target);
+            buffer = buffer.slice(target);
+            if (!flushChunk(chunk)) return false;
+          }
+        }
+
+        if (buffer.length > 0) {
+          if (!flushChunk(buffer)) return false;
+          buffer = new Uint8Array(0);
+        }
+
+        if (ws.readyState !== WebSocket.OPEN) return false;
+
+        // Signal end of utterance so LiveAvatar settles the mouth back
+        // to neutral instead of holding the last viseme open. Per LITE
+        // Mode protocol (HEYGEN_LTM_CONFIG.md §4 — Pinned WS format).
+        ws.send(
+          JSON.stringify({
+            type: "agent.speak_end",
+            event_id: `spk_${Date.now()}`,
+          }),
+        );
+        markPerf("olivia-speak-done");
+        return true;
+      } catch (err) {
+        console.warn("[LiveAvatar] speak-stream interrupted:", err);
+        // Don't try to recover the partial utterance — let LiveAvatar's
+        // own server-side timeout settle the mouth. Caller decides
+        // whether to retry via the fallback path; for a partial mid-
+        // stream failure that would mean speaking the same text twice.
+        return false;
+      }
+    },
+    [authHeaders],
+  );
+
+  /**
+   * Track O5a — non-streaming fallback path. Original /speak shape:
+   * server buffers full PCM, returns base64 JSON, client sends one
+   * `agent.speak` message. Slower TTFM but doesn't depend on the
+   * streaming response surviving end-to-end.
+   */
+  const speakReplyFallback = useCallback(
+    async (text: string): Promise<void> => {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      try {
+        const res = await fetch("/api/olivia/liveavatar/speak", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ text: text.slice(0, 2000) }),
+        });
+        const data = await res.json();
+
+        if (data.fallback || !data.audio) return;
+
+        ws.send(
+          JSON.stringify({
+            type: "agent.speak",
+            audio: data.audio,
+          }),
+        );
+      } catch (err) {
+        console.error("[LiveAvatar] speak fallback error:", err);
+      }
+    },
+    [authHeaders],
+  );
+
+  // Send TTS audio when new reply arrives. Try the streaming path first
+  // (Track O5a — pre-roll for ~8-40× faster time-to-first-mouth-movement);
+  // only invoke the non-streaming fallback if the stream path declines
+  // (server fallback JSON, network error, ws-not-open).
+  const speakReply = useCallback(
+    async (text: string): Promise<void> => {
+      const streamed = await speakReplyStreaming(text);
+      if (!streamed) {
+        await speakReplyFallback(text);
+      }
+    },
+    [speakReplyStreaming, speakReplyFallback],
+  );
 
   // React to new replies
   useEffect(() => {
