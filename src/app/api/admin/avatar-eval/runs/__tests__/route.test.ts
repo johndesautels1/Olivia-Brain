@@ -101,6 +101,45 @@ describe("/api/admin/avatar-eval/runs — POST validation", () => {
   });
 });
 
+describe("isMigrationMissing helper", () => {
+  it("returns true for 'relation does not exist' on avatar_eval_runs", async () => {
+    const { __testing } = await import("@/app/api/admin/avatar-eval/runs/route");
+    expect(
+      __testing.isMigrationMissing(
+        new Error('relation "avatar_eval_runs" does not exist'),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns true for 'table not found' on avatar_eval_runs", async () => {
+    const { __testing } = await import("@/app/api/admin/avatar-eval/runs/route");
+    expect(
+      __testing.isMigrationMissing(
+        new Error("The table `public.avatar_eval_runs` was not found"),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns true for the postgres SQLSTATE undefined_table token", async () => {
+    const { __testing } = await import("@/app/api/admin/avatar-eval/runs/route");
+    expect(
+      __testing.isMigrationMissing(new Error("undefined_table avatar_eval_runs")),
+    ).toBe(true);
+  });
+
+  it("returns false for unrelated errors", async () => {
+    const { __testing } = await import("@/app/api/admin/avatar-eval/runs/route");
+    expect(__testing.isMigrationMissing(new Error("network down"))).toBe(false);
+    expect(
+      __testing.isMigrationMissing(
+        new Error('relation "investor_reputations" does not exist'),
+      ),
+    ).toBe(false);
+    expect(__testing.isMigrationMissing(undefined)).toBe(false);
+    expect(__testing.isMigrationMissing("string error")).toBe(false);
+  });
+});
+
 describe("/api/admin/avatar-eval/runs — auth guard", () => {
   it("returns 503 when the auth stub env var is missing", async () => {
     vi.unstubAllEnvs();

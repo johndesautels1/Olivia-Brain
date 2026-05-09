@@ -78,6 +78,9 @@ interface RunsApiResponse {
   runs?: AvatarEvalRunRow[];
   run?: AvatarEvalRunRow;
   error?: string;
+  migrationRequired?: boolean;
+  sqlFile?: string;
+  hint?: string;
 }
 
 export default function AvatarEvalPage() {
@@ -92,6 +95,10 @@ export default function AvatarEvalPage() {
   const [error, setError] = useState<string | null>(null);
   const [runs, setRuns] = useState<AvatarEvalRunRow[]>([]);
   const [vendorHealth, setVendorHealth] = useState<VendorHealthRow[]>([]);
+  const [migrationRequired, setMigrationRequired] = useState<{
+    sqlFile?: string;
+    hint?: string;
+  } | null>(null);
 
   const script = useMemo(
     () => EVAL_SCRIPTS.find((s) => s.id === scriptId) ?? EVAL_SCRIPTS[0],
@@ -101,8 +108,14 @@ export default function AvatarEvalPage() {
   const loadRuns = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/avatar-eval/runs");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as RunsApiResponse;
+      const data = (await res.json().catch(() => ({}))) as RunsApiResponse;
+      if (data.migrationRequired) {
+        setMigrationRequired({ sqlFile: data.sqlFile, hint: data.hint });
+        setRuns([]);
+        return;
+      }
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setMigrationRequired(null);
       setRuns(data.runs ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "runs load failed");
@@ -316,6 +329,57 @@ export default function AvatarEvalPage() {
           latency in.
         </p>
       </header>
+
+      {migrationRequired && (
+        <section
+          role="alert"
+          style={{
+            padding: 16,
+            borderRadius: "var(--radius-lg)",
+            background: "var(--surface-1)",
+            border: "1px solid var(--coral-down-mute)",
+            display: "grid",
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-2xs)",
+              letterSpacing: "0.10em",
+              textTransform: "uppercase",
+              color: "var(--coral-down)",
+            }}
+          >
+            Migration not applied
+          </span>
+          <p style={{ margin: 0, color: "var(--fg-primary)" }}>
+            The <code>avatar_eval_runs</code> table doesn't exist in the
+            database. Apply{" "}
+            <code style={{ color: "var(--aurum-primary)" }}>
+              {migrationRequired.sqlFile ??
+                "prisma/sql/10-add-avatar-eval-run.sql"}
+            </code>{" "}
+            then refresh.
+          </p>
+          {migrationRequired.hint && (
+            <pre
+              style={{
+                margin: 0,
+                padding: 10,
+                background: "var(--canvas-recess)",
+                borderRadius: "var(--radius-md)",
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-2xs)",
+                color: "var(--fg-secondary)",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {migrationRequired.hint}
+            </pre>
+          )}
+        </section>
+      )}
 
       {/* Vendor selector */}
       <section

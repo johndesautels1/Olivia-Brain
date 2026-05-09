@@ -62,6 +62,37 @@ function asJsonInput(value: unknown): Prisma.InputJsonValue {
   return (value ?? {}) as Prisma.InputJsonValue;
 }
 
+/**
+ * Detect the "avatar_eval_runs table doesn't exist yet" failure mode
+ * (operator hasn't applied prisma/sql/10 — the migration is owed and
+ * the harness 500s). Surfaced as a clean 503 + machine-readable
+ * `migrationRequired: true` so the harness UI can render a banner
+ * pointing at the SQL file instead of "Failed to load runs".
+ */
+function isMigrationMissing(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  if (!msg.includes("avatar_eval_runs")) return false;
+  return (
+    (msg.includes("relation") && msg.includes("does not exist")) ||
+    (msg.includes("table") && msg.includes("not found")) ||
+    msg.includes("undefined_table")
+  );
+}
+
+function migrationMissingResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: "avatar_eval_runs table is missing",
+      migrationRequired: true,
+      sqlFile: "prisma/sql/10-add-avatar-eval-run.sql",
+      hint: "Apply prisma/sql/10-add-avatar-eval-run.sql via Supabase SQL editor or `npx prisma db execute --schema prisma/schema.prisma --file prisma/sql/10-add-avatar-eval-run.sql`.",
+    },
+    { status: 503 },
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // GET — list runs.
 // ─────────────────────────────────────────────────────────────────────
@@ -98,6 +129,7 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json({ ok: true, runs: rows });
   } catch (err) {
+    if (isMigrationMissing(err)) return migrationMissingResponse();
     console.error("[api/admin/avatar-eval/runs GET] Error:", err);
     return badRequest("Failed to load runs", 500);
   }
@@ -157,7 +189,11 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ ok: true, run: row });
   } catch (err) {
+    if (isMigrationMissing(err)) return migrationMissingResponse();
     console.error("[api/admin/avatar-eval/runs POST] Error:", err);
     return badRequest("Create failed", 500);
   }
 }
+
+// Exported for tests only.
+export const __testing = { isMigrationMissing };
