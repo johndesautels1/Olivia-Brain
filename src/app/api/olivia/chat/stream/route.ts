@@ -30,10 +30,13 @@ import {
   getSpokeDescriptor,
 } from "@/lib/orchestration/spoke-router";
 import { rateLimit } from "@/lib/rate-limit";
+import { getConversationStore } from "@/lib/memory/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 90;
+
+const RECALL_LIMIT = 4;
 
 /* Mirror /api/olivia/chat's rate limit (30/min/IP) so a streaming
  * client can't bypass it by switching endpoints. */
@@ -64,39 +67,90 @@ export async function POST(request: NextRequest) {
   const intent = inferIntent(payload.message);
   const spoke = detectSpokeFromMessage(payload.message);
   const conversationId = payload.conversationId ?? cryptoRandomId();
+  const store = getConversationStore();
+
+  /* Recall + persist user turn BEFORE streaming starts so the cascade
+   * sees prior context AND we have a record even if the client
+   * disconnects mid-stream. Both calls are best-effort — a persistence
+   * failure should not block the user from getting a reply. */
+  let recalledContext: string[] = [];
+  try {
+    recalledContext = await store.recall(
+      conversationId,
+      payload.message,
+      RECALL_LIMIT,
+    );
+  } catch {
+    /* Ignore — stream still works without recall. */
+  }
+  try {
+    await store.appendTurn({
+      conversationId,
+      role: "user",
+      content: payload.message,
+      metadata: {
+        intent,
+        spoke,
+        pageContext: payload.pageContext,
+      },
+    });
+  } catch {
+    /* Ignore. */
+  }
 
   const stream = await runModelCascadeStream({
     conversationId,
     message: payload.message,
     intent,
     spoke,
-    recalledContext: [],
+    recalledContext,
     integrationSnapshot: {},
   });
 
   const spokeLabel = getSpokeDescriptor(spoke).label;
 
-  /* Mock — return full text in one chunk so the client's incremental
-   * UI still works without real provider keys. */
+  /* Mock — return full text in one chunk + persist the assistant
+   * turn so multi-turn UI works even without provider keys. */
   if (isMock(stream)) {
     return streamingResponse(
       async function* () {
         yield stream.text;
+        try {
+          await store.appendTurn({
+            conversationId,
+            role: "assistant",
+            content: stream.text,
+            metadata: {
+              intent,
+              spoke,
+              runtimeMode: "mock",
+              provider: "mock",
+              model: "phase1-local-fallback",
+            },
+          });
+        } catch {
+          /* Persistence failure shouldn't break the stream. */
+        }
       },
       {
         provider: "mock",
         model: "phase1-local-fallback",
         spoke,
         spokeLabel,
+        conversationId,
       },
     );
   }
 
-  /* Live — pipe through. */
+  /* Live — pipe through. Capture the final text via the source
+   * generator so we can persist the assistant turn after the stream
+   * settles, BEFORE the duration marker. */
   return streamingResponse(
     async function* () {
+      let finalText = "";
       try {
         for await (const chunk of stream.textStream) {
+          finalText += chunk;
           yield chunk;
         }
         await stream.done;
@@ -104,12 +158,30 @@ export async function POST(request: NextRequest) {
         const msg = err instanceof Error ? err.message : "stream failed";
         yield `\n\n[stream error: ${msg}]`;
       }
+      /* Best-effort persistence after the stream settles. */
+      try {
+        await store.appendTurn({
+          conversationId,
+          role: "assistant",
+          content: finalText,
+          metadata: {
+            intent,
+            spoke,
+            runtimeMode: "live",
+            provider: stream.providerId,
+            model: stream.modelId,
+          },
+        });
+      } catch {
+        /* Ignore. */
+      }
     },
     {
       provider: stream.providerId,
       model: stream.modelId,
       spoke,
       spokeLabel,
+      conversationId,
     },
   );
 }
@@ -127,6 +199,7 @@ function streamingResponse(
     model: string;
     spoke: string;
     spokeLabel: string;
+    conversationId: string;
   },
 ): Response {
   const encoder = new TextEncoder();
@@ -160,6 +233,7 @@ function streamingResponse(
       "X-Olivia-Model": provenance.model,
       "X-Olivia-Spoke": provenance.spoke,
       "X-Olivia-Spoke-Label": provenance.spokeLabel,
+      "X-Olivia-Conversation-Id": provenance.conversationId,
     },
   });
 }

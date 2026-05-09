@@ -59,6 +59,10 @@ export function HomeComposer({
   const [pending, setPending] = useState(false);
   const [activeChips, setActiveChips] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
+  /* Multi-turn — once a conversation starts, every subsequent send
+   * includes the same conversationId so the cascade recalls prior
+   * turns. Reset on Cmd+Backspace or after Olivia returns "error". */
+  const conversationIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -130,6 +134,7 @@ export function HomeComposer({
         body: JSON.stringify({
           message: trimmed,
           pageContext: typeof window !== "undefined" ? window.location.pathname : undefined,
+          conversationId: conversationIdRef.current ?? undefined,
         }),
         signal: controller.signal,
       });
@@ -139,6 +144,10 @@ export function HomeComposer({
       const model = res.headers.get("X-Olivia-Model") ?? "unknown";
       const spoke = res.headers.get("X-Olivia-Spoke") ?? undefined;
       const spokeLabel = res.headers.get("X-Olivia-Spoke-Label") ?? undefined;
+      const conversationIdFromServer = res.headers.get("X-Olivia-Conversation-Id");
+      if (conversationIdFromServer) {
+        conversationIdRef.current = conversationIdFromServer;
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
