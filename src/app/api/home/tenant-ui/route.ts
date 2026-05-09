@@ -48,7 +48,13 @@ export async function GET(request: NextRequest) {
   const slug = slugFromHeader ?? slugFromQuery;
 
   if (!slug) {
-    return NextResponse.json(EMPTY);
+    /* Standalone path — cacheable for longer since the empty default
+     * shape never changes for a given session. */
+    return NextResponse.json(EMPTY, {
+      headers: {
+        "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+      },
+    });
   }
 
   let prisma: typeof import("@/lib/db/client").default;
@@ -63,7 +69,13 @@ export async function GET(request: NextRequest) {
     .catch(() => null);
 
   if (!tenant) {
-    return NextResponse.json(EMPTY);
+    /* Unknown slug → standalone defaults. Cache so we don't hammer
+     * Prisma with the same not-found lookup across multiple tabs. */
+    return NextResponse.json(EMPTY, {
+      headers: {
+        "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+      },
+    });
   }
 
   /* Pull all three keys in parallel; any missing key just renders the
@@ -98,7 +110,13 @@ export async function GET(request: NextRequest) {
     accentColor,
     tenantSlug: slug,
   };
-  return NextResponse.json(body);
+  /* Track K S28 — tenant config rarely changes mid-session; cache
+   * aggressively to skip the 3-query Prisma fanout on repeat loads. */
+  return NextResponse.json(body, {
+    headers: {
+      "Cache-Control": "public, max-age=120, stale-while-revalidate=300",
+    },
+  });
 }
 
 function parseSurfacesValue(raw: string | null | undefined): string[] {

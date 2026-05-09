@@ -68,5 +68,13 @@ export async function GET() {
     csr,
     refreshedAt: new Date().toISOString(),
   };
-  return NextResponse.json(body);
+  /* Track K S28 — short-TTL cache (client polls every 30s; this lets
+   * a CDN / edge dedup identical concurrent requests during high
+   * fanout). 20s + SWR 60s gives smooth refresh without hammering
+   * the trace bucket / Prisma. */
+  return NextResponse.json(body, {
+    headers: {
+      "Cache-Control": "public, max-age=20, stale-while-revalidate=60",
+    },
+  });
 }

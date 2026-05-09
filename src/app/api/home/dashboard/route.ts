@@ -270,5 +270,12 @@ export async function GET() {
     refreshedAt: new Date().toISOString(),
   };
 
-  return NextResponse.json(body);
+  /* Track K S28 — perf cache. Client polls every 60s; 45s max-age
+   * + SWR 120s lets CDN / edge dedup the 11-query Prisma fanout
+   * during multi-tab users without making the data feel stale. */
+  return NextResponse.json(body, {
+    headers: {
+      "Cache-Control": "public, max-age=45, stale-while-revalidate=120",
+    },
+  });
 }
