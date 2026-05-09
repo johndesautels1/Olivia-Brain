@@ -26,7 +26,7 @@ import { mistral } from "@ai-sdk/mistral";
 import { openai } from "@ai-sdk/openai";
 import { perplexity } from "@ai-sdk/perplexity";
 import { xai } from "@ai-sdk/xai";
-import { generateText, type LanguageModel, type Tool } from "ai";
+import { generateText, streamText, type LanguageModel, type Tool } from "ai";
 
 import { getServerEnv } from "@/lib/config/env";
 import { getFoundationStatus, getProviderStatuses } from "@/lib/foundation/status";
@@ -326,4 +326,89 @@ export async function runModelCascade(input: CascadeInput): Promise<CascadeResul
   }
 
   return buildMockResponse(input, attempts);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Streaming variant — Track O O3 (perceived voice/chat latency).
+// ─────────────────────────────────────────────────────────────────────
+
+export interface CascadeStreamResult {
+  /** AsyncIterable of text chunks as they arrive from the provider. */
+  textStream: AsyncIterable<string>;
+  /** Resolves once the stream finishes, with the final text + provenance. */
+  done: Promise<{
+    text: string;
+    providerId: ProviderId;
+    modelId: string;
+    durationMs: number;
+  }>;
+  providerId: ProviderId;
+  modelId: string;
+}
+
+export interface CascadeStreamMockResult {
+  kind: "mock";
+  text: string;
+}
+
+/**
+ * `runModelCascadeStream` — streaming sibling of `runModelCascade`.
+ *
+ * Picks the first configured provider in the intent's order and pipes
+ * its tokens out as they arrive. Falls back to a synchronous mock
+ * response if no provider is configured (returns the mock text in one
+ * shot — the caller can still treat it as the full reply).
+ *
+ * Unlike `runModelCascade`, this does NOT do per-provider fallback
+ * mid-stream: if the first provider fails partway through, partial
+ * tokens are still delivered. Callers that need the strict fallback
+ * behavior should use `runModelCascade` (non-streaming).
+ */
+export async function runModelCascadeStream(
+  input: CascadeInput,
+): Promise<CascadeStreamResult | CascadeStreamMockResult> {
+  const foundationStatus = getFoundationStatus();
+  const providers = buildProviderBindings();
+  const orderedProviders = providerOrderForIntent(input.intent)
+    .map((id) => providers.find((provider) => provider.id === id))
+    .filter((provider): provider is ProviderBinding => Boolean(provider));
+  const runtimeMode: RuntimeMode =
+    input.forceMock || foundationStatus.runtimeMode === "mock" ? "mock" : "live";
+
+  if (runtimeMode === "mock") {
+    const mock = buildMockResponse(input, []);
+    return { kind: "mock", text: mock.text };
+  }
+
+  const firstConfigured = orderedProviders.find((p) => p.configured);
+  if (!firstConfigured) {
+    const mock = buildMockResponse(input, []);
+    return { kind: "mock", text: mock.text };
+  }
+
+  const startedAt = Date.now();
+  const result = streamText({
+    model: firstConfigured.createModel(),
+    system: buildSystemPrompt(input.intent, input.vertical),
+    prompt: buildPrompt(input),
+    temperature: 0.3,
+    maxOutputTokens: 900,
+  });
+
+  const done = (async () => {
+    const text = await result.text;
+    return {
+      text,
+      providerId: firstConfigured.id,
+      modelId: firstConfigured.modelId,
+      durationMs: Date.now() - startedAt,
+    };
+  })();
+
+  return {
+    textStream: result.textStream,
+    done,
+    providerId: firstConfigured.id,
+    modelId: firstConfigured.modelId,
+  };
 }

@@ -23,6 +23,9 @@ const CHIPS = ["@calendar", "@subject", "@doc", "+ctx"] as const;
 export interface HomeComposerProps {
   onStateChange: (state: AvatarOrbState) => void;
   onReply: (reply: string) => void;
+  /** Streaming token updates — fires per chunk with the running reply.
+   *  Parent uses this to show text appearing live. */
+  onReplyChunk?: (running: string) => void;
   onAudit?: (text: string) => void;
   /** Optional external prompt seed (e.g. from suggestion chip click).
    *  When provided, the composer fills + focuses; the parent should
@@ -36,6 +39,7 @@ export interface HomeComposerProps {
 export function HomeComposer({
   onStateChange,
   onReply,
+  onReplyChunk,
   onAudit,
   seedPrompt,
   onActiveChange,
@@ -91,8 +95,11 @@ export function HomeComposer({
     onStateChange("thinking");
     onAudit?.(`Asked Olivia: "${trimmed.slice(0, 60)}${trimmed.length > 60 ? "…" : ""}"`);
 
+    /* Try streaming first (Track O O3 perceived latency); on stream
+     * failure, fall back to the synchronous /api/olivia/chat which
+     * has the full per-provider cascade fallback. */
     try {
-      const res = await fetch("/api/olivia/chat", {
+      const res = await fetch("/api/olivia/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -101,24 +108,62 @@ export function HomeComposer({
         }),
         signal: controller.signal,
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { reply?: string };
-      const reply = data.reply ?? "(no reply)";
-      onReply(reply);
-      onAudit?.(`Olivia replied (${reply.length} chars)`);
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let running = "";
+      let firstChunk = true;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        if (!chunk) continue;
+        running += chunk;
+        if (firstChunk) {
+          /* First token in — flip to "speaking" so the orb stops
+           * pulsing aggressively. */
+          onStateChange("speaking");
+          firstChunk = false;
+        }
+        onReplyChunk?.(running);
+      }
+      const finalText = running || "(no reply)";
+      onReply(finalText);
+      onAudit?.(`Olivia replied (${finalText.length} chars, streamed)`);
       setInput("");
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      const msg = "Olivia is momentarily offline — try again or open the inspector chat.";
-      setError(msg);
-      onStateChange("error");
-      onAudit?.("Composer error — fell back to placeholder");
-      window.setTimeout(() => onStateChange("idle"), 1800);
+      /* Stream failed — fall back to synchronous endpoint. */
+      try {
+        const res = await fetch("/api/olivia/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: trimmed,
+            pageContext: typeof window !== "undefined" ? window.location.pathname : undefined,
+          }),
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { reply?: string };
+        const reply = data.reply ?? "(no reply)";
+        onReply(reply);
+        onAudit?.(`Olivia replied (${reply.length} chars, fallback)`);
+        setInput("");
+      } catch (fallbackErr) {
+        if (fallbackErr instanceof Error && fallbackErr.name === "AbortError") return;
+        const msg = "Olivia is momentarily offline — try again or open the inspector chat.";
+        setError(msg);
+        onStateChange("error");
+        onAudit?.("Composer error — both stream + fallback failed");
+        window.setTimeout(() => onStateChange("idle"), 1800);
+      }
     } finally {
       setPending(false);
       abortRef.current = null;
     }
-  }, [input, pending, onStateChange, onReply, onAudit]);
+  }, [input, pending, onStateChange, onReply, onReplyChunk, onAudit]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {

@@ -68,6 +68,13 @@ export function HomeCenter({
     window.setTimeout(() => setChatState("idle"), 2400);
   }, []);
 
+  const handleReplyChunk = useCallback((running: string) => {
+    /* Render the running reply live as tokens arrive; orb stays in
+     * its current state until handleReply lands the final text. */
+    setLastReply(running);
+    setHasInteracted(true);
+  }, []);
+
   const handleSuggestion = useCallback((prompt: string) => {
     setSeedPrompt({ value: prompt, nonce: Date.now() });
     setHasInteracted(true);
@@ -95,6 +102,7 @@ export function HomeCenter({
       <HomeComposer
         onStateChange={setChatState}
         onReply={handleReply}
+        onReplyChunk={handleReplyChunk}
         onAudit={audit}
         seedPrompt={seedPrompt}
         onActiveChange={setHasInteracted}
