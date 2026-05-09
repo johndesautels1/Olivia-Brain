@@ -117,9 +117,11 @@ export function detectSpokeFromMessage(
     return "heart_recovery";
   }
 
-  /* Florida real estate — MLS / FL-specific tax + insurance terms. */
+  /* Florida real estate — MLS / FL-specific tax + insurance + Tampa Bay
+   * area markets. Tampa Bay coverage matters because the founder works
+   * the Pinellas market specifically. */
   if (
-    /\b(florida|fl |mls|reso|nar |zillow |redfin |buyer[\s-]?broker|fha\b|va loan|fema|flood zone|doc stamp|hurricane|miami|tampa|orlando|jacksonville|sarasota|naples)/i.test(
+    /\b(florida|fl |mls|reso|nar |zillow |redfin |buyer[\s-]?broker|fha\b|va loan|fema|flood zone|doc stamp|hurricane|miami|tampa|orlando|jacksonville|sarasota|naples|pinellas|st\.?\s*pete(?:rsburg)?|clearwater|brandon\s+fl|bradenton|lakeland|homestead exemption|citizens insurance|save our homes|sinkhole|condo association|hoa\b)/i.test(
       lc,
     )
   ) {

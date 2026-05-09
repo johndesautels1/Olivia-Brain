@@ -223,6 +223,23 @@ export const GOLDEN_CASES: readonly GoldenCase[] = [
       maxDurationMs: 30_000,
     },
   },
+  {
+    id: "fl-realestate-pinellas-homestead",
+    label: "Spoke routing — Pinellas homestead exemption (Tampa Bay coverage)",
+    /* Verifies the fl_realestate regex extension picks up Tampa Bay
+     * area markets (Pinellas / St Pete / Clearwater) plus Florida-
+     * specific tax mechanics (homestead exemption, save our homes).
+     * The founder works this market specifically; pre-extension the
+     * prompt fell through to general because "Pinellas" was not in
+     * the regex. */
+    prompt:
+      "How does the homestead exemption interact with Save Our Homes for a primary-residence purchase in Pinellas County?",
+    expect: {
+      spoke: ["fl_realestate"],
+      mustContain: ["homestead"],
+      maxDurationMs: 30_000,
+    },
+  },
 ];
 
 export const GOLDEN_CASE_BY_ID: Record<string, GoldenCase> = Object.freeze(
