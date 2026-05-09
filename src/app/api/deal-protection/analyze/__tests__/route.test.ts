@@ -5,7 +5,14 @@
  * orchestration + happy-path persistence are covered in
  * `src/lib/deal-protection/__tests__/analyze.test.ts`.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Pre-warm the route module so per-test cold-start (Prisma + Zod +
+// auth + rate-limit) doesn't hit the per-test 15s timeout on first
+// import. Same pattern as `src/app/api/admin/avatar-eval/runs/__tests__/route.test.ts`.
+beforeAll(async () => {
+  await import('@/app/api/deal-protection/analyze/route');
+}, 60_000);
 
 describe('/api/deal-protection/analyze — module surface', () => {
   it('exposes POST', async () => {

@@ -10,7 +10,14 @@
  * once the DB is reachable + 08 + 09 migrations are applied.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Pre-warm the route module so per-test cold-start (Prisma + Zod +
+// auth + rate-limit) doesn't hit the per-test 15s timeout on first
+// import. Same pattern as `src/app/api/admin/avatar-eval/runs/__tests__/route.test.ts`.
+beforeAll(async () => {
+  await import("@/app/api/me/documents/save-from-template/route");
+}, 60_000);
 
 const BASE = "http://localhost/api/me/documents/save-from-template";
 

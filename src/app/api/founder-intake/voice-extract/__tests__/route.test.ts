@@ -6,7 +6,14 @@
  * happy-path cascade integration is covered in
  * `src/lib/quantara/voice/__tests__/extract.test.ts`.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Pre-warm the route module so per-test cold-start (Prisma + Zod +
+// auth + rate-limit) doesn't hit the per-test 15s timeout on first
+// import. Same pattern as `src/app/api/admin/avatar-eval/runs/__tests__/route.test.ts`.
+beforeAll(async () => {
+  await import('@/app/api/founder-intake/voice-extract/route');
+}, 60_000);
 
 describe('/api/founder-intake/voice-extract — module surface', () => {
   it('exposes POST', async () => {
