@@ -47,6 +47,26 @@ describe("detectSpokeFromMessage", () => {
     expect(detectSpokeFromMessage("doc stamps on Sarasota condo")).toBe("fl_realestate");
   });
 
+  it("matches Tampa Bay area markets (Pinellas / St Pete / Clearwater extension)", () => {
+    /* Companion to 98487e6's regex extension. The founder works the
+     * Pinellas market specifically; pre-extension these all fell to
+     * general because the regex only knew about Miami / Tampa /
+     * Orlando / Jacksonville / Sarasota / Naples. */
+    expect(detectSpokeFromMessage("Pinellas County listing inventory")).toBe("fl_realestate");
+    expect(detectSpokeFromMessage("St Petersburg waterfront condo prices")).toBe("fl_realestate");
+    expect(detectSpokeFromMessage("St. Pete Beach short-term rental rules")).toBe("fl_realestate");
+    expect(detectSpokeFromMessage("Clearwater school district premium")).toBe("fl_realestate");
+    expect(detectSpokeFromMessage("Bradenton vs Lakeland for retirees")).toBe("fl_realestate");
+  });
+
+  it("matches Florida-specific tax + insurance concepts (extension)", () => {
+    expect(detectSpokeFromMessage("homestead exemption deadline")).toBe("fl_realestate");
+    expect(detectSpokeFromMessage("Save Our Homes 3% cap math")).toBe("fl_realestate");
+    expect(detectSpokeFromMessage("Citizens Insurance vs admitted carrier")).toBe("fl_realestate");
+    expect(detectSpokeFromMessage("sinkhole disclosure on a 1990s build")).toBe("fl_realestate");
+    expect(detectSpokeFromMessage("condo association fee escalation")).toBe("fl_realestate");
+  });
+
   it("matches London transit variants", () => {
     expect(detectSpokeFromMessage("Tube delays this morning")).toBe("london_transit");
     expect(detectSpokeFromMessage("Elizabeth Line to Heathrow")).toBe("london_transit");
