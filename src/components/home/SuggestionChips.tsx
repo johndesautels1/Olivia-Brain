@@ -11,28 +11,45 @@
  * present, or any past Olivia reply on the surface).
  */
 
+/* One suggestion per spoke (6 spokes + 1 manifestation showcase).
+ * Each prompt is tuned to trigger spoke detection so the user sees
+ * the relevant spoke chip + spoke-specific framing in the reply. */
 const SUGGESTIONS: { prompt: string; label: string; hint: string }[] = [
   {
     prompt:
-      "Show me a chart of typical Series A round sizes by sector in London 2026.",
+      "Show me a bar chart of typical Series A round sizes by sector in London 2026.",
     label: "London Series A by sector",
-    hint: "Returns a bar chart inline",
-  },
-  {
-    prompt: "Compare Florida buyer-broker market versus London PropTech in 2026.",
-    label: "FL buyers vs LDN proptech",
-    hint: "Cross-spoke comparison",
+    hint: "Bar chart · london_tech",
   },
   {
     prompt:
-      "Draft a 3-bullet investor narrative for an AI/SaaS Series A founder.",
-    label: "Series A narrative",
-    hint: "Pitch coach in chat",
+      "Walk me through the funding history of a typical AI/SaaS Series B as a timeline.",
+    label: "AI/SaaS funding timeline",
+    hint: "Timeline · ai_saas",
   },
   {
-    prompt: "What are the 3 biggest dealbreakers in Y Combinator term sheets?",
+    prompt:
+      "Compare cost of living for relocating from London to Lisbon. Cite Numbeo.",
+    label: "London → Lisbon relocation",
+    hint: "Sources · relocation",
+  },
+  {
+    prompt:
+      "What's the post-CABG cardiac rehab schedule for week 1 to week 12?",
+    label: "Cardiac rehab schedule",
+    hint: "Timeline · heart_recovery",
+  },
+  {
+    prompt:
+      "Best way to get from King's Cross to Heathrow on a Sunday evening?",
+    label: "King's Cross → Heathrow",
+    hint: "london_transit",
+  },
+  {
+    prompt:
+      "What are the 3 biggest dealbreakers in Y Combinator term sheets?",
     label: "YC term-sheet risks",
-    hint: "Triggers Deal Protection",
+    hint: "Sources · london_tech",
   },
 ];
 
