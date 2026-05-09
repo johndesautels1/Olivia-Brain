@@ -5,7 +5,22 @@
  * happy-path 401 when the auth stub is unset). Persistence-level
  * coverage lives in the integration tests once Clerk lands.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Pre-warm the slowest route module so the first per-test cold-start
+// (Prisma + Zod + auth + rate-limit + investor-types) doesn't hit
+// the per-test 15s testTimeout under parallel-suite load on Windows.
+// Was observed timing out at ~15029ms in S1's verify; isolated re-run
+// finished in ~8772ms — borderline. Same pattern shipped in O5c S2's
+// avatar-eval/runs/__tests__/route.test.ts cuts cold-start to <1s.
+//
+// Only the first route is pre-warmed; the [id], seed, and moderation
+// routes share the same module cache once Prisma is loaded and weren't
+// the ones flaking. Pre-warming all four in parallel makes the
+// transformer compete with itself and slows the overall file.
+beforeAll(async () => {
+  await import('@/app/api/admin/investors/route');
+}, 60_000);
 
 describe('/api/admin/investors — module surfaces', () => {
   it('exposes GET + POST on /api/admin/investors', async () => {
