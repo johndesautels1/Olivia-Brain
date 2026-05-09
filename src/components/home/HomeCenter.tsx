@@ -22,7 +22,7 @@
 
 import { useCallback, useState } from "react";
 import { HomeHero } from "./HomeHero";
-import { HomeComposer } from "./HomeComposer";
+import { HomeComposer, type ReplyProvenance } from "./HomeComposer";
 import { ActivityTicker } from "./ActivityTicker";
 import { KpiTileGrid } from "./KpiTileGrid";
 import { RecentWorkStrip } from "./RecentWorkStrip";
@@ -52,6 +52,7 @@ export function HomeCenter({
 }: HomeCenterProps) {
   const [chatState, setChatState] = useState<AvatarOrbState>("idle");
   const [lastReply, setLastReply] = useState<string | null>(null);
+  const [lastProvenance, setLastProvenance] = useState<ReplyProvenance | null>(null);
   const [seedPrompt, setSeedPrompt] = useState<{ value: string; nonce: number } | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
 
@@ -60,13 +61,17 @@ export function HomeCenter({
     [onAudit],
   );
 
-  const handleReply = useCallback((reply: string) => {
-    setLastReply(reply);
-    setHasInteracted(true);
-    setChatState("speaking");
-    /* Settle to idle after a moment. */
-    window.setTimeout(() => setChatState("idle"), 2400);
-  }, []);
+  const handleReply = useCallback(
+    (reply: string, provenance?: ReplyProvenance) => {
+      setLastReply(reply);
+      setLastProvenance(provenance ?? null);
+      setHasInteracted(true);
+      setChatState("speaking");
+      /* Settle to idle after a moment. */
+      window.setTimeout(() => setChatState("idle"), 2400);
+    },
+    [],
+  );
 
   const handleReplyChunk = useCallback((running: string) => {
     /* Render the running reply live as tokens arrive; orb stays in
@@ -96,6 +101,7 @@ export function HomeCenter({
         state={heroState}
         onClick={onAvatarClick}
         lastReply={lastReply}
+        lastProvenance={lastProvenance}
       />
       <ActivityTicker />
       <SuggestionChips onPick={handleSuggestion} hidden={hasInteracted} />

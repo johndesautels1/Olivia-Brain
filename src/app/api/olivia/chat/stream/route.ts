@@ -71,26 +71,32 @@ export async function POST(request: NextRequest) {
   /* Mock — return full text in one chunk so the client's incremental
    * UI still works without real provider keys. */
   if (isMock(stream)) {
-    return streamingResponse(async function* () {
-      yield stream.text;
-    });
+    return streamingResponse(
+      async function* () {
+        yield stream.text;
+      },
+      { provider: "mock", model: "phase1-local-fallback" },
+    );
   }
 
   /* Live — pipe through. The `done` promise on the result settles
    * after the iterator finishes; we await it to surface any late
    * provider errors as a final newline-prefixed error chunk
    * (so the client renders what arrived plus an error indicator). */
-  return streamingResponse(async function* () {
-    try {
-      for await (const chunk of stream.textStream) {
-        yield chunk;
+  return streamingResponse(
+    async function* () {
+      try {
+        for await (const chunk of stream.textStream) {
+          yield chunk;
+        }
+        await stream.done;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "stream failed";
+        yield `\n\n[stream error: ${msg}]`;
       }
-      await stream.done;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "stream failed";
-      yield `\n\n[stream error: ${msg}]`;
-    }
-  });
+    },
+    { provider: stream.providerId, model: stream.modelId },
+  );
 }
 
 function isMock(
@@ -101,14 +107,23 @@ function isMock(
 
 function streamingResponse(
   source: () => AsyncGenerator<string, void, unknown>,
+  provenance: { provider: string; model: string },
 ): Response {
   const encoder = new TextEncoder();
+  const startedAt = Date.now();
   const stream = new ReadableStream({
     async start(controller) {
       try {
         for await (const chunk of source()) {
           controller.enqueue(encoder.encode(chunk));
         }
+        /* Trailers aren't well-supported in Vercel's streaming path
+         * yet, so duration ships in the body's final no-op marker
+         * (the client strips it). Provider + model went in headers. */
+        const durationMs = Date.now() - startedAt;
+        controller.enqueue(
+          encoder.encode(`\n<!--olivia:duration=${durationMs}-->`),
+        );
         controller.close();
       } catch (err) {
         controller.error(err);
@@ -120,6 +135,8 @@ function streamingResponse(
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache, no-store, must-revalidate",
       "X-Accel-Buffering": "no",
+      "X-Olivia-Provider": provenance.provider,
+      "X-Olivia-Model": provenance.model,
     },
   });
 }

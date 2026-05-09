@@ -17,12 +17,16 @@
 
 import { AvatarOrb, type AvatarOrbState } from "@/components/primitives";
 import { MarkdownReply } from "./reply-renderer";
+import type { ReplyProvenance } from "./HomeComposer";
 
 export interface HomeHeroProps {
   state: AvatarOrbState;
   onClick: () => void;
   /** Most recent Olivia reply — quoted beneath the headline. */
   lastReply?: string | null;
+  /** Provenance metadata for the latest reply — provider/model/duration.
+   *  Renders as a Bloomberg-style mono caption beneath the blockquote. */
+  lastProvenance?: ReplyProvenance | null;
 }
 
 const STATE_CAPTION: Record<AvatarOrbState, string> = {
@@ -34,7 +38,7 @@ const STATE_CAPTION: Record<AvatarOrbState, string> = {
   connecting: "Olivia · connecting",
 };
 
-export function HomeHero({ state, onClick, lastReply }: HomeHeroProps) {
+export function HomeHero({ state, onClick, lastReply, lastProvenance }: HomeHeroProps) {
   const showReply = Boolean(lastReply && state !== "thinking");
 
   return (
@@ -112,9 +116,43 @@ export function HomeHero({ state, onClick, lastReply }: HomeHeroProps) {
             lineHeight: 1.55,
             textAlign: "left",
             boxShadow: "0 30px 80px rgba(0,0,0,0.32)",
+            display: "grid",
+            gap: 8,
           }}
         >
           <MarkdownReply text={lastReply ?? ""} />
+          {lastProvenance && (
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-2xs)",
+                color: "var(--fg-tertiary)",
+                letterSpacing: "0.10em",
+                textTransform: "uppercase",
+                paddingTop: 4,
+                borderTop: "1px solid var(--border-subtle)",
+                display: "flex",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <span style={{ color: "var(--aurum-primary)" }}>
+                {lastProvenance.provider}
+                {lastProvenance.provider !== lastProvenance.model && (
+                  <>
+                    <span style={{ opacity: 0.5, padding: "0 4px" }}>·</span>
+                    {lastProvenance.model}
+                  </>
+                )}
+              </span>
+              {lastProvenance.durationMs !== undefined && (
+                <span className="tabular-nums">
+                  {lastProvenance.durationMs}ms
+                </span>
+              )}
+              <span style={{ opacity: 0.6 }}>{lastProvenance.source}</span>
+            </span>
+          )}
         </div>
       )}
     </section>

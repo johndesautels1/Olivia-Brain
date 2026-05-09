@@ -20,9 +20,16 @@ import type { AvatarOrbState } from "@/components/primitives";
 
 const CHIPS = ["@calendar", "@subject", "@doc", "+ctx"] as const;
 
+export interface ReplyProvenance {
+  provider: string;
+  model: string;
+  durationMs?: number;
+  source: "stream" | "fallback";
+}
+
 export interface HomeComposerProps {
   onStateChange: (state: AvatarOrbState) => void;
-  onReply: (reply: string) => void;
+  onReply: (reply: string, provenance?: ReplyProvenance) => void;
   /** Streaming token updates — fires per chunk with the running reply.
    *  Parent uses this to show text appearing live. */
   onReplyChunk?: (running: string) => void;
@@ -110,6 +117,9 @@ export function HomeComposer({
       });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
+      const provider = res.headers.get("X-Olivia-Provider") ?? "unknown";
+      const model = res.headers.get("X-Olivia-Model") ?? "unknown";
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let running = "";
@@ -128,9 +138,22 @@ export function HomeComposer({
         }
         onReplyChunk?.(running);
       }
+
+      /* Strip the trailing duration marker injected by the streaming
+       * route + extract its value for provenance. */
+      let durationMs: number | undefined;
+      const marker = /\n<!--olivia:duration=(\d+)-->\s*$/;
+      const match = running.match(marker);
+      if (match) {
+        durationMs = Number(match[1]);
+        running = running.replace(marker, "");
+      }
+
       const finalText = running || "(no reply)";
-      onReply(finalText);
-      onAudit?.(`Olivia replied (${finalText.length} chars, streamed)`);
+      onReply(finalText, { provider, model, durationMs, source: "stream" });
+      onAudit?.(
+        `Olivia replied (${finalText.length} chars, ${provider}${durationMs ? ` ${durationMs}ms` : ""})`,
+      );
       setInput("");
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
@@ -146,9 +169,17 @@ export function HomeComposer({
           signal: controller.signal,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as { reply?: string };
+        const data = (await res.json()) as {
+          reply?: string;
+          providerId?: string;
+          modelId?: string;
+        };
         const reply = data.reply ?? "(no reply)";
-        onReply(reply);
+        onReply(reply, {
+          provider: data.providerId ?? "unknown",
+          model: data.modelId ?? "unknown",
+          source: "fallback",
+        });
         onAudit?.(`Olivia replied (${reply.length} chars, fallback)`);
         setInput("");
       } catch (fallbackErr) {
