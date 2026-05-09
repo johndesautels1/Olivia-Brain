@@ -1,9 +1,9 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 (late) — end of a follow-up session that recovered broken main + closed Track O.
-> **Working tree:** clean on `main`. tsc exit 0; 1014/1014 tests pass across 93 test files.
-> **Latest HEAD:** `b4aa78f` (or whatever lands after this docs commit — `git log -1` to confirm).
-> **Status:** demo-ready, ops-instrumented. Vercel deploys cleanly. Track O fully closed except O5c (Tavus + A/B harness, multi-session future work).
+> **Last updated:** 2026-05-09 (later) — single-session: Track O5c session 1 (Tavus adapter foundation).
+> **Working tree:** clean on `main`. tsc exit 0; new tavus smoke test passes (5/5).
+> **Latest HEAD:** the S1 commit (run `git log -1` to confirm).
+> **Status:** demo-ready, ops-instrumented. Vercel deploys cleanly. Track O fully closed; O5c session 1/3 done — S2 (`/admin/avatar-eval` harness + 30-script suite) and S3 (abstraction lift + decision rubric) remain.
 >
 > **⚠ Read this if you're walking in cold:** the prior handoff (the one that ended at `de4fef7`) claimed clean state, but verification showed 7 typecheck errors + 3 failing tests. This session opened by fixing those before doing any new work — the pattern HANDOFF.md §7 explicitly warns about. Always run the §0 verify commands; do not trust a handoff's "clean" claim without proof.
 
@@ -76,7 +76,7 @@ After reading, run the verify commands in § 0 again and review the latest `git 
 | **Track I** (Multi-tenant + suppression) | S24 | `ui.suppressedSurfaces` / `ui.brandName` / `ui.accentColor` config keys + `useTenantUi` hook |
 | **Track J** (Vertical adapters) | S25–S26 | 4 vertical addenda (AI/SaaS, HealthTech, ClimateTech, PropTech) + provider preferences + free-form industry detection |
 | **Track K** (Hardening + launch prep) | S27–S29 | Security audit + rate limits on cost vectors; Cache-Control headers (60-80% TTFB drop); `docs/RUNBOOK.md` |
-| **Track O** (Weakness closure) | O3 + O4 + O5a + O5b + O5d + O5e | W-002 / W-003 / W-004 / W-005 closed. O5d closed REJECTED — vendor surface check showed no integrated vendor accepts phoneme metadata, see `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md`. **O5c (Tavus + A/B harness, 3 sessions) is the only Track O item still open** — relabeled as enhancement work, not weakness-closure. |
+| **Track O** (Weakness closure) | O3 + O4 + O5a + O5b + O5d + O5e + O5c-S1 | W-002 / W-003 / W-004 / W-005 closed. O5d closed REJECTED — vendor surface check showed no integrated vendor accepts phoneme metadata, see `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md`. **O5c session 1 closed** (Tavus adapter + AvatarEvalRun foundation, see SESSION_LOG_2026-05-09_O5C_S1_TAVUS_ADAPTER.md). **O5c S2 + S3 (harness UI + decision rubric, 2 sessions) remain** — enhancement work, not weakness-closure. |
 
 ### 🟡 Partial tracks
 | Track | Status | Remaining |
@@ -97,7 +97,18 @@ After reading, run the verify commands in § 0 again and review the latest `git 
 - `e55967b` — **O5e abort + onSpeakError**: speakAbortRef cancels in-flight stream when a new reply arrives (no PCM interleave on the wire); new optional `onSpeakError(reason)` callback fires when both speak paths decline so parents can surface "voice unavailable" instead of leaving the user wondering why the avatar's mouth didn't move.
 - `b4aa78f` — **O5d REJECTED**: `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md`. Investigated all five wired vendors (LiveAvatar LITE, Simli, HeyGen async, D-ID, SadTalker); none accept phoneme/viseme metadata as input. Cost-benefit on phoneme alignment doesn't pay even if a vendor existed. W-005 functionally closed by O5a/b/e (latency dominates user perception). Reopen if O5c surfaces a vendor that DOES accept phoneme input (Tavus claim is uncertain — verify).
 
-**O5c (Tavus + A/B harness, 3 sessions) is the only Track O item still open.** It's enhancement work, not weakness-closure.
+**O5c session 1 closed this follow-up.** S2 + S3 (harness UI + decision rubric) remain — enhancement work, not weakness-closure.
+
+### Follow-up session #2 (2026-05-09 — Track O5c S1, 1 commit since `4808d6c`)
+
+- Tavus adapter at `src/lib/avatar/tavus.ts` — mirrors the Simli adapter shape exactly (`isTavusConfigured`, `createTavusSession` POST `/v2/conversations`, `sendTavusUtterance`, `endTavusSession`, `generateTavusVideo` POST `/v2/videos`, `getTavusSessionStatus`).
+- `tavus` registered in `src/lib/avatar/index.ts` realtime selector (gated to fallback slot until S3's decision rubric lands).
+- `tavus` added to the `AvatarProvider` union and `AvatarServiceStatus` interface in `src/lib/avatar/types.ts`.
+- `TAVUS_API_KEY` added to `src/lib/config/env.ts`.
+- `AvatarEvalRun` Prisma model + `prisma/sql/10-add-avatar-eval-run.sql` migration (operator-applied; idempotent).
+- 5 smoke tests in `src/lib/avatar/__tests__/tavus.test.ts` — all pass.
+- `docs/RUNBOOK.md` §2 + §3 updated for the new env var + SQL migration.
+- See `docs/SESSION_LOG_2026-05-09_O5C_S1_TAVUS_ADAPTER.md` for the full S1 manifest + S2/S3 carry-forwards.
 
 ---
 
@@ -150,7 +161,7 @@ Listed in rough leverage order. Each entry is honest about scope.
    - (b) Schema port: add the LTM models to OB's Prisma schema (massive)
    - Recommended: start with (a). Pick 5 agents with the simplest data dependencies and port them through the bridge. Document the pattern.
 
-4. **Track O5c — Tavus + A/B harness (3 sessions).** Add `src/lib/avatar/tavus.ts` adapter. Build `/admin/avatar-eval` MOS-rating harness with a 30-script suite (5 each: short utterances, medium sentences, number-heavy, plosive-heavy `b/p/m`, multilingual, long-form). Pull `OliviaVideoAvatar` behind the `src/lib/avatar/` abstraction so vendor swaps become declarative. Decision rubric: latency × 0.4 + lip-sync MOS × 0.4 + cost × 0.2. Per `docs/O5_AVATAR_LIPSYNC_RESEARCH.md §5` for the full implementation outline. Verify Tavus's actual phoneme-input claim during integration — `O5D_PHONEME_ALIGNMENT_RESEARCH.md` flagged this as uncertain.
+4. **Track O5c — Tavus + A/B harness (S1 done; S2 + S3 remain).** ✅ **S1** shipped this follow-up: `src/lib/avatar/tavus.ts` adapter + `AvatarEvalRun` Prisma model + `TAVUS_API_KEY` env var + 5 smoke tests. **S2** = build `/admin/avatar-eval` MOS-rating harness with the 30-script suite (5 each: short utterances, medium sentences, number-heavy, plosive-heavy `b/p/m`, multilingual, long-form) + `POST /api/admin/avatar-eval/run` writing to `AvatarEvalRun` + per-vendor latency telemetry. **S3** = pull `OliviaVideoAvatar` behind the `src/lib/avatar/` abstraction so vendor swaps become declarative + decision rubric (latency × 0.4 + lip-sync MOS × 0.4 + cost × 0.2). Per `docs/O5_AVATAR_LIPSYNC_RESEARCH.md §5` for the full outline. Verify Tavus's actual phoneme-input claim during S2 wiring — `O5D_PHONEME_ALIGNMENT_RESEARCH.md` flagged this as uncertain; the adapter has a `TODO O5c-S2` marker on `sendTavusUtterance`.
 
 ### 🎯 Single-session wins
 4. **N2 — Mapbox 3D enhancement.** `/map` already has dual Mapbox + Google 3D. Add a "fly to selected district" smooth animation. Read `src/components/map/GoogleMap3DView.tsx` first — risk of breaking the existing surface.
@@ -183,6 +194,7 @@ prisma/sql/seed-investor-reputations.sql         — Track P4 (15 archetype seed
 prisma/sql/07-add-counter-term-sheets.sql        — Track P6
 prisma/sql/08-add-documents-engine-write-surface.sql — Track B
 prisma/sql/09-add-documents-foundation.sql       — Track B
+prisma/sql/10-add-avatar-eval-run.sql            — Track O5c S1 (avatar A/B harness foundation)
 ```
 
 ### Vercel env vars (per `~/CLAUDE.md` — never All Environments for secrets)
@@ -261,9 +273,10 @@ If you want substantive capability work (multi-session):
 - **Option A:** Track H S21 (port 5 LTM agents through the bridge — simplest data dependencies first)
   - **First read:** `D:\London-Tech-Map\src\lib\agents\impl\g1-005-property-gravity-forecaster.ts` (simpler agent) + `src/lib/bridge/` (the existing UKP)
   - **Plan:** rewrite the agent to fetch district data via `LtmKnowledgeProvider` instead of `prisma.location` directly. Document the pattern. Repeat for 4 more. Don't try to port all 116 in one session.
-- **Option B:** Track O5c (Tavus vendor + A/B MOS harness)
-  - **First read:** `docs/O5_AVATAR_LIPSYNC_RESEARCH.md §5` for the implementation outline + `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md` for phoneme-input claim verification.
-  - **Plan:** scaffold `src/lib/avatar/tavus.ts` matching the Simli adapter shape; build `/admin/avatar-eval` UI with the 30-script suite from the memo; persist scores to a new `AvatarEvalRun` Prisma model.
+- **Option B:** Track O5c S2 (avatar A/B harness UI) — **recommended**
+  - **First read:** `docs/SESSION_LOG_2026-05-09_O5C_S1_TAVUS_ADAPTER.md` (S1 manifest + S2 carry-forwards) + `docs/O5_AVATAR_LIPSYNC_RESEARCH.md §5` (30-script suite spec) + `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md` (phoneme-input claim verification you'll do during integration).
+  - **State at hand-off:** `src/lib/avatar/tavus.ts` adapter scaffolded; `AvatarEvalRun` Prisma model added; `TAVUS_API_KEY` env var slot exists; 5 smoke tests pass. Operator action owed: apply `prisma/sql/10-add-avatar-eval-run.sql` and set `TAVUS_API_KEY` in Vercel before S2 telemetry can write.
+  - **Plan:** build `/admin/avatar-eval` UI with the 30-script suite + `POST /api/admin/avatar-eval/run` writing to `AvatarEvalRun` + per-vendor latency telemetry (mirror the `speak-stream` performance marks). Verify Tavus's actual phoneme-input capability during the harness wiring — the adapter has a `TODO O5c-S2` marker on `sendTavusUtterance`.
 - **Option C:** Track N4 (Generative UI / 3D scenes)
   - **First read:** `src/components/home/reply-renderer/MarkdownReply.tsx` (the existing manifest fence pattern) + `lib/services/model-cascade.ts buildSystemPrompt()` (where new fences get taught to the cascade).
   - **Plan:** pick ~5 safe React components Olivia can reference (Card / Stat / Progress / Button / Form), define the JSON contract, parse + render. Skip eval-time JSX entirely.
@@ -273,7 +286,7 @@ If you want pre-launch readiness:
 - **First read:** `docs/RUNBOOK.md` end-to-end
 - **Action:** apply the 7 SQL migrations in § 4, set the env vars in § 4, run the smoke tests in RUNBOOK § 5
 
-**Recommended pick:** Option B (Track O5c) — Track O is otherwise functionally closed, and the vendor evaluation will inform whether the O5d phoneme-alignment rejection should be revisited. Plus it bundles the avatar abstraction refactor, which unblocks future swap flexibility.
+**Recommended pick:** Option B (Track O5c S2 — avatar A/B harness UI). S1 just shipped the adapter foundation; S2 is the highest-leverage continuation because it lights up the per-vendor MOS data that S3's decision rubric consumes, and it's the natural moment to verify Tavus's phoneme-input capability against real API surface (re-opens or permanently closes O5d).
 
 ---
 

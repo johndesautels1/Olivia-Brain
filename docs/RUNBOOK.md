@@ -71,6 +71,12 @@ Without any LLM key, the cascade falls back to mock mode and Olivia returns dete
 | `OPENAI_API_KEY` | Production + Preview, Sensitive | STT (Whisper) + TTS (OpenAI) fallback. |
 | `ELEVENLABS_API_KEY` | Production + Preview, Sensitive | TTS primary (Olivia / Cristiano / Emelia voices). |
 
+### Avatar lip-sync vendors (Track O5c)
+
+| Variable | Scope | Notes |
+|---|---|---|
+| `TAVUS_API_KEY` | Production + Preview, Sensitive | A/B candidate alongside Simli + LiveAvatar LITE. Adapter at `src/lib/avatar/tavus.ts`. Without it, `getAvatarServiceStatus().tavus.configured = false` and the realtime selector falls back to Simli → D-ID → Tavus chain. |
+
 ### Telephony (Twilio inbound/outbound)
 
 | Variable | Scope | Notes |
@@ -107,7 +113,7 @@ Without any LLM key, the cascade falls back to mock mode and Olivia returns dete
 
 Open at the time of writing. Apply before production:
 
-1. SQL migrations under `prisma/sql/` — apply in order **04 → 05 → 06 → seed → 07 → 08 → 09**. Each is idempotent. Use Supabase SQL editor or `npx prisma db execute --schema prisma/schema.prisma --file prisma/sql/NN-…sql` from a connected terminal.
+1. SQL migrations under `prisma/sql/` — apply in order **04 → 05 → 06 → seed → 07 → 08 → 09 → 10**. Each is idempotent. Use Supabase SQL editor or `npx prisma db execute --schema prisma/schema.prisma --file prisma/sql/NN-…sql` from a connected terminal.
 
    - `04-add-quantara-foundation.sql` — Track Q
    - `05-add-calendar-memory-rpc.sql` — W-014 (calendar memory pgvector function)
@@ -116,6 +122,7 @@ Open at the time of writing. Apply before production:
    - `07-add-counter-term-sheets.sql`
    - `08-add-documents-engine-write-surface.sql`
    - `09-add-documents-foundation.sql`
+   - `10-add-avatar-eval-run.sql` — Track O5c session 1 (avatar A/B harness foundation)
 
 2. Set Clerk env vars (see §2 Auth) **then** restore `middleware.ts` per its inline comment.
 

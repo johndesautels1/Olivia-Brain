@@ -20,6 +20,7 @@ export * from "./simli";
 export * from "./sadtalker";
 export * from "./heygen";
 export * from "./did";
+export * from "./tavus";
 
 import { withTraceSpan } from "@/lib/observability/tracer";
 import type {
@@ -41,6 +42,7 @@ import { isSimliConfigured, createSimliSession, generateSimliVideo } from "./sim
 import { isSadTalkerConfigured, generateSadTalkerVideo } from "./sadtalker";
 import { isHeyGenConfigured, generateHeyGenVideo } from "./heygen";
 import { isDIDConfigured, generateDIDVideo, createDIDStreamSession } from "./did";
+import { isTavusConfigured, createTavusSession, generateTavusVideo } from "./tavus";
 
 export function getAvatarServiceStatus(): AvatarServiceStatus {
   return {
@@ -60,6 +62,10 @@ export function getAvatarServiceStatus(): AvatarServiceStatus {
       configured: isDIDConfigured(),
       available: isDIDConfigured(),
     },
+    tavus: {
+      configured: isTavusConfigured(),
+      available: isTavusConfigured(),
+    },
   };
 }
 
@@ -70,6 +76,7 @@ function getAvailableProviders(): AvatarProvider[] {
   if (isSadTalkerConfigured()) available.push("sadtalker");
   if (isHeyGenConfigured()) available.push("heygen");
   if (isDIDConfigured()) available.push("did");
+  if (isTavusConfigured()) available.push("tavus");
 
   return available;
 }
@@ -157,6 +164,12 @@ export async function generateAvatarVideo(
                 return await generateDIDVideo(request);
               }
               break;
+
+            case "tavus":
+              if (isTavusConfigured()) {
+                return await generateTavusVideo(request);
+              }
+              break;
           }
         } catch (error) {
           console.warn(
@@ -194,7 +207,10 @@ export async function createAvatarSession(
         throw new Error("Emelia™ is voice-only and does not support video sessions");
       }
 
-      // For realtime sessions, prefer Simli, then D-ID
+      // For realtime sessions, prefer Simli, then D-ID, then Tavus.
+      // Tavus is gated to a fallback slot until O5c session 3's decision
+      // rubric (`docs/O5_AVATAR_LIPSYNC_RESEARCH.md §5`) ranks vendors
+      // by latency × 0.4 + lip-sync MOS × 0.4 + cost × 0.2.
       if (isSimliConfigured()) {
         return await createSimliSession(config);
       }
@@ -203,7 +219,11 @@ export async function createAvatarSession(
         return await createDIDStreamSession(config);
       }
 
-      throw new Error("No realtime avatar provider configured (need SIMLI_API_KEY or DID_API_KEY)");
+      if (isTavusConfigured()) {
+        return await createTavusSession(config);
+      }
+
+      throw new Error("No realtime avatar provider configured (need SIMLI_API_KEY, DID_API_KEY, or TAVUS_API_KEY)");
     }
   );
 }

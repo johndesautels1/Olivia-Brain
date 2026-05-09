@@ -2462,3 +2462,38 @@ model UserProfile {
 
   @@map("user_profiles")
 }
+
+// ─── AvatarEvalRun — Track O5c (Tavus + A/B harness) ──────────────────────
+//
+// One row per (vendor, script) MOS rating run. Drives the avatar A/B
+// dashboard at /admin/avatar-eval (lands in O5c session 2) and the
+// vendor decision rubric: latency × 0.4 + lip-sync MOS × 0.4 +
+// cost × 0.2 (lands in O5c session 3 — see
+// `docs/O5_AVATAR_LIPSYNC_RESEARCH.md §5`).
+//
+// `scriptText` is snapshotted at run time so editing the suite later
+// doesn't break old comparisons.
+model AvatarEvalRun {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vendor         String
+  scriptId       String
+  scriptCategory String
+  scriptText     String   @db.Text
+  latencyMs      Int
+  /// Mean Opinion Score, 1.0–5.0. Nullable until a rater scores the run.
+  mosScore       Float?
+  /// Per-run cost in USD cents. Nullable when the vendor doesn't expose
+  /// per-call billing telemetry to the harness.
+  costCents      Int?
+  /// Clerk userId of the rater who logged the MOS, when present.
+  raterId        String?
+  notes          String?  @db.Text
+  /// Vendor-specific telemetry (frame counts, codec, region, etc.)
+  /// without forcing a schema bump per vendor.
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  @@index([vendor, createdAt(sort: Desc)])
+  @@index([scriptId, vendor])
+  @@map("avatar_eval_runs")
+}

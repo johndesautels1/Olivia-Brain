@@ -128,6 +128,10 @@ const serverEnvSchema = z.object({
   RETELL_API_KEY: optionalSecret,
 
   SIMLI_API_KEY: optionalSecret,
+  // Tavus — Track O5c A/B candidate. Adapter at src/lib/avatar/tavus.ts.
+  // Phoneme-input claim from O5 research memo flagged uncertain by O5d;
+  // verify against Tavus's actual API surface during the harness wiring.
+  TAVUS_API_KEY: optionalSecret,
   HEYGEN_API_KEY: optionalSecret,
   DID_API_KEY: optionalSecret,
   REPLICATE_API_TOKEN: optionalSecret,

@@ -9,11 +9,12 @@
  * - SadTalker (Replicate): Judge presentations for Cristiano™
  * - HeyGen: Fallback + async branded video
  * - D-ID: Fallback interactive avatar
+ * - Tavus: Track O5c — A/B candidate (phoneme-input claim flagged for verification)
  */
 
 import type { PersonaId } from "@/lib/voice/types";
 
-export type AvatarProvider = "simli" | "sadtalker" | "heygen" | "did";
+export type AvatarProvider = "simli" | "sadtalker" | "heygen" | "did" | "tavus";
 
 export type EmotionState =
   | "neutral"
@@ -93,4 +94,5 @@ export interface AvatarServiceStatus {
   sadtalker: { configured: boolean; available: boolean };
   heygen: { configured: boolean; available: boolean };
   did: { configured: boolean; available: boolean };
+  tavus: { configured: boolean; available: boolean };
 }
