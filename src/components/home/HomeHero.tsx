@@ -15,6 +15,7 @@
  *   - speaking   — aurum solid, reply rendering
  */
 
+import { useState } from "react";
 import { AvatarOrb, type AvatarOrbState } from "@/components/primitives";
 import { MarkdownReply } from "./reply-renderer";
 import type { ReplyProvenance } from "./HomeComposer";
@@ -40,6 +41,19 @@ const STATE_CAPTION: Record<AvatarOrbState, string> = {
 
 export function HomeHero({ state, onClick, lastReply, lastProvenance }: HomeHeroProps) {
   const showReply = Boolean(lastReply && state !== "thinking");
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!lastReply) return;
+    try {
+      await navigator.clipboard.writeText(lastReply);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* Clipboard API blocked (insecure context, permissions etc.) —
+       * silent no-op; the user can still select + copy manually. */
+    }
+  };
 
   return (
     <section
@@ -137,6 +151,29 @@ export function HomeHero({ state, onClick, lastReply, lastProvenance }: HomeHero
                 alignItems: "center",
               }}
             >
+              <button
+                type="button"
+                onClick={handleCopy}
+                aria-label="Copy reply"
+                style={{
+                  marginLeft: "auto",
+                  padding: "2px 10px",
+                  borderRadius: "var(--radius-sm)",
+                  background: copied ? "var(--mint-up-mute)" : "transparent",
+                  border: `1px solid ${copied ? "var(--mint-up)" : "var(--border-subtle)"}`,
+                  color: copied ? "var(--mint-up)" : "var(--fg-tertiary)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "var(--text-2xs)",
+                  letterSpacing: "0.10em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  order: 99,
+                  transition:
+                    "background var(--duration-micro) var(--ease-out-quart), color var(--duration-micro) var(--ease-out-quart), border-color var(--duration-micro) var(--ease-out-quart)",
+                }}
+              >
+                {copied ? "Copied" : "Copy"}
+              </button>
               {lastProvenance.spokeLabel &&
                 lastProvenance.spoke &&
                 lastProvenance.spoke !== "general" && (
