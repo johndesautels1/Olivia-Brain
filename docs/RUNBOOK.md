@@ -124,6 +124,15 @@ Open at the time of writing. Apply before production:
    - `09-add-documents-foundation.sql`
    - `10-add-avatar-eval-run.sql` — Track O5c session 1 (avatar A/B harness foundation)
 
+   After applying `10-add-avatar-eval-run.sql`, optionally seed sample data so the harness + decision pages render meaningful content out of the box:
+
+   ```powershell
+   npx tsx scripts/seed-avatar-eval-demo.ts          # seed ~30 rows
+   npx tsx scripts/seed-avatar-eval-demo.ts --clean  # remove demo rows
+   ```
+
+   See `scripts/README.md` for the per-script convention.
+
 2. Set Clerk env vars (see §2 Auth) **then** restore `middleware.ts` per its inline comment.
 
 3. Pause Supabase free-tier auto-pause if visible — production should be on a paid tier.
