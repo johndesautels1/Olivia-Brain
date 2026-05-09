@@ -126,18 +126,22 @@ export function detectSpokeFromMessage(
     return "fl_realestate";
   }
 
-  /* London transit — Tube / line names. */
+  /* London transit — Tube / line names + "to Heathrow/Gatwick/Stansted"
+   * + travel-direction patterns + accessibility / generic-station
+   * terminology. */
   if (
-    /\b(tube\b|overground|elizabeth line|dlr\b|night tube|tfl\b|oyster\b|contactless\b.*\b(?:cap|fare)|(?:victoria|northern|piccadilly|circle|district|metropolitan|jubilee|bakerloo|central|hammersmith|waterloo)[\s-]?line|paddington|king[' ]?s cross st pancras|liverpool street|stratford|station)/i.test(
+    /\b(tube\b|overground|elizabeth line|dlr\b|night tube|tfl\b|oyster\b|contactless\b.*\b(?:cap|fare)|(?:victoria|northern|piccadilly|circle|district|metropolitan|jubilee|bakerloo|central|hammersmith|waterloo)[\s-]?line|paddington|king[' ]?s cross|liverpool street|stratford\s+station|st pancras|euston\b|to\s+heathrow|to\s+gatwick|to\s+stansted|to\s+luton|step[\s-]?free|tube\s+station|underground\s+station|\bbond\s+street\b|oxford\s+circus|leicester\s+square|piccadilly\s+circus|tottenham\s+court\s+road|holborn|covent\s+garden|bank\s+station)/i.test(
       lc,
     )
   ) {
     return "london_transit";
   }
 
-  /* London tech — VC names + clusters + tech-week. */
+  /* London tech — VC names + clusters + tech-week. King's Cross
+   * alone is now in transit (above); the tech sense requires
+   * "King's Cross AI" specifically. */
   if (
-    /\b(atomico|balderton|index ventures|seedcamp|octopus ventures|techhub|level39|king'?s cross|shoreditch|silicon roundabout|canary wharf|london tech week|founders forum|techcrunch london|cambridge\b.*\btech)/i.test(
+    /\b(atomico|balderton|index ventures|seedcamp|octopus ventures|techhub|level39|king'?s cross\s+ai|shoreditch|silicon roundabout|canary wharf|london tech week|founders forum|techcrunch london|cambridge\b.*\btech)/i.test(
       lc,
     )
   ) {
