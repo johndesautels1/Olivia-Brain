@@ -122,6 +122,37 @@ export const GOLDEN_CASES: readonly GoldenCase[] = [
       maxDurationMs: 15_000,
     },
   },
+  {
+    id: "gamma-deck-preview",
+    label: "Gamma manifestation — Series A deck request",
+    prompt:
+      "Generate a Gamma deck for a Series A pitch by a London fintech founder targeting Atomico.",
+    expect: {
+      spoke: ["london_tech"],
+      manifests: ["gamma"],
+      maxDurationMs: 30_000,
+    },
+  },
+  {
+    id: "xscore-comparison",
+    label: "Spoke routing — xscore two-city comparison",
+    prompt: "Compare Madrid versus Barcelona for tech founders using lifescore.",
+    expect: {
+      spoke: ["xscore"],
+      maxDurationMs: 25_000,
+    },
+  },
+  {
+    id: "vertical-ai-saas-diligence",
+    label: "Vertical addendum — AI/SaaS diligence patterns",
+    prompt:
+      "Walk me through the 5 buyer-side risks Atomico evaluates first when a Series A AI/SaaS founder pitches.",
+    expect: {
+      spoke: ["london_tech"],
+      mustContain: ["model"],
+      maxDurationMs: 30_000,
+    },
+  },
 ];
 
 export const GOLDEN_CASE_BY_ID: Record<string, GoldenCase> = Object.freeze(
