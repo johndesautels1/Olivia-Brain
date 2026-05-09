@@ -1,24 +1,38 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 (final) — full Track O5c batch (S1 + S2 + S3) plus a 6-commit polish wave that closed every operator-side gap S1–S3 left open.
-> **Working tree:** clean on `main`. tsc exit 0; 50+/50+ avatar tests pass across 8 files (5 tavus + 8 eval-scripts + 4 liveavatar + 13 decision-rubric + 11 runs collection route + 4 runs [id] route + 5 status helper + 4 status route).
-> **Latest HEAD:** the polish-wave tip (run `git log -1` to confirm).
-> **Status:** demo-ready, ops-instrumented. Vercel deploys cleanly. Track O fully closed; O5c sessions 1+2+3 + polish wave shipped. Only the `OliviaVideoAvatar` 867-line abstraction lift was scope-cut to a follow-up "Track O5c-Lift" — it's a refactor of working production code, not a weakness-closure.
+> **Last updated:** 2026-05-09 (final-final) — full Track O5c batch (S1 + S2 + S3) + 6-commit polish wave + 9-commit closing wave (README rule, ASCII-SQL fix, owed-migration auto-detect, golden cases, fl_realestate Tampa Bay coverage).
+> **Working tree:** clean on `main`. tsc exit 0. Avatar tests pass across 8 files; spoke-router tests 18/18; golden-cases 6/6 (15 cases now).
+> **Latest HEAD:** the docs-update commit that ships this handoff (`git log -1` to confirm — should be the most recent push).
+> **Status:** demo-ready, ops-instrumented. Vercel deploys cleanly. Track O fully closed; O5c S1+S2+S3 + 9-commit closing wave shipped. Only the `OliviaVideoAvatar` 867-line abstraction lift was scope-cut to a follow-up "Track O5c-Lift" — refactor of working production code, not weakness-closure.
 
-### Today's full batch (10 commits since `4808d6c`)
+### Today's full batch (19 commits since `4808d6c`)
 
+**O5c arc + immediate polish (commits 1–10):**
 1. `fb85c3f` — **O5c S1**: Tavus adapter + `AvatarEvalRun` Prisma model + `TAVUS_API_KEY` env var + 5 smoke tests
 2. `059c248` — **O5c S2**: 30-script catalog + `/api/admin/avatar-eval/runs` (GET+POST) + `/admin/avatar-eval` harness UI + 15 tests
 3. `c5ee644` — `admin/investors` test pre-warm backport (eliminates the cold-start flake observed in S1's verify)
 4. `c35b72d` — **O5c S3**: decision rubric + `/admin/avatar-eval/decision` + LiveAvatar live trigger + Tavus phoneme claim verified false + 17 tests
-5. `a14555c` — vendor health endpoint (`/api/admin/avatar-vendors/status`) + per-vendor wiring panel on the harness; LiveAvatar key-missing state on the live-trigger button; pre-warm backports to two more avatar test files
-6. `0cebf77` — graceful "migration not applied" handling on both `/admin/avatar-eval` and `/admin/avatar-eval/decision` (banner + machine-readable 503 instead of generic 500)
+5. `a14555c` — vendor health endpoint (`/api/admin/avatar-vendors/status`) + per-vendor wiring panel; LiveAvatar key-missing state on the live-trigger button; pre-warm backports
+6. `0cebf77` — graceful "migration not applied" handling on both /admin/avatar-eval and /admin/avatar-eval/decision (banner + machine-readable 503)
 7. `10029b3` — `/admin/tools` operator landing page (indexes every admin surface, reads vendor health inline)
-8. `b3e7a0e` — `scripts/seed-avatar-eval-demo.ts` + `scripts/README.md` (idempotent demo seeder, `--clean` flag wipes only `metadata.demo === true` rows)
-9. `87f7c8e` — per-run DELETE (`/api/admin/avatar-eval/runs/[id]`) + harness ✕ undo button with `window.confirm`
-10. `a5e3a56` — `Cache-Control: private, max-age=5–10, stale-while-revalidate=30` on the two read-mostly admin endpoints (mirrors Track K's pattern)
+8. `b3e7a0e` — `scripts/seed-avatar-eval-demo.ts` + `scripts/README.md` (idempotent demo seeder)
+9. `87f7c8e` — per-run DELETE (`/api/admin/avatar-eval/runs/[id]`) + harness ✕ undo button
+10. `a5e3a56` — `Cache-Control: private, max-age=5–10, stale-while-revalidate=30` on the two read-mostly admin endpoints
 
-The harness, decision rubric, vendor health, demo seed, per-run delete, and friendly migration error all ship together. A clean operator demo of the avatar A/B comparison is now end-to-end ready: apply `prisma/sql/10`, optionally seed via `npx tsx scripts/seed-avatar-eval-demo.ts`, navigate from `/admin/tools`.
+**Mid-batch HANDOFF push:**
+11. `6dd9c88` — HANDOFF.md batch-close (the doc this section is rewriting)
+
+**Closing wave — README rule + UX gap closure + spoke routing (commits 12–19):**
+12. `ca91423` — **README ABSOLUTE RULE** + `~/CLAUDE.md` complement: NEVER reference an unapplied migration without inlining the SQL body in the same chat message. Permanent. The trigger was founder rage at being asked to "apply prisma/sql/10" without the SQL inline.
+13. `572fd7b` — fix(sql): ASCII-only inside SQL comments. Founder hit `ERROR: 42601: syntax error at or near "§5"` because the chat → clipboard → Supabase paste path autocorrected `--` to en/em dash on lines containing Unicode (em dash, section sign, multiplication sign). Rewrote `prisma/sql/10` as ASCII-only and added a sub-rule under the README ABSOLUTE RULE.
+14. `0d93703` — `/admin/tools` now detects unapplied migrations server-side via `try { prisma.avatarEvalRun.count() } catch`, renders the full SQL inline in a banner so the operator never has to chase files. Banner disappears once the table exists.
+15. `2bdfe78` — Copy-to-clipboard button on each owed-migration SQL block (extracted into `OwedMigrationCard` client subcomponent; falls back silently if Clipboard API blocked).
+16. `f4c8b4f` — 5 new golden eval cases (multilingual French, valuation narrative, deal-protection liq-pref impact, safety/cardiologist redirect, ClimateTech vertical adapter). Suite 10 → 15 cases.
+17. `98487e6` — fl_realestate spoke regex extended to Tampa Bay markets (Pinellas / St Pete / Clearwater / Bradenton / Lakeland) + FL tax/insurance concepts (homestead exemption / Save Our Homes / Citizens Insurance / sinkhole / HOA). Plus golden case verifying it. Founder works the Pinellas market specifically.
+18. `32e694c` — fl_realestate system-prompt addendum enriched to name Tampa Bay markets + tax mechanics (Save Our Homes 3% cap, Citizens Insurance dynamics, sinkhole disclosures) + Pinellas Realtor Organization in the cite list.
+19. `d1a9495` — Unit-test coverage for the fl_realestate Tampa Bay extension (spoke-router test suite 16 → 18 tests).
+
+The avatar A/B story is now end-to-end demo-ready AND the migration friction loop is closed at the UX level: visit `/admin/tools`, click "Copy SQL", paste into Supabase, refresh. fl_realestate is now properly grounded for the founder's Pinellas market.
 >
 > **⚠ Read this if you're walking in cold:** the prior handoff (the one that ended at `de4fef7`) claimed clean state, but verification showed 7 typecheck errors + 3 failing tests. This session opened by fixing those before doing any new work — the pattern HANDOFF.md §7 explicitly warns about. Always run the §0 verify commands; do not trust a handoff's "clean" claim without proof.
 
@@ -234,6 +248,43 @@ prisma/sql/09-add-documents-foundation.sql       — Track B
 prisma/sql/10-add-avatar-eval-run.sql            — Track O5c S1 (avatar A/B harness foundation)
 ```
 
+**Per the README ABSOLUTE RULE** (top of `README.md`), every unapplied migration must be inlined in chat for the operator to paste, never just referenced by file path. The bodies of 04–09 live on disk under `prisma/sql/`; the body of migration 10 (this batch's addition) is below — and `/admin/tools` auto-detects whether 10 is applied and renders it inline with a Copy-SQL button when not. Future agents adding migrations should extend `getOwedMigrations()` in `src/app/admin/tools/page.tsx` so `/admin/tools` covers them too.
+
+**Migration 10 — `avatar_eval_runs` (paste into Supabase SQL editor):**
+
+```sql
+CREATE TABLE IF NOT EXISTS "avatar_eval_runs" (
+  "id"             UUID           NOT NULL DEFAULT gen_random_uuid(),
+  "vendor"         TEXT           NOT NULL,
+  "scriptId"       TEXT           NOT NULL,
+  "scriptCategory" TEXT           NOT NULL,
+  "scriptText"     TEXT           NOT NULL,
+  "latencyMs"      INTEGER        NOT NULL,
+  "mosScore"       DOUBLE PRECISION,
+  "costCents"      INTEGER,
+  "raterId"        TEXT,
+  "notes"          TEXT,
+  "metadata"       JSONB          NOT NULL DEFAULT '{}'::jsonb,
+  "createdAt"      TIMESTAMP(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "avatar_eval_runs_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "avatar_eval_runs_vendor_createdAt_idx"
+  ON "avatar_eval_runs" ("vendor", "createdAt" DESC);
+
+CREATE INDEX IF NOT EXISTS "avatar_eval_runs_scriptId_vendor_idx"
+  ON "avatar_eval_runs" ("scriptId", "vendor");
+```
+
+Verify (should return 1 row):
+
+```sql
+SELECT table_name FROM information_schema.tables
+  WHERE table_schema = 'public' AND table_name = 'avatar_eval_runs';
+```
+
+Optional after applying: seed sample data with `npx tsx scripts/seed-avatar-eval-demo.ts` (idempotent; `--clean` removes only `metadata.demo === true` rows).
+
 ### Vercel env vars (per `~/CLAUDE.md` — never All Environments for secrets)
 
 **Auth (currently disabled — middleware is pure passthrough until both land):**
@@ -295,38 +346,35 @@ Full inventory with scope rules in `docs/RUNBOOK.md` § 2.
 
 The session-end state is:
 - Working tree clean on `main`
-- 9 commits this session since `de4fef7` (the prior batch's last claimed-clean tip — see header for the broken-state context)
-- Cumulative: ~56 commits since `8cacdd8` (the Track-U-handoff prior-prior batch tip)
-- Latest commit: this docs commit (run `git log -1` to confirm). The 9 before were the recovery + Track O work itemized in § 2 above.
-- Track O is now closed (W-002, W-003, W-004, W-005); only O5c (Tavus + A/B harness) remains as enhancement work.
+- **19 commits this session** since `4808d6c` (the prior batch's tip). Itemised in the header section "Today's full batch (19 commits since `4808d6c`)".
+- Track O is now functionally closed; only the optional `OliviaVideoAvatar` 867-line abstraction lift remains, tracked as "Track O5c-Lift".
+- Cumulative across all batches: ~75 commits since the Track-U-handoff prior-prior batch tip.
 
-**To continue the same trajectory:**
+### Resume options (pick one)
 
-If you want to keep the demo polish wave going (single-session wins):
-- **Pick:** Track N2 (Mapbox 3D fly-to animation) — the only single-session win on the open list now that O5 is closed
-- **First read:** `src/components/map/GoogleMap3DView.tsx`. Risk: breaking the existing surface. Read before editing.
+**Option A — Track O5c-Lift (deferred refactor; ~1–2 sessions, low-medium risk).** Close the only loose end on Track O.
+- **First read:** `src/components/olivia/OliviaVideoAvatar.tsx` cold (867 lines, LiveKit + LiveAvatar LITE protocol + MediaRecorder) + `docs/SESSION_LOG_2026-05-09_O5C_S3_DECISION_AND_TRIGGERS.md` "Carry-forward" section + `src/lib/avatar/types.ts` + each existing adapter (`tavus.ts`, `simli.ts`, `liveavatar.ts`).
+- **Plan:** extract a `LiveAvatarHandle` interface (`connect / disconnect / speak / interrupt`) into `src/lib/avatar/types.ts`. Have each vendor adapter implement it. Refactor `OliviaVideoAvatar` to take a `provider` prop and dispatch. Once that lands, the harness's "Run live (TTFM)" button can be enabled for Tavus + Simli too (today it's LiveAvatar-only).
+- **Why this and not H S21:** I have maximum context on the avatar surface today, lowest-risk window to do this is now. Estimate: ~2 sessions of careful staged commits.
 
-If you want substantive capability work (multi-session):
-- **Option A:** Track H S21 (port 5 LTM agents through the bridge — simplest data dependencies first)
-  - **First read:** `D:\London-Tech-Map\src\lib\agents\impl\g1-005-property-gravity-forecaster.ts` (simpler agent) + `src/lib/bridge/` (the existing UKP)
-  - **Plan:** rewrite the agent to fetch district data via `LtmKnowledgeProvider` instead of `prisma.location` directly. Document the pattern. Repeat for 4 more. Don't try to port all 116 in one session.
-- **Option B:** Track H S21 (port 5 LTM agents through the bridge — the highest leverage remaining capability work)
-  - **First read:** `D:\London-Tech-Map\src\lib\agents\impl\g1-005-property-gravity-forecaster.ts` (one of the simpler agents) + `src/lib/bridge/` (the existing `LtmKnowledgeProvider`).
-  - **Plan:** rewrite the agent to fetch district data via `LtmKnowledgeProvider` instead of `prisma.location` directly. Document the pattern. Repeat for 4 more. Don't try to port all 116 in one session.
+**Option B — Track H S21 (LTM agent port; ~2 sessions per agent, NOT 1).**
+- **⚠ Estimate correction (added 2026-05-09):** the prior handoff said "1 session per agent." After reading `D:\London-Tech-Map\src\lib\agents\impl\g1-005-property-gravity-forecaster.ts` cold, this is wrong. The agent uses `prisma.location.findMany` with `districtOrganizations` + `districtEvents` relations, `prisma.districtScoreHistory.findMany` distinct, `prisma.organization.groupBy` time-windowed by `createdAt`, AND a LTM-only `computeTechGravityScore` utility. The OB bridge (`src/lib/bridge/providers/ltm.ts`) only exposes the v1 LTM API which has `organizations` and `districts` endpoints — NO score history, NO time-windowed groupings, NO scoring utility. So porting one agent realistically requires either (a) a "narrative-only" degraded version that drops the gravity-trajectory math (~1 session, but lower output quality), or (b) extending the LTM v1 API to expose more data + porting the scoring utility into OB (~2+ sessions). Pick the angle deliberately.
+- **First read:** `D:\London-Tech-Map\src\lib\agents\impl\g1-005-property-gravity-forecaster.ts` (cold, full file) + `D:\Olivia Brain\src\lib\bridge\providers\ltm.ts` + `D:\Olivia Brain\src\lib\bridge\types.ts` (UKP definitions).
+- **Plan:** read both ends, pick the angle (degraded vs. extend), document the choice in the SESSION_LOG, then port one agent end-to-end with tests.
 
-- **Option C:** Track O5c-Lift (deferred refactor; ~1–2 sessions) — close the only loose end on Track O
-  - **First read:** `src/components/olivia/OliviaVideoAvatar.tsx` cold + `docs/SESSION_LOG_2026-05-09_O5C_S3_DECISION_AND_TRIGGERS.md` "Carry-forward" section.
-  - **Plan:** see open-work item #5 above.
-- **Option C:** Track N4 (Generative UI / 3D scenes)
-  - **First read:** `src/components/home/reply-renderer/MarkdownReply.tsx` (the existing manifest fence pattern) + `lib/services/model-cascade.ts buildSystemPrompt()` (where new fences get taught to the cascade).
-  - **Plan:** pick ~5 safe React components Olivia can reference (Card / Stat / Progress / Button / Form), define the JSON contract, parse + render. Skip eval-time JSX entirely.
+**Option C — Track N4 (generative UI / 3D scenes; multi-session).**
+- **First read:** `src/components/home/reply-renderer/MarkdownReply.tsx` (existing manifest fence pattern) + `lib/services/model-cascade.ts buildSystemPrompt()` (where new fences get taught to the cascade).
+- **Plan:** pick ~5 safe React components Olivia can reference (Card / Stat / Progress / Button / Form), define the JSON contract, parse + render. Skip eval-time JSX entirely.
 
-If you want pre-launch readiness:
-- **Pick:** S30 production deploy walk-through (target 2026-06-02 per BUILD_SEQUENCE.md)
-- **First read:** `docs/RUNBOOK.md` end-to-end
-- **Action:** apply the 7 SQL migrations in § 4, set the env vars in § 4, run the smoke tests in RUNBOOK § 5
+**Option D — Track N2 (Mapbox 3D fly-to animation; flagged risky).**
+- **First read:** `src/components/map/GoogleMap3DView.tsx` (substantial Map3DElement integration) + `src/components/map/MapView.tsx` (Mapbox dual-impl). Two different map surfaces; risk of breaking the existing one is real.
+- I judged this too risky for a single session in today's batch — surface it again only if you have appetite to read both files cold first.
 
-**Recommended pick:** Option A (Track N4 generative UI / 3D scenes) or Option B (Track H S21 LTM agent port). Track O5c is closed (only the optional `OliviaVideoAvatar` lift remains as Option C). The two non-O5c options are both substantive capability work — pick by appetite for safety vs. depth. N4 is a contained design problem; H S21 starts the long port of LTM's 116 agents.
+**Option E — Pre-launch (S30 production deploy).**
+- **First read:** `docs/RUNBOOK.md` end-to-end.
+- **Action:** apply the 7 SQL migrations in § 4 (now 8 — see operator-actions section), set the env vars in § 4, run the smoke tests in RUNBOOK § 5.
+
+**Recommended pick:** Option A (Track O5c-Lift). It uses fresh context from today's avatar work, has a lower estimate-error risk than H S21, and closes the only Track O loose end before context is lost.
 
 ---
 
@@ -341,6 +389,12 @@ The agent before Track U was terminated 2026-05-08 for these patterns. They stil
 5. **Long hopeful summaries** describing intent rather than verified state. Match summary tense to verification level — "wrote, typecheck pending" not "shipped."
 6. **Pushing broken code without flagging in the commit message.** If you push something broken, the commit message must say so.
 7. **(NEW this session) Vite alias config can break in non-obvious ways on Windows.** O5a's first attempt aliased `server-only` to its package's `empty.js` via `path.resolve` — typecheck passed, but 14 unrelated route tests started timing out at module load. Reverted to `vi.mock("server-only", () => ({}))` in `vitest.setup.ts` (cleaner, targeted, well-tested in the React/Next ecosystem). If you reach for vite alias on Windows, prefer `vi.mock` first.
+
+9. **(NEW 2026-05-09) NEVER reference an unapplied migration without inlining the SQL body.** This is now codified in `README.md` "ABSOLUTE RULE FOR EVERY CLAUDE SESSION" at the top of the file, and complemented in `~/CLAUDE.md`. The trigger was founder rage at being asked to "apply prisma/sql/10-add-avatar-eval-run.sql" without the SQL printed in the chat. Every reference — new file, end-of-session operator-action list, in-line in conversation — gets the full SQL printed inline in the same message. **`/admin/tools` now auto-detects unapplied migrations server-side and renders the SQL with a Copy button**, so the in-product UX matches the chat rule. If you find yourself typing "apply prisma/sql/" in chat, STOP and paste the SQL body first.
+
+10. **(NEW 2026-05-09) ASCII-only inside SQL comments.** Founder hit `ERROR: 42601: syntax error at or near "§5"` because a line `-- (lands in O5c session 3 — see ... §5)` had an em dash + section sign in the comment. Some chat → clipboard → Supabase paste path autocorrected the leading `--` into a single en/em dash, postgres no longer treated the line as a comment, and tried to execute `§5`). This is now codified as a sub-rule under the README ABSOLUTE RULE. Use `*` for multiplication, `->` for arrows, `--` (two ASCII hyphens) for dashes inside prose, plain ASCII quotes. Identifiers and string literals can use Unicode; this only constrains COMMENT lines.
+
+11. **(NEW 2026-05-09) Prior estimate of "1 session per LTM agent port" is wrong.** The bridge's v1 LTM API exposes only `organizations` and `districts` endpoints. Real LTM agents (e.g., g1-005) need `districtScoreHistory`, time-windowed `organization` groupings, and LTM-only utilities like `computeTechGravityScore`. Each port realistically takes ~2 sessions (degraded narrative-only OR extend the v1 API). See § 6 Option B for the corrected guidance. Don't promise "1 agent per session" without re-reading both ends.
 8. **(NEW this session) Don't trust your own research memo's vendor claims without code verification.** O5's research memo said "Simli explicitly accepts viseme/phoneme metadata" — turned out OB's wrapper sends raw PCM only; that capability isn't in our integration. The O5d follow-up grounded the rejection in actual code paths (`src/lib/avatar/simli.ts:135-143`), not memory of vendor docs. **Always verify the integration before reasoning about its capabilities.**
 
 This agent (the one writing this handoff) followed all 8 rules. Read every commit message — they're explicit about verification state.
