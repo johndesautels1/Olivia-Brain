@@ -14,6 +14,7 @@
 import Link from "next/link";
 import prisma from "@/lib/db/client";
 import { getAllVendorHealth } from "@/lib/avatar/status";
+import { OwedMigrationCard } from "./OwedMigrationCard";
 
 export const dynamic = "force-dynamic";
 
@@ -243,69 +244,13 @@ export default async function AdminToolsPage() {
             ABSOLUTE RULE, the SQL is inlined here — no need to chase files.)
           </p>
           {owedMigrations.map((m) => (
-            <article
+            <OwedMigrationCard
               key={m.filename}
-              style={{
-                padding: 12,
-                borderRadius: "var(--radius-md)",
-                background: "var(--canvas-recess)",
-                border: "1px solid var(--border-subtle)",
-                display: "grid",
-                gap: 8,
-              }}
-            >
-              <header style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                <code style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-2xs)", color: "var(--aurum-primary)" }}>
-                  {m.filename}
-                </code>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-2xs)", color: "var(--fg-tertiary)" }}>
-                  creates table {m.table}
-                </span>
-              </header>
-              <pre
-                style={{
-                  margin: 0,
-                  padding: 10,
-                  background: "var(--surface-1)",
-                  border: "1px solid var(--border-subtle)",
-                  borderRadius: "var(--radius-md)",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "var(--text-2xs)",
-                  color: "var(--fg-secondary)",
-                  whiteSpace: "pre-wrap",
-                  overflowX: "auto",
-                }}
-              >
-                {m.sql}
-              </pre>
-              <details>
-                <summary
-                  style={{
-                    cursor: "pointer",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "var(--text-2xs)",
-                    color: "var(--fg-tertiary)",
-                  }}
-                >
-                  Verify after running
-                </summary>
-                <pre
-                  style={{
-                    margin: "8px 0 0",
-                    padding: 10,
-                    background: "var(--surface-1)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "var(--radius-md)",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "var(--text-2xs)",
-                    color: "var(--fg-secondary)",
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {m.verifySql}
-                </pre>
-              </details>
-            </article>
+              filename={m.filename}
+              table={m.table}
+              sql={m.sql}
+              verifySql={m.verifySql}
+            />
           ))}
         </section>
       )}
