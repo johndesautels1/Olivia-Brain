@@ -1,8 +1,8 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 — extended continuous build batch (Tracks D, E, I, J ALL CLOSED; Track N at 3/5 with N1+N3+N5; W-004 closed via O4; 4 deploy fixes; polish wave: SuggestionChips + KeyboardShortcuts).
-> **HEAD:** `f463ebc` (keyboard shortcuts overlay; will move with the next push).
-> Pre-batch tip was `8cacdd8` (Track U handoff docs). This batch added **27 commits** on top.
+> **Last updated:** 2026-05-09 — extended continuous build batch. **5 tracks closed this batch: D, E, I, J, K**. Track N at 3/5; Track O at 2/4; W-003 + W-004 closed; 4 deploy fixes; production runbook shipped.
+> **HEAD:** `607fdf0` (S29 runbook; will move with the next push).
+> Pre-batch tip was `8cacdd8` (Track U handoff docs). This batch added **32 commits** on top.
 
 ---
 
@@ -27,12 +27,17 @@ git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"
 
 ---
 
-## What just shipped — extended continuous batch (27 commits)
+## What just shipped — extended continuous batch (32 commits)
 
 The home page (Track U) was the start. This continuous batch built outward across 4 closed tracks (D, E, I, J) plus partial Track N (3 of 5 manifestation modes), with polish and tests throughout.
 
 | Commit | Track / Session | What landed |
 |---|---|---|
+| `607fdf0` | **S29 Track K** | Production `RUNBOOK.md` — pre-deploy checklist, env-var inventory by category, smoke tests, rollback, on-call playbook (7 common 5xx causes + fixes), cost-vector dashboards. Track K ✅ CLOSED. |
+| `0a89bb2` | **S28 Track K** | Cache-Control headers on the 3 home aggregator routes (max-age + SWR tuned per polling cadence). Edge dedup; expected 60-80% TTFB drop. |
+| `192d108` | **S27 Track K** | Security audit + rate limits on cost vectors (`/api/olivia/chat/stream`, `/api/voice/synthesize`, `/api/voice/transcribe`). |
+| `965d441` | **O3 Track O** | Token-streaming chat. New `/api/olivia/chat/stream` + `runModelCascadeStream`. HomeComposer reads ReadableStream, fires `onReplyChunk` per chunk; HomeHero blockquote grows live. Falls back to non-streaming on stream error. **W-003 closed at the perceived-latency layer.** |
+| `c807b8b` | docs | Capture O4 + KeyboardShortcuts. |
 | `f463ebc` | polish | Keyboard shortcuts overlay (`?` key). Linear-quality. 3 groups × 9 keybinds. |
 | `34384ba` | **O4 Track O** | Citation-first RAG manifestation. ` ```sources ` fence renders as numbered citation strip. **W-004 closed at the manifest layer.** 8 tests. |
 | `f05146f` | docs | Mid-batch refresh capturing J + N5 + tests. |
@@ -65,7 +70,8 @@ The home page (Track U) was the start. This continuous batch built outward acros
 | **Track E (voice input, S17)** | ✅ CLOSED | `/voice` STT/chat/TTS chain end-to-end. |
 | **Track I (multi-tenant + suppression, S24)** | ✅ CLOSED | Adaptive surface suppression + brand override. |
 | **Track N (visual manifestation, N1+N3+N5 of 5)** | 🟡 partial | N1 manifest contract ✅ + N3 chart manifestation ✅ + N5 Gamma deck preview ✅. **N2 (Mapbox 3D enhancement) and N4 (generative UI / 3D scenes) remaining.** |
-| **Track O (weakness closure)** | 🟡 partial | **O4 ✅** (W-004 citation-first RAG closed at manifest layer). O2 (Patronus eval), O3 (sub-600ms voice latency), O5 (avatar lip-sync) remaining. |
+| **Track O (weakness closure)** | 🟡 partial | **O3 ✅** (W-003 perceived voice/chat latency closed via token streaming). **O4 ✅** (W-004 citation-first RAG closed at manifest layer). O2 (Patronus eval), O5 (avatar lip-sync) remaining. |
+| **Track K (Hardening + launch prep)** | ✅ CLOSED | S27 ✅ security audit + rate limits. S28 ✅ perf caching headers. S29 ✅ production runbook. All 3 sessions shipped. |
 | **Track J (vertical adapters S25-S26)** | ✅ CLOSED | All 4 verticals final. AI/SaaS + HealthTech + ClimateTech + PropTech each carry a 5-point investor diligence frame in `lib/orchestration/vertical-adapter.ts`. Free-form industry detector + provider preferences + 16 tests. |
 | **Track G (cascade orchestrator port S19-S20)** | 🕗 pending | LTM `lib/cascade/` port + LangGraph wrap. Not started. |
 | **Track H (agents consolidation S21-S23)** | 🕗 pending | LTM 94 named agents port + auto-learning. Not started. |
@@ -95,9 +101,18 @@ src/lib/orchestration/vertical-adapter.test.ts                   (tests, 16)
 src/components/home/reply-renderer/CitationStrip.tsx             (O4)
 src/components/home/reply-renderer/CitationStrip.test.ts         (tests, 8)
 src/components/home/KeyboardShortcuts.tsx                        (polish)
+src/app/api/olivia/chat/stream/route.ts                          (O3)
+docs/RUNBOOK.md                                                   (S29)
 ```
 
 **Test additions: 49 new tests this batch (14 chart-spec + 11 GammaCard + 16 vertical-adapter + 8 CitationStrip). All passing.**
+
+**Modified additionally this wave:**
+- `src/lib/services/model-cascade.ts` — `runModelCascadeStream` exported (uses AI SDK `streamText`)
+- `src/components/home/HomeComposer.tsx` — streaming-first send() path with non-streaming fallback
+- `src/components/home/HomeCenter.tsx` — `handleReplyChunk` wired through to HomeHero for live token rendering
+- `src/app/api/home/{score-chips,dashboard,tenant-ui}/route.ts` — `Cache-Control` headers
+- `src/app/api/olivia/chat/stream/route.ts` + `src/app/api/voice/{synthesize,transcribe}/route.ts` — `rateLimit()` gates
 
 ### Modified files this batch
 ```
