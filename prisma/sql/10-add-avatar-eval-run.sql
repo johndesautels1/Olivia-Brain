@@ -1,11 +1,17 @@
--- Track O5c session 1 — Avatar A/B harness foundation (2026-05-09)
+-- Track O5c session 1 - Avatar A/B harness foundation (2026-05-09)
 --
--- Adds one table: `avatar_eval_runs` (Prisma model: `AvatarEvalRun`).
+-- Adds one table: avatar_eval_runs (Prisma model: AvatarEvalRun).
 -- One row per (vendor, script) MOS rating run. Drives the avatar A/B
--- dashboard at /admin/avatar-eval (lands in O5c session 2) and the
--- vendor decision rubric:
---     latency × 0.4 + lip-sync MOS × 0.4 + cost × 0.2
--- (lands in O5c session 3 — see `docs/O5_AVATAR_LIPSYNC_RESEARCH.md §5`).
+-- dashboard at /admin/avatar-eval and the vendor decision rubric:
+--     latency * 0.4 + lip-sync MOS * 0.4 + cost * 0.2
+-- See docs/O5_AVATAR_LIPSYNC_RESEARCH.md section 5.
+--
+-- ASCII-only intentionally. Unicode characters (em dash, section sign,
+-- multiplication sign) in SQL comments have been observed to mangle
+-- the leading -- comment marker via autocorrect on the chat ->
+-- clipboard -> Supabase paste path, producing
+--     ERROR: 42601: syntax error
+-- See README.md "ABSOLUTE RULE" section for the inline-paste contract.
 --
 -- # Apply
 --

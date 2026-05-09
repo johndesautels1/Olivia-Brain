@@ -17,9 +17,15 @@ Non-negotiable rules:
 3. **End-of-session summaries that list operator actions MUST include the full SQL of every unapplied migration referenced.** No exceptions.
 4. **If you create a NEW migration file, the SQL goes inline in the chat in the SAME tool-call sequence as the file write.** Not in a follow-up message. Same turn.
 
-Why this is non-negotiable: the founder operates at ~4 sessions/day. Chasing files mid-session is exactly the friction this rule eliminates. Past sessions have repeatedly violated this and it is genuinely enraging. If you find yourself typing "apply prisma/sql/" → STOP, paste the SQL body first, then continue.
+Why this is non-negotiable: the founder operates at ~4 sessions/day. Chasing files mid-session is exactly the friction this rule eliminates. Past sessions have repeatedly violated this and it is genuinely enraging. If you find yourself typing "apply prisma/sql/" -> STOP, paste the SQL body first, then continue.
 
 This rule lives in the README so it survives context compression and applies regardless of which model picks up the next session. If you read this and STILL ask the founder to "apply prisma/sql/X.sql" without inlining the body, you have failed at your job. Fix it.
+
+### Sub-rule: ASCII-only inside SQL comments
+
+When you write SQL (in `prisma/sql/*.sql` or inline in chat for the founder to paste), the comment lines (`-- ...`) MUST be ASCII-only. No em dash, no section sign, no multiplication sign, no smart quotes, no arrow glyphs. Confirmed 2026-05-09: Unicode in comments breaks the chat -> clipboard -> Supabase paste path because autocorrect mangles the leading `--` into a single en/em dash, postgres no longer treats the line as a comment, and the parser tries to execute the comment body. Result: cryptic `ERROR: 42601: syntax error` on a line that visually looks like a comment.
+
+Use ASCII substitutions: `*` for multiplication, `->` for arrows, `--` (two hyphens) for dashes inside prose, `section N` instead of `section sign N`, plain ASCII quotes. Schema identifiers and string literals can use whatever Unicode they need; this rule applies only to comments.
 
 See also: `~/CLAUDE.md` "USE PRISMA — NEVER MAKE THE USER PASTE RAW SQL" rule (which forbids ad-hoc SQL files for DATA changes — go through TypeScript scripts instead). This README rule is the COMPLEMENT for the legitimate cases where SQL must be applied: schema changes, one-off migrations.
 
