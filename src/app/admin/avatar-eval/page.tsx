@@ -260,6 +260,34 @@ export default function AvatarEvalPage() {
     [runs, vendor, scriptId],
   );
 
+  /**
+   * Delete a single run after confirming. Refreshes the runs list on
+   * success. The endpoint validates UUID + auth + existence; the only
+   * failure modes that matter to the UI are "not found" (already
+   * deleted) and "network error".
+   */
+  const deleteRun = useCallback(
+    async (runId: string, summary: string) => {
+      if (typeof window !== "undefined") {
+        const ok = window.confirm(`Delete run ${summary}?`);
+        if (!ok) return;
+      }
+      try {
+        const res = await fetch(`/api/admin/avatar-eval/runs/${runId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(data.error ?? `HTTP ${res.status}`);
+        }
+        await loadRuns();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "delete failed");
+      }
+    },
+    [loadRuns],
+  );
+
   const vendorMosByScript = useMemo(() => {
     // For the script grid: per-(vendor,scriptId) latest MOS so the
     // operator can see at a glance what's been rated.
@@ -770,7 +798,16 @@ export default function AvatarEvalPage() {
                 Prior runs · {vendor} × {script.id} · {runsForSelection.length}
               </span>
               {runsForSelection.slice(0, 8).map((r) => (
-                <RunRow key={r.id} run={r} />
+                <RunRow
+                  key={r.id}
+                  run={r}
+                  onDelete={() =>
+                    void deleteRun(
+                      r.id,
+                      `${r.vendor} · ${r.scriptId} · ${r.latencyMs}ms`,
+                    )
+                  }
+                />
               ))}
             </article>
           )}
@@ -829,7 +866,19 @@ export default function AvatarEvalPage() {
             No runs yet. Record one above to populate the rubric.
           </p>
         ) : (
-          runs.slice(0, 24).map((r) => <RunRow key={r.id} run={r} showVendorAndScript />)
+          runs.slice(0, 24).map((r) => (
+            <RunRow
+              key={r.id}
+              run={r}
+              showVendorAndScript
+              onDelete={() =>
+                void deleteRun(
+                  r.id,
+                  `${r.vendor} · ${r.scriptId} · ${r.latencyMs}ms`,
+                )
+              }
+            />
+          ))
         )}
       </section>
     </main>
@@ -989,9 +1038,11 @@ function CategoryGroup({
 function RunRow({
   run,
   showVendorAndScript = false,
+  onDelete,
 }: {
   run: AvatarEvalRunRow;
   showVendorAndScript?: boolean;
+  onDelete?: () => void;
 }) {
   return (
     <div
@@ -1037,6 +1088,28 @@ function RunRow({
         <span style={{ color: "var(--fg-tertiary)", fontStyle: "italic" }}>
           {run.notes.length > 60 ? `${run.notes.slice(0, 60)}…` : run.notes}
         </span>
+      )}
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label="Delete run"
+          title="Delete this run"
+          style={{
+            marginLeft: "auto",
+            padding: "2px 8px",
+            borderRadius: "var(--radius-md)",
+            background: "transparent",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--fg-tertiary)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "var(--text-2xs)",
+            cursor: "pointer",
+            lineHeight: 1,
+          }}
+        >
+          ✕
+        </button>
       )}
     </div>
   );
