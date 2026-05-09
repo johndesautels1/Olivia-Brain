@@ -55,6 +55,19 @@ interface Props {
    * In production (Clerk-wired), leave undefined — the routes will read auth from cookies.
    */
   adminKey?: string;
+  /**
+   * Track O5e — fires when BOTH speak paths (streaming and the
+   * fallback /speak route) fail to send any audio for a given reply.
+   * The text reply still surfaces in chat; this lets the parent
+   * surface a "voice unavailable" indicator instead of leaving the
+   * user wondering why the avatar's mouth never moved.
+   *
+   * Reason is one of: "voice_unavailable" (server fallback JSON or
+   * upstream errored), "ws_closed" (WebSocket dropped mid-stream),
+   * "stream_aborted" (a newer reply pre-empted this one — usually
+   * NOT a user-visible failure, omit from UI).
+   */
+  onSpeakError?: (reason: "voice_unavailable" | "ws_closed" | "stream_aborted") => void;
 }
 
 /** Recording state machine */
@@ -197,6 +210,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
   lastReply,
   hideOverlays = false,
   adminKey,
+  onSpeakError,
 }, ref) {
   // ── Avatar state ──
   const [state, setStateInternal] = useState<AvatarState>("disconnected");
@@ -218,6 +232,10 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
   const wsRef = useRef<WebSocket | null>(null);
   const lastSpokenRef = useRef<string>("");
   const sessionIdRef = useRef<string>("");
+  // Track O5e — serializes in-flight speak requests. When a new reply
+  // arrives mid-stream we abort the prior one before starting the next
+  // so PCM chunks from the two utterances don't interleave on the wire.
+  const speakAbortRef = useRef<AbortController | null>(null);
 
   // ── Refs for recording ──
   const audioElementRef = useRef<HTMLMediaElement | null>(null);
@@ -280,6 +298,13 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
     // Only cleanup if actively recording - preserve ready recordings
     if (recordingState === "recording" || recordingState === "processing") {
       cleanupRecording();
+    }
+
+    // Track O5e — abort any in-flight speak request so its body reader
+    // doesn't keep the connection alive after the room is gone.
+    if (speakAbortRef.current) {
+      try { speakAbortRef.current.abort(); } catch { /* ignore */ }
+      speakAbortRef.current = null;
     }
 
     if (wsRef.current) {
@@ -399,9 +424,10 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
    * which segment of the pipeline owns each ms of latency.
    */
   const speakReplyStreaming = useCallback(
-    async (text: string): Promise<boolean> => {
+    async (text: string, signal: AbortSignal): Promise<boolean> => {
       const ws = wsRef.current;
       if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+      if (signal.aborted) return false;
 
       markPerf("olivia-speak-start");
 
@@ -411,8 +437,10 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({ text: text.slice(0, 5000) }),
+          signal,
         });
       } catch (err) {
+        if (signal.aborted) return false;
         console.warn("[LiveAvatar] speak-stream fetch failed:", err);
         return false;
       }
@@ -456,8 +484,18 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
         return true;
       };
 
+      // Cancel the body reader if the controller signals abort mid-stream.
+      // Without this, an abort during a long read would leave the reader
+      // open until the upstream finishes, wasting bytes the user can't
+      // hear because we've already moved on to a newer reply.
+      const onAbort = () => {
+        try { reader.cancel(); } catch { /* ignore */ }
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+
       try {
         while (true) {
+          if (signal.aborted) return false;
           const { done, value } = await reader.read();
           if (done) break;
           if (!value || value.length === 0) continue;
@@ -471,11 +509,14 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
 
           const target = firstChunkSent ? TARGET_CHUNK_BYTES : FIRST_CHUNK_BYTES;
           while (buffer.length >= target) {
+            if (signal.aborted) return false;
             const chunk = buffer.slice(0, target);
             buffer = buffer.slice(target);
             if (!flushChunk(chunk)) return false;
           }
         }
+
+        if (signal.aborted) return false;
 
         if (buffer.length > 0) {
           if (!flushChunk(buffer)) return false;
@@ -496,12 +537,15 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
         markPerf("olivia-speak-done");
         return true;
       } catch (err) {
+        if (signal.aborted) return false;
         console.warn("[LiveAvatar] speak-stream interrupted:", err);
         // Don't try to recover the partial utterance — let LiveAvatar's
         // own server-side timeout settle the mouth. Caller decides
         // whether to retry via the fallback path; for a partial mid-
         // stream failure that would mean speaking the same text twice.
         return false;
+      } finally {
+        signal.removeEventListener("abort", onAbort);
       }
     },
     [authHeaders],
@@ -512,21 +556,29 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
    * server buffers full PCM, returns base64 JSON, client sends one
    * `agent.speak` message. Slower TTFM but doesn't depend on the
    * streaming response surviving end-to-end.
+   *
+   * Returns true iff an `agent.speak` message was sent. Track O5e —
+   * boolean return so the caller can distinguish "fallback succeeded"
+   * from "fallback also declined" and surface a UI error in the latter.
    */
   const speakReplyFallback = useCallback(
-    async (text: string): Promise<void> => {
+    async (text: string, signal: AbortSignal): Promise<boolean> => {
       const ws = wsRef.current;
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+      if (signal.aborted) return false;
 
       try {
         const res = await fetch("/api/olivia/liveavatar/speak", {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({ text: text.slice(0, 5000) }),
+          signal,
         });
         const data = await res.json();
 
-        if (data.fallback || !data.audio) return;
+        if (signal.aborted) return false;
+        if (data.fallback || !data.audio) return false;
+        if (ws.readyState !== WebSocket.OPEN) return false;
 
         ws.send(
           JSON.stringify({
@@ -534,8 +586,11 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
             audio: data.audio,
           }),
         );
+        return true;
       } catch (err) {
+        if (signal.aborted) return false;
         console.error("[LiveAvatar] speak fallback error:", err);
+        return false;
       }
     },
     [authHeaders],
@@ -544,15 +599,43 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
   // Send TTS audio when new reply arrives. Try the streaming path first
   // (Track O5a — pre-roll for ~8-40× faster time-to-first-mouth-movement);
   // only invoke the non-streaming fallback if the stream path declines
-  // (server fallback JSON, network error, ws-not-open).
+  // (server fallback JSON, network error, ws-not-open). Track O5e —
+  // serialize via AbortController so a newer reply pre-empts an older
+  // in-flight one (no PCM interleave on the wire); fire onSpeakError
+  // only when BOTH paths declined for the SAME utterance (not on abort).
   const speakReply = useCallback(
     async (text: string): Promise<void> => {
-      const streamed = await speakReplyStreaming(text);
-      if (!streamed) {
-        await speakReplyFallback(text);
+      // Cancel any in-flight speak so its remaining chunks don't
+      // interleave with the new utterance.
+      speakAbortRef.current?.abort();
+      const controller = new AbortController();
+      speakAbortRef.current = controller;
+      const { signal } = controller;
+
+      const streamed = await speakReplyStreaming(text, signal);
+      if (signal.aborted) {
+        onSpeakError?.("stream_aborted");
+        return;
+      }
+      if (streamed) return;
+
+      const fellBack = await speakReplyFallback(text, signal);
+      if (signal.aborted) {
+        onSpeakError?.("stream_aborted");
+        return;
+      }
+      if (!fellBack) {
+        // Both paths declined — most likely cause is the WebSocket
+        // closed mid-flight or the server returned the fallback JSON
+        // (ElevenLabs unconfigured / upstream errored).
+        const reason: "ws_closed" | "voice_unavailable" =
+          wsRef.current?.readyState === WebSocket.OPEN
+            ? "voice_unavailable"
+            : "ws_closed";
+        onSpeakError?.(reason);
       }
     },
-    [speakReplyStreaming, speakReplyFallback],
+    [speakReplyStreaming, speakReplyFallback, onSpeakError],
   );
 
   // React to new replies. Track O5b — if a prior reply is still being
