@@ -22,8 +22,12 @@ import type {
   AvatarSession,
   AvatarVideoRequest,
   AvatarVideoResult,
-  RealtimeAvatarConfig,
+  CreateLiveAvatarHandleOptions,
   EmotionState,
+  LiveAvatarHandle,
+  LiveAvatarHandleEventMap,
+  RealtimeAvatarConfig,
+  SpeakErrorReason,
 } from "./types";
 import { getAvatarIdentity } from "./identity";
 
@@ -254,4 +258,75 @@ export async function getSimliSessionStatus(
 
   const data = await response.json();
   return data.status ?? "ready";
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Track O5c-Lift S2 — Simli LiveAvatarHandle (DEFERRED IMPLEMENTATION)
+ *
+ * Same shape and same honest-stub policy as `createTavusLiveHandle`.
+ * A real Simli realtime path needs:
+ *   1. A new server route `/api/olivia/simli/session` (POST + DELETE)
+ *      wrapping `createSimliSession` / `endSimliSession`.
+ *   2. A PCM bridge route `/api/olivia/simli/audio` that pulls TTS
+ *      bytes from ElevenLabs (same source the LiveAvatar speak-stream
+ *      uses) and forwards them to `sendAudioToSimli`.
+ *   3. Simli's WebRTC SDK (or a manual RTCPeerConnection bridge) so
+ *      `attachVideo` actually renders the avatar.
+ *
+ * None of (1)–(3) ship in this commit. Calling `connect` / `speak`
+ * surfaces a clear error rather than silent failure.
+ * ───────────────────────────────────────────────────────────────────── */
+
+const SIMLI_DEFERRED_ERROR =
+  "[simli-handle] not yet implemented — Track O5c-Lift S2 deferred Simli realtime " +
+  "to a follow-up session (needs /api/olivia/simli/* server routes + ElevenLabs PCM " +
+  "bridge + Simli WebRTC SDK for video render). See docs/HANDOFF.md.";
+
+export function createSimliLiveHandle(
+  _opts: CreateLiveAvatarHandleOptions = {},
+): LiveAvatarHandle {
+  const stateListeners = new Set<LiveAvatarHandleEventMap["stateChange"]>();
+  const audioListeners = new Set<LiveAvatarHandleEventMap["audioElementReady"]>();
+
+  return {
+    provider: "simli",
+    connect: async () => {
+      throw new Error(SIMLI_DEFERRED_ERROR);
+    },
+    disconnect: () => {
+      /* no-op */
+    },
+    speak: async (_text: string, signal: AbortSignal): Promise<{ reason?: SpeakErrorReason }> => {
+      if (signal.aborted) return { reason: "stream_aborted" };
+      console.warn(SIMLI_DEFERRED_ERROR);
+      return { reason: "voice_unavailable" };
+    },
+    interrupt: () => {
+      /* no-op */
+    },
+    attachVideo: (_el: HTMLVideoElement) => {
+      console.warn(
+        "[simli-handle] attachVideo is a no-op — Simli video render needs the WebRTC SDK (deferred)",
+      );
+    },
+    on: (event, listener) => {
+      if (event === "stateChange") {
+        const l = listener as LiveAvatarHandleEventMap["stateChange"];
+        stateListeners.add(l);
+        return () => {
+          stateListeners.delete(l);
+        };
+      }
+      if (event === "audioElementReady") {
+        const l = listener as LiveAvatarHandleEventMap["audioElementReady"];
+        audioListeners.add(l);
+        return () => {
+          audioListeners.delete(l);
+        };
+      }
+      return () => {
+        /* unknown event */
+      };
+    },
+  };
 }

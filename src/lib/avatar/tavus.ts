@@ -32,8 +32,12 @@ import type {
   AvatarSession,
   AvatarVideoRequest,
   AvatarVideoResult,
-  RealtimeAvatarConfig,
+  CreateLiveAvatarHandleOptions,
   EmotionState,
+  LiveAvatarHandle,
+  LiveAvatarHandleEventMap,
+  RealtimeAvatarConfig,
+  SpeakErrorReason,
 } from "./types";
 import { getAvatarIdentity } from "./identity";
 
@@ -256,4 +260,84 @@ export async function getTavusSessionStatus(
     default:
       return data.status ?? "ready";
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Track O5c-Lift S2 — Tavus LiveAvatarHandle (DEFERRED IMPLEMENTATION)
+ *
+ * This factory exists so the LiveAvatarHandle abstraction has a Tavus
+ * entry, but the methods below are **honest stubs**. A real Tavus
+ * realtime path needs:
+ *   1. A new server route `/api/olivia/tavus/conversation` (POST + DELETE)
+ *      that wraps `createTavusSession` + `endTavusSession` (already in
+ *      this file) so the handle doesn't need the API key client-side.
+ *   2. A new server route `/api/olivia/tavus/utterance` that wraps
+ *      `sendTavusUtterance`.
+ *   3. WebRTC join via Daily's SDK (Tavus's `conversation_url` is a
+ *      Daily room URL) so `attachVideo` actually renders the avatar.
+ *
+ * None of (1)–(3) ship in this commit. Calling `connect` or `speak`
+ * throws a clearly-labelled error so any caller — including the
+ * factory in `index.ts` and the avatar-eval harness — sees the truth
+ * instead of fake success.
+ *
+ * The handle's surface is correct (matches `LiveAvatarHandle`), so
+ * the type-check passes everywhere it's referenced and a follow-up
+ * session can fill in the methods without breaking any consumer.
+ * ───────────────────────────────────────────────────────────────────── */
+
+const TAVUS_DEFERRED_ERROR =
+  "[tavus-handle] not yet implemented — Track O5c-Lift S2 deferred Tavus realtime " +
+  "to a follow-up session (needs /api/olivia/tavus/* server routes + Daily SDK for " +
+  "WebRTC video render). See docs/HANDOFF.md.";
+
+export function createTavusLiveHandle(
+  _opts: CreateLiveAvatarHandleOptions = {},
+): LiveAvatarHandle {
+  // Listener storage exists so the contract test for `on()` still
+  // passes; no events are ever fired by this stub.
+  const stateListeners = new Set<LiveAvatarHandleEventMap["stateChange"]>();
+  const audioListeners = new Set<LiveAvatarHandleEventMap["audioElementReady"]>();
+
+  return {
+    provider: "tavus",
+    connect: async () => {
+      throw new Error(TAVUS_DEFERRED_ERROR);
+    },
+    disconnect: () => {
+      /* no-op — there's nothing to tear down */
+    },
+    speak: async (_text: string, signal: AbortSignal): Promise<{ reason?: SpeakErrorReason }> => {
+      if (signal.aborted) return { reason: "stream_aborted" };
+      console.warn(TAVUS_DEFERRED_ERROR);
+      return { reason: "voice_unavailable" };
+    },
+    interrupt: () => {
+      /* no-op */
+    },
+    attachVideo: (_el: HTMLVideoElement) => {
+      console.warn(
+        "[tavus-handle] attachVideo is a no-op — Tavus video render needs Daily SDK (deferred)",
+      );
+    },
+    on: (event, listener) => {
+      if (event === "stateChange") {
+        const l = listener as LiveAvatarHandleEventMap["stateChange"];
+        stateListeners.add(l);
+        return () => {
+          stateListeners.delete(l);
+        };
+      }
+      if (event === "audioElementReady") {
+        const l = listener as LiveAvatarHandleEventMap["audioElementReady"];
+        audioListeners.add(l);
+        return () => {
+          audioListeners.delete(l);
+        };
+      }
+      return () => {
+        /* unknown event */
+      };
+    },
+  };
 }

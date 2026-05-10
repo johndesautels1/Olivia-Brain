@@ -178,13 +178,33 @@ export interface CreateLiveAvatarHandleOptions {
 }
 
 /**
+ * Vendors that can produce a LiveAvatarHandle today.
+ *
+ * - `liveavatar`: HeyGen's LITE Mode realtime path (same vendor as the
+ *   `heygen` adapter; different product tier — LITE Mode = realtime
+ *   WebRTC streaming, the regular HeyGen surface = async video
+ *   generation). Treated as a distinct vendor here because the API
+ *   surface, env vars (`LIVEAVATAR_API_KEY` vs `HEYGEN_API_KEY`), and
+ *   client lifecycle are different.
+ * - `simli`: Simli's realtime WebRTC avatar (full SDK lift deferred).
+ * - `tavus`: Tavus's conversation API (Daily SDK lift deferred).
+ *
+ * `did` and `sadtalker` aren't in this list — D-ID has a streaming
+ * surface that isn't wired through OliviaVideoAvatar yet, and
+ * SadTalker is an async Replicate job (no realtime path at all).
+ * `AvatarProvider` (above) routes async video generation and includes
+ * those two; `LiveAvatarProvider` is realtime-only.
+ */
+export type LiveAvatarProvider = "liveavatar" | "simli" | "tavus";
+
+/**
  * Vendor-agnostic realtime avatar handle. Each adapter implements
  * this with a different underlying transport (LiveKit + WS, Daily,
  * Simli WebRTC). `OliviaVideoAvatar` and the avatar-eval harness
  * both dispatch through this contract.
  */
 export interface LiveAvatarHandle {
-  readonly provider: AvatarProvider;
+  readonly provider: LiveAvatarProvider;
 
   /**
    * Open the realtime channel. Resolves when the vendor reports the

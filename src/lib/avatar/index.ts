@@ -232,3 +232,50 @@ export async function createAvatarSession(
 
 export { getAllAvatarIdentities, getAvatarIdentity };
 export { OLIVIA_IDENTITY, CRISTIANO_IDENTITY, EMELIA_IDENTITY };
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Track O5c-Lift S2 — LiveAvatarHandle factory dispatcher.
+ * ───────────────────────────────────────────────────────────────────── */
+
+import { createLiveAvatarLiveHandle } from "./liveavatar";
+import { createTavusLiveHandle } from "./tavus";
+import { createSimliLiveHandle } from "./simli";
+import type {
+  CreateLiveAvatarHandleOptions,
+  LiveAvatarHandle,
+  LiveAvatarProvider,
+} from "./types";
+
+export interface CreateLiveAvatarHandleArgs extends CreateLiveAvatarHandleOptions {
+  /** Vendor to instantiate. */
+  provider: LiveAvatarProvider;
+}
+
+/**
+ * Dispatch to the per-vendor handle factory.
+ *
+ * Today only `liveavatar` (HeyGen LITE Mode) returns a fully
+ * functional handle. `tavus` and `simli` return honest stubs whose
+ * connect() / speak() methods surface a clearly-labelled deferred-
+ * implementation error — see the per-file factories for what's
+ * needed to make them live.
+ */
+export function createLiveAvatarHandle(
+  args: CreateLiveAvatarHandleArgs,
+): LiveAvatarHandle {
+  const { provider, ...opts } = args;
+  switch (provider) {
+    case "liveavatar":
+      return createLiveAvatarLiveHandle(opts);
+    case "tavus":
+      return createTavusLiveHandle(opts);
+    case "simli":
+      return createSimliLiveHandle(opts);
+    default: {
+      // Exhaustive — TS will error here if a new LiveAvatarProvider is
+      // added without a case above.
+      const exhaustive: never = provider;
+      throw new Error(`Unknown LiveAvatarProvider: ${String(exhaustive)}`);
+    }
+  }
+}
