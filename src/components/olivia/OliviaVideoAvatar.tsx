@@ -24,8 +24,8 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
-import { Room, RoomEvent, Track, RemoteTrackPublication } from "livekit-client";
-import type { AvatarState } from "@/lib/avatar/types";
+import { createLiveAvatarHandle } from "@/lib/avatar";
+import type { AvatarState, LiveAvatarHandle, LiveAvatarProvider } from "@/lib/avatar/types";
 
 // Type for HTML elements with captureStream - use local assertions instead of global declarations
 interface HTMLElementWithCaptureStream {
@@ -69,6 +69,16 @@ interface Props {
    * NOT a user-visible failure, omit from UI).
    */
   onSpeakError?: (reason: "voice_unavailable" | "ws_closed" | "stream_aborted") => void;
+  /**
+   * Track O5c-Lift — vendor selector. Defaults to "liveavatar"
+   * (HeyGen LITE Mode), the only provider whose handle has a fully
+   * functional realtime path today. "tavus" and "simli" return honest-
+   * stub handles whose connect/speak surface a clearly-labelled
+   * deferred-implementation error — the UI for those vendors will
+   * just show the error overlay until their server routes + SDKs
+   * land in a follow-up session.
+   */
+  provider?: LiveAvatarProvider;
 }
 
 /** Recording state machine */
@@ -165,48 +175,6 @@ function generateRecordingFilename(): string {
   return `olivia-session-${timestamp}.webm`;
 }
 
-/**
- * Track O5a — Streaming pre-roll helpers.
- *
- * Encode a PCM chunk to base64 in 32KB sub-batches so we don't blow the
- * call-stack of `String.fromCharCode.apply` (it has a per-arity ceiling
- * around 65,535 args in V8 / WebKit). Joining `parts` once at the end
- * is faster than O(n) string concatenation.
- */
-function uint8ToBase64(bytes: Uint8Array): string {
-  const chunkSize = 0x8000;
-  const parts: string[] = [];
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    const slice = bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length));
-    // `apply` accepts array-likes; Uint8Array qualifies. Cast to number[]
-    // to satisfy TS's stricter overload signature.
-    parts.push(String.fromCharCode.apply(null, slice as unknown as number[]));
-  }
-  return btoa(parts.join(""));
-}
-
-/**
- * Track O5a — pre-roll chunk thresholds.
- *
- * PCM 16-bit 24 kHz = 48 bytes/ms. We send the first chunk as soon as
- * we have ~125 ms of audio (so the avatar's mouth starts moving fast),
- * then ~250 ms thereafter (smooth, well below the per-message 1 MB cap
- * that LiveAvatar LITE Mode enforces — see docs/HEYGEN_LTM_CONFIG.md).
- */
-const FIRST_CHUNK_BYTES = 6_000;
-const TARGET_CHUNK_BYTES = 12_000;
-
-/** Mark a perf event if the API is present. Skipped silently in SSR. */
-function markPerf(name: string): void {
-  if (typeof performance !== "undefined" && typeof performance.mark === "function") {
-    try {
-      performance.mark(name);
-    } catch {
-      // Ignore — duplicates or invalid names just no-op.
-    }
-  }
-}
-
 export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(function OliviaVideoAvatar({
   onReady,
   onDisconnect,
@@ -217,6 +185,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
   hideOverlays = false,
   adminKey,
   onSpeakError,
+  provider = "liveavatar",
 }, ref) {
   // ── Avatar state ──
   const [state, setStateInternal] = useState<AvatarState>("disconnected");
@@ -234,13 +203,15 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
 
   // ── Refs for avatar ──
   const videoRef = useRef<HTMLVideoElement>(null);
-  const roomRef = useRef<Room | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+  // Track O5c-Lift — single handle replaces the LiveKit Room +
+  // WebSocket + AbortController refs. The handle owns all of those
+  // internally; the component only sees the LiveAvatarHandle surface.
+  const handleRef = useRef<LiveAvatarHandle | null>(null);
   const lastSpokenRef = useRef<string>("");
-  const sessionIdRef = useRef<string>("");
-  // Track O5e — serializes in-flight speak requests. When a new reply
-  // arrives mid-stream we abort the prior one before starting the next
-  // so PCM chunks from the two utterances don't interleave on the wire.
+  // AbortController for the LATEST speak() call — used by interrupt /
+  // unmount to cancel an in-progress utterance. The handle also
+  // serializes speaks internally (pre-empts older ones), so this is a
+  // belt-and-braces external cancel for parent-driven aborts.
   const speakAbortRef = useRef<AbortController | null>(null);
 
   // ── Refs for recording ──
@@ -250,14 +221,22 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
   const recordingBlobRef = useRef<Blob | null>(null);
   const recordingUrlRef = useRef<string | null>(null);
 
-  // Build auth headers (pre-Clerk Bearer token, optional)
-  const authHeaders = useCallback((): HeadersInit => {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (adminKey) {
-      headers["Authorization"] = `Bearer ${adminKey}`;
-    }
-    return headers;
-  }, [adminKey]);
+  // ── Latest-callback refs ──
+  // The handle's listeners are subscribed once on mount (long-lived);
+  // these refs let the listeners always invoke the most recent prop
+  // callback without resubscribing on every re-render.
+  const onStateChangeRef = useRef(onStateChange);
+  const onSpeakingChangeRef = useRef(onSpeakingChange);
+  const onSpeakErrorRef = useRef(onSpeakError);
+  const onReadyRef = useRef(onReady);
+  const onDisconnectRef = useRef(onDisconnect);
+  useEffect(() => {
+    onStateChangeRef.current = onStateChange;
+    onSpeakingChangeRef.current = onSpeakingChange;
+    onSpeakErrorRef.current = onSpeakError;
+    onReadyRef.current = onReady;
+    onDisconnectRef.current = onDisconnect;
+  });
 
   // ── Notify parent of recording state changes ──
   useEffect(() => {
@@ -299,391 +278,151 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Handle init + listener subscription (Track O5c-Lift) ──
+  //
+  // The handle owns LiveKit + WebSocket + speak streaming + keep-alive
+  // internally. The component subscribes once per (provider, adminKey)
+  // pair and translates handle events into local state + parent
+  // callbacks. Listeners read the latest callback fns via refs so a
+  // parent re-rendering with new closures doesn't tear down the
+  // subscription.
+  useEffect(() => {
+    const handle = createLiveAvatarHandle({ provider, adminKey });
+    handleRef.current = handle;
+
+    const unsubState = handle.on("stateChange", (next) => {
+      setStateInternal(next);
+      onStateChangeRef.current?.(next);
+      if (next === "speaking") {
+        onSpeakingChangeRef.current?.(true);
+      } else if (next === "connected") {
+        // Fired both on initial connect and after a speak ends.
+        onSpeakingChangeRef.current?.(false);
+      } else if (next === "disconnected") {
+        onSpeakingChangeRef.current?.(false);
+        onDisconnectRef.current?.();
+      }
+    });
+
+    const unsubAudio = handle.on("audioElementReady", (el) => {
+      // MediaRecorder reads from this element when capturing.
+      audioElementRef.current = el;
+    });
+
+    // Late attach — if the <video> element is already mounted, point
+    // the handle at it now. Otherwise the next track-subscribed
+    // event will pick it up.
+    if (videoRef.current) handle.attachVideo(videoRef.current);
+
+    return () => {
+      unsubState();
+      unsubAudio();
+      // Belt-and-braces: also abort any in-flight speak the component
+      // initiated, in case the handle's internal abort hasn't fired yet.
+      if (speakAbortRef.current) {
+        try { speakAbortRef.current.abort(); } catch { /* ignore */ }
+        speakAbortRef.current = null;
+      }
+      handle.disconnect();
+      handleRef.current = null;
+    };
+  }, [provider, adminKey]);
+
   const disconnectSession = useCallback(() => {
-    // Clean up recording state machine properly when disconnecting
-    // Only cleanup if actively recording - preserve ready recordings
+    // Recording state machine cleanup mirrors the pre-lift behavior:
+    // only tear down if actively recording — preserve completed
+    // recordings so the founder can still download them after the
+    // avatar disconnects.
     if (recordingState === "recording" || recordingState === "processing") {
       cleanupRecording();
     }
-
-    // Track O5e — abort any in-flight speak request so its body reader
-    // doesn't keep the connection alive after the room is gone.
     if (speakAbortRef.current) {
       try { speakAbortRef.current.abort(); } catch { /* ignore */ }
       speakAbortRef.current = null;
     }
-
-    if (wsRef.current) {
-      try { wsRef.current.close(); } catch { /* ignore */ }
-      wsRef.current = null;
-    }
-    if (roomRef.current) {
-      try { roomRef.current.disconnect(); } catch { /* ignore */ }
-      roomRef.current = null;
-    }
-
-    // Clear audio element reference
-    audioElementRef.current = null;
-
-    sessionIdRef.current = "";
-    setState("disconnected");
-    onSpeakingChange?.(false);
-    onDisconnect?.();
-  }, [onSpeakingChange, onDisconnect, recordingState, cleanupRecording, setState]);
+    handleRef.current?.disconnect();
+    // The "disconnected" stateChange listener fires onDisconnect /
+    // onSpeakingChange(false) — no need to dispatch them here.
+  }, [recordingState, cleanupRecording]);
 
   const connectSession = useCallback(async () => {
-    setState("connecting");
     setErrorMessage(null);
-
+    const handle = handleRef.current;
+    if (!handle) {
+      // Shouldn't happen — handleRef is set by the mount effect.
+      // Defensive only; surfacing the message helps debug if it does.
+      setErrorMessage("Avatar handle not initialized");
+      return;
+    }
     try {
-      // 1. Create LiveAvatar session via our API
-      const res = await fetch("/api/olivia/liveavatar", {
-        method: "POST",
-        headers: authHeaders(),
-      });
-      const data = await res.json();
-
-      if (!res.ok || !data.livekitUrl || !data.livekitToken) {
-        throw new Error(data.error || "Failed to create avatar session");
-      }
-
-      sessionIdRef.current = data.sessionId;
-
-      // 2. Connect to LiveKit room
-      const room = new Room({
-        adaptiveStream: true,
-        dynacast: true,
-      });
-
-      room.on(RoomEvent.TrackSubscribed, (track, publication: RemoteTrackPublication) => {
-        if (track.kind === Track.Kind.Video && videoRef.current) {
-          track.attach(videoRef.current);
-        }
-        if (track.kind === Track.Kind.Audio) {
-          const audioEl = track.attach();
-          audioEl.volume = 1.0;
-          // Store reference for recording - we need this to capture audio
-          audioElementRef.current = audioEl;
-        }
-        // Suppress unused variable warning
-        void publication;
-      });
-
-      room.on(RoomEvent.Disconnected, () => {
-        setState("disconnected");
-        onSpeakingChange?.(false);
-      });
-
-      await room.connect(data.livekitUrl, data.livekitToken);
-      roomRef.current = room;
-
-      // 3. Connect WebSocket for avatar commands (if URL provided)
-      if (data.websocketUrl) {
-        const ws = new WebSocket(data.websocketUrl);
-        ws.onopen = () => {
-          console.log("[LiveAvatar] WebSocket connected");
-        };
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === "agent.speak_started") {
-              setState("speaking");
-              onSpeakingChange?.(true);
-            } else if (msg.type === "agent.speak_ended") {
-              setState("connected");
-              onSpeakingChange?.(false);
-            } else if (msg.type === "session.state_updated" && msg.state === "closed") {
-              disconnectSession();
-            }
-          } catch { /* ignore malformed */ }
-        };
-        ws.onerror = () => {
-          console.error("[LiveAvatar] WebSocket error");
-        };
-        wsRef.current = ws;
-      }
-
-      setState("connected");
-      onReady?.();
+      await handle.connect();
+      onReadyRef.current?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to connect avatar";
       setErrorMessage(msg);
-      setState("error");
+      // The handle's connect() already transitions state to "error"
+      // before re-throwing; the listener above mirrors that into
+      // local state. No need to setState("error") here.
     }
-  }, [onReady, onSpeakingChange, disconnectSession, setState, authHeaders]);
+  }, []);
 
-  /**
-   * Track O5a — streaming pre-roll path.
-   *
-   * Returns true if we successfully streamed all chunks and emitted
-   * `agent.speak_end`. Returns false on any failure (network error,
-   * server fallback JSON, ws closed mid-stream) so the caller can fall
-   * back to the non-streaming `/speak` path. Never throws.
-   *
-   * Performance marks (read via `performance.getEntriesByName(...)`):
-   *   olivia-speak-start          — fetch initiated
-   *   olivia-speak-first-byte     — first PCM byte arrived from server
-   *   olivia-speak-first-chunk    — first `agent.speak` ws message sent
-   *   olivia-speak-done           — speak_end sent
-   * Plus the existing `agent.speak_started` ws event from LiveAvatar
-   * marks the moment lip-sync actually begins. Together they isolate
-   * which segment of the pipeline owns each ms of latency.
-   */
-  const speakReplyStreaming = useCallback(
-    async (text: string, signal: AbortSignal): Promise<boolean> => {
-      const ws = wsRef.current;
-      if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-      if (signal.aborted) return false;
-
-      markPerf("olivia-speak-start");
-
-      let res: Response;
-      try {
-        res = await fetch("/api/olivia/liveavatar/speak-stream", {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify({ text: text.slice(0, 5000) }),
-          signal,
-        });
-      } catch (err) {
-        if (signal.aborted) return false;
-        console.warn("[LiveAvatar] speak-stream fetch failed:", err);
-        return false;
-      }
-
-      if (!res.ok) return false;
-
-      // Distinguish a real PCM stream from the JSON fallback the server
-      // returns when ElevenLabs is unconfigured / errored before bytes
-      // streamed. Header is more reliable than Content-Type because some
-      // proxies normalize the latter.
-      if (res.headers.get("X-Olivia-Audio-Format") !== "pcm_24000") {
-        return false;
-      }
-
-      if (!res.body) return false;
-
-      const reader = res.body.getReader();
-      let buffer = new Uint8Array(0);
-      let firstChunkSent = false;
-      let firstByteSeen = false;
-
-      const appendToBuffer = (chunk: Uint8Array): void => {
-        const merged = new Uint8Array(buffer.length + chunk.length);
-        merged.set(buffer, 0);
-        merged.set(chunk, buffer.length);
-        buffer = merged;
-      };
-
-      const flushChunk = (chunk: Uint8Array): boolean => {
-        if (ws.readyState !== WebSocket.OPEN) return false;
-        ws.send(
-          JSON.stringify({
-            type: "agent.speak",
-            audio: uint8ToBase64(chunk),
-          }),
-        );
-        if (!firstChunkSent) {
-          firstChunkSent = true;
-          markPerf("olivia-speak-first-chunk");
-        }
-        return true;
-      };
-
-      // Cancel the body reader if the controller signals abort mid-stream.
-      // Without this, an abort during a long read would leave the reader
-      // open until the upstream finishes, wasting bytes the user can't
-      // hear because we've already moved on to a newer reply.
-      const onAbort = () => {
-        try { reader.cancel(); } catch { /* ignore */ }
-      };
-      signal.addEventListener("abort", onAbort, { once: true });
-
-      try {
-        while (true) {
-          if (signal.aborted) return false;
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (!value || value.length === 0) continue;
-
-          if (!firstByteSeen) {
-            firstByteSeen = true;
-            markPerf("olivia-speak-first-byte");
-          }
-
-          appendToBuffer(value);
-
-          const target = firstChunkSent ? TARGET_CHUNK_BYTES : FIRST_CHUNK_BYTES;
-          while (buffer.length >= target) {
-            if (signal.aborted) return false;
-            const chunk = buffer.slice(0, target);
-            buffer = buffer.slice(target);
-            if (!flushChunk(chunk)) return false;
-          }
-        }
-
-        if (signal.aborted) return false;
-
-        if (buffer.length > 0) {
-          if (!flushChunk(buffer)) return false;
-          buffer = new Uint8Array(0);
-        }
-
-        if (ws.readyState !== WebSocket.OPEN) return false;
-
-        // Signal end of utterance so LiveAvatar settles the mouth back
-        // to neutral instead of holding the last viseme open. Per LITE
-        // Mode protocol (HEYGEN_LTM_CONFIG.md §4 — Pinned WS format).
-        ws.send(
-          JSON.stringify({
-            type: "agent.speak_end",
-            event_id: `spk_${Date.now()}`,
-          }),
-        );
-        markPerf("olivia-speak-done");
-        return true;
-      } catch (err) {
-        if (signal.aborted) return false;
-        console.warn("[LiveAvatar] speak-stream interrupted:", err);
-        // Don't try to recover the partial utterance — let LiveAvatar's
-        // own server-side timeout settle the mouth. Caller decides
-        // whether to retry via the fallback path; for a partial mid-
-        // stream failure that would mean speaking the same text twice.
-        return false;
-      } finally {
-        signal.removeEventListener("abort", onAbort);
-      }
-    },
-    [authHeaders],
-  );
-
-  /**
-   * Track O5a — non-streaming fallback path. Original /speak shape:
-   * server buffers full PCM, returns base64 JSON, client sends one
-   * `agent.speak` message. Slower TTFM but doesn't depend on the
-   * streaming response surviving end-to-end.
-   *
-   * Returns true iff an `agent.speak` message was sent. Track O5e —
-   * boolean return so the caller can distinguish "fallback succeeded"
-   * from "fallback also declined" and surface a UI error in the latter.
-   */
-  const speakReplyFallback = useCallback(
-    async (text: string, signal: AbortSignal): Promise<boolean> => {
-      const ws = wsRef.current;
-      if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-      if (signal.aborted) return false;
-
-      try {
-        const res = await fetch("/api/olivia/liveavatar/speak", {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify({ text: text.slice(0, 5000) }),
-          signal,
-        });
-        const data = await res.json();
-
-        if (signal.aborted) return false;
-        if (data.fallback || !data.audio) return false;
-        if (ws.readyState !== WebSocket.OPEN) return false;
-
-        ws.send(
-          JSON.stringify({
-            type: "agent.speak",
-            audio: data.audio,
-          }),
-        );
-        return true;
-      } catch (err) {
-        if (signal.aborted) return false;
-        console.error("[LiveAvatar] speak fallback error:", err);
-        return false;
-      }
-    },
-    [authHeaders],
-  );
-
-  // Send TTS audio when new reply arrives. Try the streaming path first
-  // (Track O5a — pre-roll for ~8-40× faster time-to-first-mouth-movement);
-  // only invoke the non-streaming fallback if the stream path declines
-  // (server fallback JSON, network error, ws-not-open). Track O5e —
-  // serialize via AbortController so a newer reply pre-empts an older
-  // in-flight one (no PCM interleave on the wire); fire onSpeakError
-  // only when BOTH paths declined for the SAME utterance (not on abort).
+  // Track O5c-Lift — speak / streaming / fallback all moved into the
+  // LiveAvatar handle (`src/lib/avatar/liveavatar.ts`). The component
+  // now just calls `handleRef.current.speak(text, signal)` and lets
+  // the handle own the streaming + fallback + abort + perf-mark
+  // semantics. See the C2 commit (3e4048a) for the lifted code.
   const speakReply = useCallback(
     async (text: string): Promise<void> => {
-      // Cancel any in-flight speak so its remaining chunks don't
-      // interleave with the new utterance.
+      const handle = handleRef.current;
+      if (!handle) return;
+
+      // Pre-empt any in-flight speak the component owns, then create
+      // a fresh controller for this one. The handle ALSO serializes
+      // speaks internally; the external controller exists so the
+      // component can cancel from interrupt() / unmount.
       speakAbortRef.current?.abort();
       const controller = new AbortController();
       speakAbortRef.current = controller;
-      const { signal } = controller;
 
-      const streamed = await speakReplyStreaming(text, signal);
-      if (signal.aborted) {
-        onSpeakError?.("stream_aborted");
-        return;
-      }
-      if (streamed) return;
+      const result = await handle.speak(text, controller.signal);
+      if (speakAbortRef.current === controller) speakAbortRef.current = null;
 
-      const fellBack = await speakReplyFallback(text, signal);
-      if (signal.aborted) {
-        onSpeakError?.("stream_aborted");
-        return;
-      }
-      if (!fellBack) {
-        // Both paths declined — most likely cause is the WebSocket
-        // closed mid-flight or the server returned the fallback JSON
-        // (ElevenLabs unconfigured / upstream errored).
-        const reason: "ws_closed" | "voice_unavailable" =
-          wsRef.current?.readyState === WebSocket.OPEN
-            ? "voice_unavailable"
-            : "ws_closed";
-        onSpeakError?.(reason);
+      // Don't surface stream_aborted to the parent — that's the
+      // natural pre-emption case when a newer reply arrived.
+      if (result.reason && result.reason !== "stream_aborted") {
+        onSpeakErrorRef.current?.(result.reason);
       }
     },
-    [speakReplyStreaming, speakReplyFallback, onSpeakError],
+    [],
   );
 
-  // React to new replies. Track O5b — if a prior reply is still being
-  // spoken when a new one arrives, send `agent.interrupt` to clear the
-  // queue so the user hears the new reply right away instead of waiting
-  // for the old one to finish. (LITE Mode otherwise queues utterances.)
+  // React to new replies. Track O5b — auto-interrupt if a prior reply
+  // is still being spoken so the user hears the new reply immediately.
+  // The handle's interrupt() sends agent.interrupt over the WS; speak()
+  // then begins the next utterance. The handle internally serializes
+  // speaks too (newer pre-empts older), so even without the explicit
+  // interrupt() we'd get correct ordering — interrupt() just shortens
+  // the gap.
+  //
+  // Track O5c-Lift removed: keepAlive useEffect — session.keep_alive
+  // every 4 minutes now lives inside the handle, started in connect()
+  // and cleared in disconnect(). Component no longer has WS access.
   useEffect(() => {
     if (
       lastReply &&
       lastReply !== lastSpokenRef.current &&
-      (state === "connected" || state === "speaking")
+      (state === "connected" || state === "speaking") &&
+      handleRef.current
     ) {
       lastSpokenRef.current = lastReply;
 
-      if (state === "speaking" && wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({
-            type: "agent.interrupt",
-            event_id: `int_${Date.now()}`,
-          }),
-        );
+      if (state === "speaking") {
+        handleRef.current.interrupt();
       }
 
-      speakReply(lastReply);
+      void speakReply(lastReply);
     }
   }, [lastReply, state, speakReply]);
-
-  // Keep session alive
-  useEffect(() => {
-    if (state !== "connected" && state !== "speaking") return;
-
-    const keepAlive = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          type: "session.keep_alive",
-          event_id: `ka_${Date.now()}`,
-        }));
-      }
-    }, 4 * 60 * 1000); // Every 4 minutes (session closes after 5 min idle)
-
-    return () => clearInterval(keepAlive);
-  }, [state]);
 
   /* ─────────────────────────────────────────────────────────────────────────────
    * Recording Functions
@@ -891,25 +630,20 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
 
     // ── Playback controls ──
     interrupt: () => {
-      // Send interrupt command to stop current speech
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          type: "agent.interrupt",
-          event_id: `int_${Date.now()}`,
-        }));
-        setState("connected");
-        onSpeakingChange?.(false);
-      }
+      // Track O5c-Lift — handle owns the ws.send. The "connected"
+      // state transition + onSpeakingChange(false) come back to the
+      // component via the handle's stateChange listener; no need to
+      // dispatch them here directly.
+      handleRef.current?.interrupt();
     },
     replayLast: () => {
-      // Replay the last spoken message
       const lastMessage = lastSpokenRef.current;
       if (lastMessage && (state === "connected" || state === "speaking")) {
-        // Clear the ref so the useEffect doesn't block it
+        // Clear-then-restore so the lastReply useEffect's dedupe check
+        // doesn't block this manual re-fire.
         lastSpokenRef.current = "";
-        // Re-set it and trigger speak
         lastSpokenRef.current = lastMessage;
-        speakReply(lastMessage);
+        void speakReply(lastMessage);
       }
     },
     getLastReply: () => lastSpokenRef.current,
@@ -927,14 +661,12 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
     connectSession,
     disconnectSession,
     speakReply,
-    onSpeakingChange,
     startRecording,
     stopRecording,
     downloadRecording,
     cleanupRecording,
     recordingState,
     recordingError,
-    setState,
   ]);
 
   return (

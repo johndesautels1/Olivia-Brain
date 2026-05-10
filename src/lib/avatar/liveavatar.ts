@@ -148,6 +148,26 @@ function uint8ToBase64(bytes: Uint8Array): string {
 }
 
 /**
+ * Mark a perf event if `performance.mark` is present. Skipped silently
+ * in SSR / older runtimes. The harness + dev tools read these via
+ * `performance.getEntriesByName` to isolate which segment of the
+ * pipeline owns each ms of latency:
+ *   olivia-speak-start          — fetch initiated
+ *   olivia-speak-first-byte     — first PCM byte arrived
+ *   olivia-speak-first-chunk    — first agent.speak ws message sent
+ *   olivia-speak-done           — speak_end sent
+ */
+function markPerf(name: string): void {
+  if (typeof performance !== "undefined" && typeof performance.mark === "function") {
+    try {
+      performance.mark(name);
+    } catch {
+      /* ignore — duplicates / invalid names just no-op */
+    }
+  }
+}
+
+/**
  * Factory for the LiveAvatar (HeyGen LITE Mode) realtime handle.
  *
  * Each call returns an independent handle bound to its own LiveKit
@@ -168,6 +188,11 @@ export function createLiveAvatarLiveHandle(
   // De-dupe concurrent connect() calls — the second resolves to the
   // first's outcome instead of creating a second LiveKit session.
   let connectInFlight: Promise<void> | null = null;
+  // LiveAvatar LITE Mode closes idle sessions after ~5 minutes. Send
+  // a keep-alive every 4 minutes while connected so the session
+  // doesn't drop out from under the consumer. Owned by the handle
+  // (was a useEffect in OliviaVideoAvatar before the C3 lift).
+  let keepAliveTimer: ReturnType<typeof setInterval> | null = null;
 
   const stateListeners = new Set<LiveAvatarHandleEventMap["stateChange"]>();
   const audioListeners = new Set<LiveAvatarHandleEventMap["audioElementReady"]>();
@@ -265,6 +290,23 @@ export function createLiveAvatarLiveHandle(
         }
 
         setState("connected");
+
+        // Start the keep-alive heartbeat. Cleared in disconnect().
+        if (keepAliveTimer) clearInterval(keepAliveTimer);
+        keepAliveTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: "session.keep_alive",
+                  event_id: `ka_${Date.now()}`,
+                }),
+              );
+            } catch {
+              /* ignore — the next disconnect will clean up */
+            }
+          }
+        }, 4 * 60 * 1000);
       } catch (err) {
         setState("error");
         throw err;
@@ -277,6 +319,10 @@ export function createLiveAvatarLiveHandle(
   }
 
   function disconnect(): void {
+    if (keepAliveTimer) {
+      clearInterval(keepAliveTimer);
+      keepAliveTimer = null;
+    }
     if (speakAbort) {
       try {
         speakAbort.abort();
@@ -316,6 +362,8 @@ export function createLiveAvatarLiveHandle(
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
     if (signal.aborted) return false;
 
+    markPerf("olivia-speak-start");
+
     let res: Response;
     try {
       res = await fetch(LIVEAVATAR_SPEAK_STREAM_PATH, {
@@ -337,6 +385,7 @@ export function createLiveAvatarLiveHandle(
     const reader = res.body.getReader();
     let buffer = new Uint8Array(0);
     let firstChunkSent = false;
+    let firstByteSeen = false;
 
     const onAbort = () => {
       try {
@@ -354,6 +403,11 @@ export function createLiveAvatarLiveHandle(
         if (done) break;
         if (!value || value.length === 0) continue;
 
+        if (!firstByteSeen) {
+          firstByteSeen = true;
+          markPerf("olivia-speak-first-byte");
+        }
+
         const merged = new Uint8Array(buffer.length + value.length);
         merged.set(buffer, 0);
         merged.set(value, buffer.length);
@@ -366,7 +420,10 @@ export function createLiveAvatarLiveHandle(
           const chunk = buffer.slice(0, target);
           buffer = buffer.slice(target);
           socket.send(JSON.stringify({ type: "agent.speak", audio: uint8ToBase64(chunk) }));
-          firstChunkSent = true;
+          if (!firstChunkSent) {
+            firstChunkSent = true;
+            markPerf("olivia-speak-first-chunk");
+          }
         }
       }
 
@@ -379,6 +436,7 @@ export function createLiveAvatarLiveHandle(
 
       if (socket.readyState !== WebSocket.OPEN) return false;
       socket.send(JSON.stringify({ type: "agent.speak_end", event_id: `spk_${Date.now()}` }));
+      markPerf("olivia-speak-done");
       return true;
     } catch (err) {
       if (signal.aborted) return false;
