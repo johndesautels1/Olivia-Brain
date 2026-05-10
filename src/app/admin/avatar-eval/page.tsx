@@ -147,11 +147,21 @@ export default function AvatarEvalPage() {
     };
   }, []);
 
-  const liveAvatarConfigured = useMemo(
-    () =>
-      vendorHealth.find((v) => v.vendor === "liveavatar")?.configured ?? false,
-    [vendorHealth],
-  );
+  // Per-vendor "is the live trigger usable for this vendor". Track
+  // O5c-Lift S4 extended live triggers from liveavatar-only to
+  // liveavatar + tavus + simli; the other vendors stay manual-entry.
+  const liveTriggerConfigured = useMemo(() => {
+    const isConfigured = (v: string): boolean =>
+      vendorHealth.find((h) => h.vendor === v)?.configured ?? false;
+    return {
+      liveavatar: isConfigured("liveavatar"),
+      tavus: isConfigured("tavus"),
+      simli: isConfigured("simli"),
+    } as Record<string, boolean>;
+  }, [vendorHealth]);
+
+  const VENDORS_WITH_LIVE_TRIGGER = ["liveavatar", "tavus", "simli"] as const;
+  const vendorHasLiveTrigger = (VENDORS_WITH_LIVE_TRIGGER as readonly string[]).includes(vendor);
 
   const submit = useCallback(async () => {
     setError(null);
@@ -202,58 +212,87 @@ export default function AvatarEvalPage() {
   }, [vendor, scriptId, latencyMs, mosScore, costCents, notes, loadRuns]);
 
   /**
-   * S3 live-trigger: only meaningful for `liveavatar` today (existing
-   * `/api/olivia/liveavatar/speak-stream` route returns PCM as a
-   * stream; we time request-start to first byte received).
+   * Live-trigger — vendor-aware after Track O5c-Lift S4.
    *
-   * For Tavus / Simli the live path requires a real WebRTC session
-   * setup that the harness can't drive without dragging in vendor
-   * SDKs — those stay manual-entry until the abstraction lift lands
-   * in a follow-up session.
+   * - liveavatar: time POST /api/olivia/liveavatar/speak-stream →
+   *   first PCM byte received (server pipe + ElevenLabs TTFB). The
+   *   dominant component of HeyGen LITE Mode TTFM per the O5a
+   *   analysis.
+   * - tavus: POST /api/admin/avatar-eval/live/tavus, the server
+   *   creates a conversation (untimed setup), times the utterance
+   *   accept, ends the conversation. Returns the timed value.
+   * - simli: POST /api/admin/avatar-eval/live/simli, the server
+   *   times createSimliSession (Simli's "ready" signal), ends the
+   *   session. Returns the timed value.
+   *
+   * The three measurements are NOT perfectly comparable (different
+   * vendor surfaces, different "ready" semantics) — see the decision-
+   * rubric page's notes about cross-vendor caveats. The harness
+   * captures them anyway because each is a meaningful per-vendor
+   * proxy and the rubric's relative ranking is more useful than
+   * absolute apples-to-apples.
    */
   const runLive = useCallback(async () => {
-    if (vendor !== "liveavatar") return;
+    if (!vendorHasLiveTrigger) return;
     setError(null);
     setLiveCapturing(true);
-    const t0 = performance.now();
     try {
-      const res = await fetch(LIVEAVATAR_SPEAK_STREAM_PATH, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: script.text }),
-      });
-      const contentType = res.headers.get("Content-Type") ?? "";
-      if (contentType.includes("application/json")) {
-        // The route returned its JSON fallback (env missing or
-        // upstream declined). Surface the reason instead of writing a
-        // bogus latency.
+      let ttfm: number;
+      if (vendor === "liveavatar") {
+        const t0 = performance.now();
+        const res = await fetch(LIVEAVATAR_SPEAK_STREAM_PATH, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: script.text }),
+        });
+        const contentType = res.headers.get("Content-Type") ?? "";
+        if (contentType.includes("application/json")) {
+          // Route returned JSON fallback (env missing or upstream
+          // declined). Surface the reason instead of writing a bogus
+          // latency.
+          const data = (await res.json().catch(() => ({}))) as {
+            fallback?: boolean;
+            reason?: string;
+            error?: string;
+          };
+          const reason = data.reason ?? data.error ?? "fallback";
+          throw new Error(`LiveAvatar declined: ${reason}`);
+        }
+        if (!res.ok || !res.body) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const reader = res.body.getReader();
+        const first = await reader.read();
+        const t1 = performance.now();
+        void reader.cancel().catch(() => {});
+        if (first.done) {
+          throw new Error("Empty response stream");
+        }
+        ttfm = Math.max(0, Math.round(t1 - t0));
+      } else {
+        // tavus / simli — server-side timing, returned in JSON.
+        const res = await fetch(`/api/admin/avatar-eval/live/${vendor}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: script.text }),
+        });
         const data = (await res.json().catch(() => ({}))) as {
-          fallback?: boolean;
-          reason?: string;
+          ok?: boolean;
+          ttfmMs?: number;
           error?: string;
         };
-        const reason = data.reason ?? data.error ?? "fallback";
-        throw new Error(`LiveAvatar declined: ${reason}`);
+        if (!res.ok || !data.ok || typeof data.ttfmMs !== "number") {
+          throw new Error(data.error ?? `HTTP ${res.status}`);
+        }
+        ttfm = data.ttfmMs;
       }
-      if (!res.ok || !res.body) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const reader = res.body.getReader();
-      const first = await reader.read();
-      const t1 = performance.now();
-      // Cancel after first byte — we only need TTFM, not the full PCM.
-      void reader.cancel().catch(() => {});
-      if (first.done) {
-        throw new Error("Empty response stream");
-      }
-      const ttfm = Math.max(0, Math.round(t1 - t0));
       setLatencyMs(String(ttfm));
     } catch (err) {
       setError(err instanceof Error ? err.message : "live trigger failed");
     } finally {
       setLiveCapturing(false);
     }
-  }, [vendor, script.text]);
+  }, [vendor, script.text, vendorHasLiveTrigger]);
 
   const runsForSelection = useMemo(
     () => runs.filter((r) => r.vendor === vendor && r.scriptId === scriptId),
@@ -722,43 +761,46 @@ export default function AvatarEvalPage() {
                 {submitting ? "Saving…" : "Record run"}
               </button>
 
-              {vendor === "liveavatar" && (
-                <button
-                  type="button"
-                  onClick={() => void runLive()}
-                  disabled={liveCapturing || !liveAvatarConfigured}
-                  title={
-                    !liveAvatarConfigured
-                      ? "LiveAvatar isn't configured — set LIVEAVATAR_API_KEY + LIVEAVATAR_OLIVIA_AVATAR_ID in Vercel"
-                      : "POST the script to /api/olivia/liveavatar/speak-stream and time the request-start to first PCM byte. Auto-fills latency."
-                  }
-                  style={{
-                    padding: "10px 18px",
-                    borderRadius: "var(--radius-full)",
-                    background:
-                      liveCapturing || !liveAvatarConfigured
-                        ? "var(--surface-2)"
-                        : "var(--canvas-recess)",
-                    color:
-                      liveCapturing || !liveAvatarConfigured
-                        ? "var(--fg-tertiary)"
-                        : "var(--aurum-primary)",
-                    border: `1px solid ${liveAvatarConfigured ? "var(--border-aurum)" : "var(--border-default)"}`,
-                    fontWeight: 600,
-                    fontSize: "var(--text-sm)",
-                    cursor:
-                      liveCapturing || !liveAvatarConfigured
-                        ? "not-allowed"
-                        : "pointer",
-                  }}
-                >
-                  {liveCapturing
-                    ? "Capturing…"
-                    : liveAvatarConfigured
-                      ? "Run live (TTFM)"
-                      : "Run live (key missing)"}
-                </button>
-              )}
+              {vendorHasLiveTrigger && (() => {
+                const configured = liveTriggerConfigured[vendor] ?? false;
+                const tooltip =
+                  vendor === "liveavatar"
+                    ? configured
+                      ? "POST the script to /api/olivia/liveavatar/speak-stream and time request-start to first PCM byte. Auto-fills latency."
+                      : "LiveAvatar isn't configured — set LIVEAVATAR_API_KEY + LIVEAVATAR_OLIVIA_AVATAR_ID in Vercel"
+                    : vendor === "tavus"
+                      ? configured
+                        ? "POST to /api/admin/avatar-eval/live/tavus — server creates a conversation (untimed setup), times the utterance accept, then ends the conversation."
+                        : "Tavus isn't configured — set TAVUS_API_KEY in Vercel"
+                      : configured
+                        ? "POST to /api/admin/avatar-eval/live/simli — server times createSimliSession (Simli's 'ready' signal), then ends the session. Text input ignored — PCM bridge deferred."
+                        : "Simli isn't configured — set SIMLI_API_KEY in Vercel";
+                const disabled = liveCapturing || !configured;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => void runLive()}
+                    disabled={disabled}
+                    title={tooltip}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: "var(--radius-full)",
+                      background: disabled ? "var(--surface-2)" : "var(--canvas-recess)",
+                      color: disabled ? "var(--fg-tertiary)" : "var(--aurum-primary)",
+                      border: `1px solid ${configured ? "var(--border-aurum)" : "var(--border-default)"}`,
+                      fontWeight: 600,
+                      fontSize: "var(--text-sm)",
+                      cursor: disabled ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {liveCapturing
+                      ? "Capturing…"
+                      : configured
+                        ? "Run live (TTFM)"
+                        : "Run live (key missing)"}
+                  </button>
+                );
+              })()}
             </div>
 
             {error && (
