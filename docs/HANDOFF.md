@@ -1,11 +1,31 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-09 (final-final) — full Track O5c batch (S1 + S2 + S3) + 6-commit polish wave + 9-commit closing wave (README rule, ASCII-SQL fix, owed-migration auto-detect, golden cases, fl_realestate Tampa Bay coverage).
-> **Working tree:** clean on `main`. tsc exit 0. Avatar tests pass across 8 files; spoke-router tests 18/18; golden-cases 6/6 (15 cases now).
-> **Latest HEAD:** the docs-update commit that ships this handoff (`git log -1` to confirm — should be the most recent push).
-> **Status:** demo-ready, ops-instrumented. Vercel deploys cleanly. Track O fully closed; O5c S1+S2+S3 + 9-commit closing wave shipped. Only the `OliviaVideoAvatar` 867-line abstraction lift was scope-cut to a follow-up "Track O5c-Lift" — refactor of working production code, not weakness-closure.
+> **Last updated:** 2026-05-10 — Track **O5c-Lift** fully closed (4 commits) + cold-start test backport (1 commit). 5 commits since `f474739`.
+> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0 (with `NODE_OPTIONS=--max-old-space-size=4096` to dodge default-heap OOM on Windows). Full vitest suite 1070/1070 in 97s after the pre-warm backport. Avatar tests 58/58, AvatarOrb 19/19, new live-route tests 9/9.
+> **Latest HEAD:** the docs commit that ships this handoff (`git log -1` to confirm — should be the most recent push).
+> **Status:** Track O5c-Lift CLOSED. `OliviaVideoAvatar` no longer holds inline LiveKit + WebSocket lifecycle — it dispatches via the new `LiveAvatarHandle` factory in `src/lib/avatar/`, takes a `provider?: LiveAvatarProvider` prop, and shrunk by ~210 lines. Tavus + Simli "Run live (TTFM)" buttons now wired in the harness via a new server-proxied route. Two follow-ups deferred (NOT regressions — explicit scope cuts): real Tavus video render via Daily SDK; real Simli realtime via PCM bridge + Simli WebRTC SDK. See `docs/SESSION_LOG_2026-05-10_O5C_LIFT.md` for full carry-forward.
 
-### Today's full batch (19 commits since `4808d6c`)
+### Today's batch (5 commits since `f474739`)
+
+1. `07eb914` — `test(api): pre-warm route modules in 8 surface tests to fix cold-start timeout`. Backports the `c5ee644` pattern to 8 admin/API route test files that were timing out at 15s under full-suite parallel load. Pre-existing infra debt; suite went 1058/1070 in 329s → 1070/1070 in 97s.
+2. `d4cfb7b` — **O5c-Lift C1**: `LiveAvatarHandle` interface + `LiveAvatarProvider` union + `SpeakErrorReason` + `LiveAvatarHandleEventMap` + `CreateLiveAvatarHandleOptions` in `src/lib/avatar/types.ts`. `AvatarState` moved from `OliviaVideoAvatar` to `types.ts` with re-export for back-compat.
+3. `3e4048a` — **O5c-Lift C2**: per-vendor handle implementations + factory dispatcher. LiveAvatar handle is the real one (lifts the LiveKit + WS code). Tavus + Simli are HONEST stubs — connect/speak throw or return clearly-labelled deferred-implementation errors so no caller is fooled. 23 contract tests.
+4. `1a9a812` — **O5c-Lift C3**: `OliviaVideoAvatar.tsx` refactor. Net −210 lines. Component dispatches all lifecycle via `handleRef.current.{connect,disconnect,speak,interrupt,attachVideo}`. New `provider` prop. Behavior parity preserved (verified against the original lifecycle).
+5. `892dc17` — **O5c-Lift C4**: harness "Run live (TTFM)" extended from liveavatar-only to liveavatar + tavus + simli. New `/api/admin/avatar-eval/live/[vendor]/route.ts` for Tavus (utterance accept timing) + Simli (session-create timing). 9 route tests.
+6. **(this commit)** — **O5c-Lift C5**: `docs/SESSION_LOG_2026-05-10_O5C_LIFT.md` + this HANDOFF.md update.
+
+### What this batch did NOT touch
+- No SQL migrations. Migrations owed by prior batches (04, 05, 06, 07, 08, 09, 10, seed-investor-reputations) all still listed in `/admin/tools` with the in-app SQL inline-paste affordance — unchanged.
+- No production secret env-var changes. Two new env vars become useful AFTER this batch (TAVUS_API_KEY, SIMLI_API_KEY for the harness "Run live" buttons), but not required for any existing surface.
+- `~/CLAUDE.md` was updated by the founder mid-batch with new local-builds policy (C70 onward — local builds permitted under specific safety rules: commit + push BEFORE starting any local server). I did NOT make that edit; flagged for awareness.
+
+### Architectural fact captured this batch
+- **`liveavatar` and `heygen` are the same vendor (HeyGen) at different product tiers** — `liveavatar` is HeyGen's LITE Mode realtime path; `heygen` is HeyGen's async video gen. Saved to memory at `~/.claude/projects/.../memory/project_ob_liveavatar_is_heygen.md` and to the doc comment on `LiveAvatarProvider` in `types.ts`. Past sessions had treated them as unrelated vendors. When reasoning about cost/strategy: aggregate. When reasoning about API surface / env vars: separate.
+
+### Mid-batch sidetrack (LTM, now off-limits)
+- Founder asked me to investigate a London-Tech-Map trust-strip image-upload bug. I committed a 3-file silent-fail UX fix (`6af7714` on LTM master), founder asked me to revert it, revert pushed as `c460932`. Net effect on LTM: zero. Founder direction: London-Tech-Map is now a **walled garden** to OB sessions — do not touch.
+
+### Previous batch — 2026-05-09 (closed at `f474739`, 19 commits since `4808d6c`)
 
 **O5c arc + immediate polish (commits 1–10):**
 1. `fb85c3f` — **O5c S1**: Tavus adapter + `AvatarEvalRun` Prisma model + `TAVUS_API_KEY` env var + 5 smoke tests
