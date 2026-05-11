@@ -256,3 +256,6 @@ registerHandler(podcastBookerHandler);
 
 import { buildVsBuyDecisionAgentHandler } from "./impl/g1-130-build-vs-buy-decision-agent";
 registerHandler(buildVsBuyDecisionAgentHandler);
+
+import { emailNegotiatorHandler } from "./impl/g1-149-email-negotiator";
+registerHandler(emailNegotiatorHandler);
