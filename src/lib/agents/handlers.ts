@@ -235,3 +235,6 @@ export function getHandlerCount(): number {
 
 import { dataProtectionOrchestratorHandler } from "./impl/g1-033-data-protection-orchestrator";
 registerHandler(dataProtectionOrchestratorHandler);
+
+import { modernSlaveryStatementGeneratorHandler } from "./impl/g1-048-modern-slavery-statement-generator";
+registerHandler(modernSlaveryStatementGeneratorHandler);
