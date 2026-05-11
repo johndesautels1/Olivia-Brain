@@ -247,3 +247,6 @@ registerHandler(thoughtLeadershipGhostwriterHandler);
 
 import { journalistMatchmakerHandler } from "./impl/g1-105-journalist-matchmaker";
 registerHandler(journalistMatchmakerHandler);
+
+import { socialProofAgentHandler } from "./impl/g1-115-social-proof-agent";
+registerHandler(socialProofAgentHandler);
