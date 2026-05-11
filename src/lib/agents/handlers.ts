@@ -265,3 +265,6 @@ registerHandler(procurementAgentHandler);
 
 import { confidenceScoreDecisionEngineHandler } from "./impl/g1-141-confidence-score-decision-engine";
 registerHandler(confidenceScoreDecisionEngineHandler);
+
+import { secondOrderConsequenceModelerHandler } from "./impl/g1-136-second-order-consequence-modeler";
+registerHandler(secondOrderConsequenceModelerHandler);
