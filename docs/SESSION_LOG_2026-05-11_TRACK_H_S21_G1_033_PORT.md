@@ -475,3 +475,142 @@ are the same calendar day, the same context, the same founder
 direction ("keep going"). Splitting into two SESSION_LOG files
 would fragment the narrative across reads. Keeping them in one
 file makes the next session's read-on-arrival cleaner.
+
+---
+
+## Addendum 2 — 2026-05-11 extended port batch (5 more handlers)
+
+Founder said "keep going" + "keep committing to github" + "what
+are you doing keep working" after the G1-048 close. Five more
+per-company handlers ported in mechanical succession, each
+following the canonical pattern with single-commit landings.
+This is the regime the foundation work was built for — each
+~1 commit, each validating the pattern's leverage.
+
+### Port queue worked through (in commit order)
+
+1. **`92204b7`** — **G1-076 Pitch Deck London Filter** (~420 lines,
+   15 tests). Rewrites US-centric pitch decks for London/UK
+   investors: USD→GBP, US hyperbole→UK measured, US accelerator
+   name-drops→London equivalents, adds FCA/EIS/SEIS/Patent Box
+   anchors. Pitch-decks collection (investor_deck / investor /
+   fundraising) — third distinct document-mirror shape. New
+   pattern: `targetSection` enum lets the rewrite focus on one
+   slide while preserving others. Severity flips warning on
+   `redFlags.length > 0`.
+
+2. **`1a20c7b`** — **G1-107 Thought Leadership Ghostwriter**
+   (~400 lines, 15 tests). Drafts long-form thought-leadership
+   pieces (essay / blog_post / linkedin_thought_post / op_ed) in
+   the founder's voice. sales-marketing collection (marketing_doc /
+   media / outreach). New patterns: `maxTokens` capped at 5000 to
+   stay inside the 45s LLM timeout on Sonnet at 1000-word target;
+   severity is always "info" (no boolean trigger for warning, by
+   design).
+
+3. **`9e6c221`** — **G1-105 Journalist Matchmaker** (~450 lines,
+   15 tests). Matches a founder's announcement to specific named
+   UK tech journalists (Sifted, FT Tech, Bloomberg London,
+   TechCrunch EU, Wired UK, The Guardian, Sky News). Drafts
+   per-match pitch + 3 subject-line options + follow-up strategy.
+   **First handler to opt into provider-native web search**
+   (`enableWebSearch: true`) since journalist beats shift weekly —
+   validates the search opt-in machinery built in commit `6c37ff0`
+   (llm.ts) end-to-end. `outputData.webSearchUsed` surfaces from
+   `llmResult.webSearchUsed`. Same sales-marketing mirror as
+   G1-107.
+
+4. **`b180f29`** — **G1-115 Social Proof Agent** (~420 lines, 16
+   tests). Assembles a deck-ready "proof package" across 8
+   categories (customer_logos / partner_signals / press_mentions /
+   investor_logos / district_legitimacy / regulator_alignments /
+   team_credentials / metrics_signals) for one of 4 use contexts
+   (investor_deck / enterprise_pitch / press_kit / website). New
+   patterns: **numeric-threshold severity** (warning when
+   `legitimacyScore < 50`); **conditional audience/purpose
+   derivation** (audienceType + purposeType derived dynamically
+   from targetUseContext, first handler to do this — pattern:
+   investor_deck → investor/fundraising; enterprise_pitch →
+   enterprise_client/partnership; press_kit → media/outreach;
+   website → investor/outreach).
+
+5. **`3324525`** — **G1-110 Podcast Booker** (~460 lines, 14
+   tests). Matches a founder to London-tech podcasts (Sifted
+   Audio, 20MVC, EUVC, This Much I Know, AI Daily Brief). Master
+   pitch with per-show `<<HOOK>>` placeholders, booking
+   expectations (lead time, prep, equipment). Second handler with
+   `enableWebSearch: true` — podcasts come and go faster than
+   journalists' beats. Missing-founderBio early exit (mode=
+   `missing_founder_bio`). Same matchmaker shape as G1-105 with
+   per-match `hooksTailored` array (exactly 3 per show).
+
+### Pattern observations from the extended batch
+
+- **The pattern absolutely holds.** Each new handler ported in
+  one mechanical commit using the existing primitives — no new
+  Prisma models, no new shared modules, no new schema migrations.
+  The foundation investment (commits 1–6 of this batch's first
+  half) paid back in commits 7–11.
+- **Three distinct document-mirror shapes** now exercised:
+  legal-compliance (G1-033 + G1-048) for compliance docs;
+  pitch-decks (G1-076) for investor materials; sales-marketing
+  (G1-107 + G1-105 + G1-115 + G1-110) for media / pitch outreach.
+  Each shape is one Prisma row + one `summary` line — no special-
+  casing needed in the spawn helper.
+- **Severity rules are per-handler.** G1-033 used `dpiaRequired`;
+  G1-048 used `legallyRequired`; G1-076 + G1-105 + G1-110 used
+  `redFlags.length > 0`; G1-107 was always `"info"`; G1-115 used
+  `legitimacyScore < 50` (numeric threshold). Pattern: pick the
+  single signal that means "the founder needs to read this
+  carefully" and use it for the warning flip.
+- **Web search opt-in is a stable primitive.** Two handlers (G1-105,
+  G1-110) now exercise the `enableWebSearch: true` path end-to-end.
+  Future market-research / news-grounding handlers will reuse
+  this without code changes.
+- **Early-exit modes are handler-specific.** G1-076 introduced
+  `missing_deck_text`; G1-105 introduced `missing_announcement_text`;
+  G1-110 introduced `missing_founder_bio`. Each is a 3rd failure
+  mode beyond `llm_unavailable` + parse-failed. Convention: when a
+  handler requires a piece of caller-supplied content that the
+  resolveUserCompany helper can't fill in, add a single
+  `missing_<thing>` early exit with `mode: "missing_<thing>"` in
+  outputData and a clear `severity: "info"` alert.
+
+### Verification at HEAD `3324525`
+
+- `npx tsc --noEmit` exit 0 (NODE_OPTIONS=--max-old-space-size=4096),
+  confirmed across all 5 commits — the only typecheck dependency
+  in each was the new handler file + 2-line registry add. Zero
+  type drift in existing code.
+- Full vitest suite **1245 / 1245** in 248.14s — up from 1170
+  prior addendum-1 baseline + 75 new this addendum (15 + 15 + 15 +
+  16 + 14).
+- Per-handler smoke tests cleanly isolate llm / document-mirror /
+  resolve-company via vi.mock at the @/lib/agents/* import surface.
+  No fragile network or DB dependencies in the test surface.
+
+### Bug caught + fixed mid-batch
+
+- **`2e324a2` migration 11 tolerant FK fix.** Operator hit
+  `ERROR: 42P01: relation "documents" does not exist` when
+  applying `prisma/sql/11-add-agent-handler-foundation.sql` to
+  Supabase. Root cause: migration 11 assumes migrations 08+09
+  (Track B documents engine + foundation) have been applied,
+  but they haven't. Fix: wrap each of the three FK ADDs in
+  DO/EXCEPTION blocks that also catch `undefined_table` with a
+  `RAISE NOTICE`, so the migration applies cleanly (3 new tables
+  + 12 seed rows succeed) and the deferred FKs land later when
+  the operator re-runs migration 11 after 08+09 apply. Both the
+  on-disk file (`prisma/sql/11-...sql`) AND the inline copy in
+  `docs/HANDOFF.md` § 4 were updated to match. Per the README
+  ABSOLUTE RULE: chat-pasteable copies must match the file.
+
+### Carry-forwards into the next session
+
+| Track | Status | Next step |
+|---|---|---|
+| /admin/tools getOwedMigrations() for migration 11 | Owed | Extend the page component's `getOwedMigrations()` to probe via `prisma.documentCollection.count()`. Migration 11 SQL is inline-ready in HANDOFF § 4. |
+| AGENT_DEFINITIONS registry rows for the 7 ported handlers | Owed | Add G1-033, G1-048, G1-076, G1-107, G1-105, G1-115, G1-110 rows to `src/lib/agents/registry.ts AGENT_DEFINITIONS` so schedulers can auto-run them. Today: handlers fire via `executeAgent()` direct calls only. |
+| Track B document workspace routes | Owed | Port `/documents/[id]/page.tsx` + `/documents/[id]/workspace/*` from LTM so the 7 ported handlers' spawned documents are actually viewable in the UI. |
+| Remaining 5 per-company handlers | Open | g1-130 (build-vs-buy-decision), g1-136 (second-order-consequence-modeler), g1-141 (confidence-score-decision-engine), g1-149 (email-negotiator), g1-150 (procurement-agent). Each ~1 session. |
+| LTM-data handlers (G1-005 / G1-034 / G1-036 / G1-050) | Blocked | Need LTM org/district/role data not exposed in the v1 bridge. Walled-garden direction blocks LTM-side extension. Park until founder reopens the boundary. |

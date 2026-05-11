@@ -1,11 +1,11 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-11 — Track **H S21** opened + extended. G1-033 (Data Protection Orchestrator) and **G1-048 (Modern Slavery Statement Generator)** ported. Canonical handler infrastructure landed (llm.ts + resolve-company.ts + document-mirror.ts + 3 Prisma models + seeded SQL migration). 8 commits since `669a6d0` (6 foundation + 1 second handler + 1 docs close).
-> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0 (with `NODE_OPTIONS=--max-old-space-size=4096` to dodge default-heap OOM on Windows). Full vitest suite **1170/1170 in 122.67s** (1070 prior baseline + 68 new this session: 20 llm + 9 resolve-company + 10 document-mirror + 14 g1-033 + 15 g1-048 + 32 that pre-existed and weren't counted in the prior batch's number).
+> **Last updated:** 2026-05-11 — Track **H S21** opened + extended twice. **SEVEN ported LTM per-company agent handlers** live in Olivia Brain (G1-033, G1-048, G1-076, G1-107, G1-105, G1-115, G1-110). Canonical infrastructure (llm.ts + resolve-company.ts + document-mirror.ts + 3 Prisma models + seeded SQL migration + tolerant-FK fix). 14 commits since `669a6d0` (6 foundation + 2 G1-048 close + 1 SQL fix + 5 handler ports + 1 docs close).
+> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0 (with `NODE_OPTIONS=--max-old-space-size=4096`). Full vitest suite **1245/1245 in 248.14s** (1070 prior baseline + 143 new this session: 20 llm + 9 resolve-company + 10 document-mirror + 14 g1-033 + 15 g1-048 + 15 g1-076 + 15 g1-107 + 15 g1-105 + 16 g1-115 + 14 g1-110 + 32 that pre-existed and weren't counted).
 > **Latest HEAD:** the docs commit that ships this handoff (`git log -1` to confirm — should be the most recent push).
-> **Status:** Two ported LTM agent handlers are live. `getHandler("G1-033")` and `getHandler("G1-048")` both return real implementations instead of `DefaultHandler`. Three new Prisma models (`UserCompanyProfile`, `DocumentCollection`, `DocumentVersion`) + one idempotent SQL migration (seeds the 12 LTM-aligned DocumentCollection rows). The canonical handler pattern is now both **locked in code** (G1-033 reference) AND **validated** (G1-048 ported in 1 commit using zero new infrastructure). See `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` for the full per-commit narrative + carry-forwards (incl. the same-session addendum that captures the G1-048 continuation).
+> **Status:** SEVEN per-company handlers live. The canonical pattern is now both **locked AND validated by repetition**: G1-033 introduced the primitives; G1-048 + G1-076 + G1-107 + G1-105 + G1-115 + G1-110 each ported in one mechanical commit using zero new infrastructure. Three distinct document-mirror shapes exercised (legal-compliance / pitch-decks / sales-marketing). Two handlers exercise the web-search opt-in (G1-105 + G1-110). Numeric-threshold severity + conditional audience/purpose derivation patterns added by G1-115. See `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` for the full narrative across all three addenda.
 
-### Today's batch (8 commits since `669a6d0`)
+### Today's batch (14 commits since `669a6d0`)
 
 1. `6c37ff0` — **Track H S21 C1**: port `callLLM` bridge from LTM (`src/lib/agents/llm.ts`, ~580 lines, 7-provider fan-out with opt-in web search, graceful degradation, rich cost/token return). 20 vitest tests.
 2. `3966525` — **Track H S21 C2**: Prisma foundation. New `CollectionType` enum + 3 new models (`DocumentCollection`, `DocumentVersion`, `UserCompanyProfile` as minimum 10-column LTM subset). Privacy contract codified inline. SQL migration `prisma/sql/11-add-agent-handler-foundation.sql` (idempotent throughout, seeds 12 collection rows). `prisma format` + `prisma generate` ran clean.
@@ -13,8 +13,15 @@
 4. `84e0d74` — **Track H S21 C4**: port `document-mirror` (`src/lib/agents/document-mirror.ts`, byte-for-byte LTM port). `spawnDocumentFromAgent()` resolves UserProfile -> Clerk userId, looks up DocumentCollection by slug, creates Document + DocumentVersion v1 with canonical /api/documents POST shape, idempotent via slug, best-effort throughout. 10 vitest tests.
 5. `738fabc` — **Track H S21 C5**: port `g1-033-data-protection-orchestrator` (`src/lib/agents/impl/g1-033-data-protection-orchestrator.ts`, byte-for-byte LTM port). Versioned output schema, `isDpiaDocument` type guard, fence+brace JSON parser, structured fallback briefings on both failure modes, spawn-when-userProfileId flow. Wired into `handlers.ts` registry. 14 vitest tests.
 6. `770cb8d` — **Track H S21 C6**: `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` + HANDOFF.md update (inlines the migration 11 SQL body per the README ABSOLUTE RULE). Foundation batch close.
-7. `e619332` — **Track H S21 continuation**: port G1-048 Modern Slavery Statement Generator (~340 lines, identical to LTM) + 15 vitest tests + registry wiring. Validates the canonical pattern: zero new infrastructure needed for this port. Threshold derivation (£36M), ARR-as-turnover proxy, legal-compliance document-mirror spawn.
-8. **(this commit)** — **Track H S21 continuation close**: SESSION_LOG addendum (G1-048 narrative + survey of 10 remaining per-company handlers + carry-forwards) + this HANDOFF.md update.
+7. `e619332` — **G1-048 Modern Slavery Statement Generator** (~340 lines + 15 tests). Threshold derivation (£36M), ARR-as-turnover proxy, legal-compliance mirror.
+8. `787c7c9` — SESSION_LOG addendum 1 + HANDOFF update (close of G1-048 continuation).
+9. `2e324a2` — **fix(sql): migration 11 tolerant FKs**. Operator hit `42P01 documents does not exist` because migrations 08+09 (documents engine + foundation) haven't been applied yet. Wrapped each of the three FK ADDs in DO/EXCEPTION blocks that catch `undefined_table` with RAISE NOTICE. Migration now applies cleanly — 3 new tables + 12 seed rows succeed; FKs deferred until 08+09 land.
+10. `92204b7` — **G1-076 Pitch Deck London Filter** (~420 lines + 15 tests). Rewrites US decks for UK investors (USD→GBP, US accelerators→London, FCA/EIS/SEIS anchors). Pitch-decks mirror.
+11. `1a20c7b` — **G1-107 Thought Leadership Ghostwriter** (~400 lines + 15 tests). Long-form essay / blog / LinkedIn / op-ed in founder's voice. sales-marketing mirror. maxTokens cap at 5000 for 45s timeout safety.
+12. `9e6c221` — **G1-105 Journalist Matchmaker** (~450 lines + 15 tests). UK tech journalist matching + personalised pitch. **First handler to opt into provider-native web search** (`enableWebSearch: true`) — validates the search-opt-in machinery from llm.ts (commit 1) end-to-end. sales-marketing mirror.
+13. `b180f29` — **G1-115 Social Proof Agent** (~420 lines + 16 tests). Proof package across 8 categories × 4 use contexts. **Numeric-threshold severity** (legitimacyScore < 50 → warning) and **conditional audience/purpose derivation** from targetUseContext (first handler to do this).
+14. `3324525` — **G1-110 Podcast Booker** (~460 lines + 14 tests). London-tech podcast matching with per-show `<<HOOK>>` placeholders + booking expectations. Second handler with `enableWebSearch: true`.
+15. **(this commit)** — **Track H S21 extended-batch close**: SESSION_LOG addendum 2 + this HANDOFF.md update.
 
 ### What this batch did NOT touch
 
@@ -532,22 +539,23 @@ The session-end state is:
 
 ### Resume options (pick one)
 
-**Option A (Recommended) — Track H S21 continuation — port a third per-company handler.**
-- **Why this:** The canonical pattern is now both locked AND validated. G1-048 ported in 1 commit using zero new infrastructure — the pattern works as advertised. Each subsequent port is mechanical.
-- **Candidate handlers (per-company doc-spawn, verified via `grep -l resolveUserCompany` across LTM impl/):**
-    - `g1-076-pitch-deck-london-filter.ts`
-    - `g1-105-journalist-matchmaker.ts`
-    - `g1-107-thought-leadership-ghostwriter.ts`
-    - `g1-110-podcast-booker.ts`
-    - `g1-115-social-proof-agent.ts`
+**Option A (Recommended) — Track H S21 continuation — port handler #8.**
+- **Why this:** The pattern is now proven across SEVEN handlers. Each new port lands in ~1 commit. Five candidate per-company handlers still queued.
+- **Remaining per-company doc-spawn candidates (5):**
     - `g1-130-build-vs-buy-decision-agent.ts`
     - `g1-136-second-order-consequence-modeler.ts`
     - `g1-141-confidence-score-decision-engine.ts`
     - `g1-149-email-negotiator.ts`
     - `g1-150-procurement-agent.ts`
-- **AVOID without LTM authorization:** G1-005 / G1-034 / G1-036 / G1-050 — all need LTM org/district/role data that the walled garden blocks. Cold-read of G1-034 + G1-036 + G1-050 in this session confirmed this; the HANDOFF.md prior list ("G1-034 / G1-036 / G1-050 are good candidates") was partially wrong.
-- **First read:** the chosen LTM handler source cold + `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` (foundation + G1-048 addendum) + `src/lib/agents/impl/g1-033-data-protection-orchestrator.ts` (versioned-output reference) + `src/lib/agents/impl/g1-048-modern-slavery-statement-generator.ts` (no-versioning reference).
-- **Plan:** mirror the G1-048 commit structure (handler file + tests + handlers.ts registry add) in one commit. ~1 session.
+- **AVOID without LTM authorization:** G1-005 / G1-034 / G1-036 / G1-050 — all need LTM org/district/role data that the walled garden blocks.
+- **First read:** the chosen LTM handler source cold + `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` (addenda 1 + 2 together survey all 7 patterns landed) + one of the existing ports as a reference. Pattern picks per handler:
+    - For a versioned-output handler: G1-033 (`OUTPUT_SCHEMA_VERSION = "1"`).
+    - For a no-versioning handler: G1-048 (LTM is inconsistent — port byte-for-byte).
+    - For a matchmaker-style handler with per-match objects: G1-105 (deep validation of matches[]).
+    - For a web-search handler: G1-105 or G1-110 (`enableWebSearch: true`).
+    - For a numeric-threshold severity handler: G1-115 (`score < 50` → warning).
+    - For a conditional document-mirror shape: G1-115 (audienceType + purposeType derived from input enum).
+- **Plan:** mirror G1-076's or G1-115's commit structure (handler + tests + 2-line registry add) in one commit. ~1 session.
 
 **Option B — `/admin/tools` getOwedMigrations() extension for migration 11.**
 - **Why this:** Closes the in-product-UX-matches-chat-rule gap from this batch. ~30 minutes scope.
