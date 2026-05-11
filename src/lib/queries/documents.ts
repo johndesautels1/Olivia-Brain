@@ -31,13 +31,22 @@ import type {
   ConfidentialityLevel,
 } from "@prisma/client";
 
-/** OB stub — no DocumentCollection table yet. Returns empty list so
- *  the documents/new page renders the editor with no collection
- *  dropdown options instead of crashing. */
+/** Returns active DocumentCollection rows with their document counts.
+ *  Migration 11 (Track H S21) seeded the 12 LTM-aligned collections;
+ *  this now hits the real table instead of returning []. */
 export async function getDocumentCollections(): Promise<
   Array<{ id: string; name: string; slug: string; _count: { documents: number } }>
 > {
-  return [];
+  return prisma.documentCollection.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      _count: { select: { documents: true } },
+    },
+    orderBy: { name: "asc" },
+  });
 }
 
 export async function getDocuments(filters?: {
@@ -89,26 +98,73 @@ export async function getDocuments(filters?: {
 export async function getDocumentById(id: string) {
   return prisma.document.findUnique({
     where: { id },
-    // LTM includes collection / versions / modules / fromRelations /
-    // toRelations — OB has none of those. packageDocs preserved.
+    // Migration 11 (Track H S21) added DocumentCollection + DocumentVersion;
+    // both relations are now selected. `modules` + fromRelations/toRelations
+    // remain stubs — DocumentModule + DocumentRelationship models still
+    // unported (tracked as Track H S21 carry-forward).
     include: {
       packageDocs: {
         include: {
           package: { select: { id: true, name: true, packageStatus: true } },
         },
       },
+      collection: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          collectionType: true,
+        },
+      },
+      versions: {
+        select: {
+          id: true,
+          versionNumber: true,
+          titleSnapshot: true,
+          changeNotes: true,
+          createdBy: true,
+          createdAt: true,
+        },
+        orderBy: { versionNumber: "desc" },
+        take: 10,
+      },
     },
   });
 }
 
-/** OB stub — without DocumentCollection grouping there's no concept
- *  of "collection siblings." Returns null so the route's prev/next
- *  navigation hides itself. */
+/** Returns sibling documents within the same collection so the detail
+ *  page can render prev/current/next navigation. Sorted by title for
+ *  predictable ordering. Returns null when the document has no
+ *  collectionId (un-grouped documents). */
 export async function getCollectionSiblings(
-  _docId: string,
-  _collectionId: string,
-): Promise<null> {
-  return null;
+  docId: string,
+  collectionId: string,
+): Promise<{
+  prev: { id: string; title: string } | null;
+  current: number;
+  next: { id: string; title: string } | null;
+  total: number;
+} | null> {
+  if (!collectionId) return null;
+  const siblings = await prisma.document.findMany({
+    where: {
+      collectionId,
+      status: "active" as DocStatus,
+      ownerUserId: null,
+    },
+    select: { id: true, title: true },
+    orderBy: { title: "asc" },
+  });
+  if (siblings.length === 0) return null;
+  const index = siblings.findIndex((s) => s.id === docId);
+  if (index === -1) return null;
+  return {
+    prev: index > 0 ? siblings[index - 1] : null,
+    current: index + 1,
+    next: index < siblings.length - 1 ? siblings[index + 1] : null,
+    total: siblings.length,
+  };
 }
 
 /** OB-adapted — scores related documents by overlapping audience /
@@ -242,10 +298,15 @@ export async function getUserCopyOfTemplate(
   });
 }
 
-/** OB stub — the LTM filter dropdown's collection options are empty
- *  in OB. Audience/purpose/type filters still work via getDocuments. */
+/** Returns the active DocumentCollection rows for the filter dropdown.
+ *  Migration 11 (Track H S21) seeded these — no longer a stub. */
 export async function getDocumentFilterOptions(): Promise<{
   collections: Array<{ id: string; name: string; slug: string }>;
 }> {
-  return { collections: [] };
+  const collections = await prisma.documentCollection.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, slug: true },
+    orderBy: { name: "asc" },
+  });
+  return { collections };
 }
