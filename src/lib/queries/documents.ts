@@ -98,10 +98,9 @@ export async function getDocuments(filters?: {
 export async function getDocumentById(id: string) {
   return prisma.document.findUnique({
     where: { id },
-    // Migration 11 (Track H S21) added DocumentCollection + DocumentVersion;
-    // both relations are now selected. `modules` + fromRelations/toRelations
-    // remain stubs — DocumentModule + DocumentRelationship models still
-    // unported (tracked as Track H S21 carry-forward).
+    // Migration 13 (Track B 8d-routes-2) added DocumentModule +
+    // DocumentRelationship. Migration 11 added DocumentCollection +
+    // DocumentVersion. All five relations are now selected.
     include: {
       packageDocs: {
         include: {
@@ -128,6 +127,37 @@ export async function getDocumentById(id: string) {
         },
         orderBy: { versionNumber: "desc" },
         take: 10,
+      },
+      modules: {
+        orderBy: { sortOrder: "asc" },
+      },
+      fromRelations: {
+        include: {
+          toDocument: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              documentType: true,
+              audienceType: true,
+              confidentiality: true,
+            },
+          },
+        },
+      },
+      toRelations: {
+        include: {
+          fromDocument: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              documentType: true,
+              audienceType: true,
+              confidentiality: true,
+            },
+          },
+        },
       },
     },
   });
@@ -197,6 +227,7 @@ export async function getRelatedDocuments(doc: {
       documentType: true,
       audienceType: true,
       confidentiality: true,
+      collection: { select: { id: true, name: true, slug: true } },
     },
     orderBy: { updatedAt: "desc" },
     take: 6,

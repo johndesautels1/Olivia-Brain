@@ -1633,7 +1633,8 @@ model ValuationSubject {
 
   /// Plain String — AnalysisResult model not in OB; bridge V2 routes through
   /// UKP bridge if needed.
-  analysisResultId String? @db.Uuid
+  analysisResultId String?
+  analysisResult   AnalysisResult? @relation(fields: [analysisResultId], references: [id], onDelete: SetNull)
 
   /// 0-100 weighted completeness score derived from the JSON columns.
   completenessScore Decimal? @db.Decimal(5, 2)
@@ -2363,6 +2364,37 @@ enum PackageStatus {
   package_archived
 }
 
+/// Track B 8d-routes-2 prep — module taxonomy for the DocumentModule
+/// model that backs the documents engine's modular-document feature.
+enum ModuleType {
+  intro
+  problem
+  solution
+  market
+  product
+  methodology_module
+  pricing
+  licensing
+  implementation
+  roadmap_module
+  case_study
+  sample_output
+  financials
+  closing
+  appendix
+}
+
+/// Track B 8d-routes-2 prep — relationship taxonomy for DocumentRelationship.
+enum DocRelationshipType {
+  supports
+  derived_from
+  bundled_with
+  supersedes
+  references
+  required_before
+  upsell_after
+}
+
 /// LTM-aligned 12-value catalogue. Slugs in code (`legal-compliance`,
 /// `due-diligence`, …) map onto enum values via the hyphen-to-underscore
 /// convention used by document-mirror.
@@ -2421,10 +2453,13 @@ model Document {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
-  collection     DocumentCollection? @relation(fields: [collectionId], references: [id], onDelete: Restrict)
-  sourceTemplate Document?           @relation("TemplateCopies", fields: [sourceTemplateId], references: [id], onDelete: SetNull)
-  copies         Document[]          @relation("TemplateCopies")
+  collection     DocumentCollection?    @relation(fields: [collectionId], references: [id], onDelete: Restrict)
+  sourceTemplate Document?              @relation("TemplateCopies", fields: [sourceTemplateId], references: [id], onDelete: SetNull)
+  copies         Document[]             @relation("TemplateCopies")
   versions       DocumentVersion[]
+  modules        DocumentModule[]
+  fromRelations  DocumentRelationship[] @relation("DocRelFrom")
+  toRelations    DocumentRelationship[] @relation("DocRelTo")
   packageDocs    PackageDocument[]
   bookmarks      DocumentBookmark[]
   shares         DocumentShare[]
@@ -2493,6 +2528,54 @@ model DocumentVersion {
   @@map("document_versions")
 }
 
+// ─── DocumentModule — LTM-aligned (line 1274 of LTM schema) ──────────────
+
+/// Modular document parts (intro / problem / solution / etc.) that
+/// compose into a final document. Track B 8d-routes-2 carry-forward
+/// from Track H S21 — added now so /documents/[id]/page.tsx can render
+/// the modules section.
+model DocumentModule {
+  id                 String     @id @default(cuid())
+  documentId         String
+  moduleName         String
+  moduleType         ModuleType
+  sortOrder          Int        @default(0)
+  contentBody        String?    @db.Text
+  variableSchemaJson Json?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
+  @@index([documentId])
+  @@index([moduleType])
+  @@index([sortOrder])
+  @@map("document_modules")
+}
+
+// ─── DocumentRelationship — LTM-aligned (line 1296 of LTM schema) ────────
+
+/// Directed edges between Document rows (supports / derived_from /
+/// bundled_with / supersedes / references / required_before /
+/// upsell_after). Backs the "Related documents" section of the detail
+/// page.
+model DocumentRelationship {
+  id               String              @id @default(cuid())
+  fromDocumentId   String
+  toDocumentId     String
+  relationshipType DocRelationshipType
+  notes            String?
+  createdAt        DateTime            @default(now())
+
+  fromDocument Document @relation("DocRelFrom", fields: [fromDocumentId], references: [id], onDelete: Restrict)
+  toDocument   Document @relation("DocRelTo", fields: [toDocumentId], references: [id], onDelete: Restrict)
+
+  @@index([fromDocumentId])
+  @@index([toDocumentId])
+  @@index([relationshipType])
+  @@map("document_relationships")
+}
+
 // ─── UserProfile — LTM-aligned (line 1694 of LTM schema, minimum subset) ──
 
 /// Per-user profile keyed off Clerk's `userId`. OB looks up or creates
@@ -2529,8 +2612,36 @@ model UserProfile {
 
   documentBookmarks DocumentBookmark[]
   companyProfile    UserCompanyProfile?
+  analysisResults   AnalysisResult[]
 
   @@map("user_profiles")
+}
+
+// ─── AnalysisResult — LTM-aligned (line 2509 of LTM schema) ──────────────
+
+/// Cristiano-pipeline outputs from the DNA→Gemini→Opus passes that
+/// produce companyProfile + topMatches + orgNames. Track B 8d-routes-2
+/// carry-forward (referenced by `/documents/[id]/workspace/page.tsx`)
+/// and Track V (ValuationSubject.analysisResultId FK target).
+///
+/// Schema uses cuid to match LTM byte-for-byte; ValuationSubject's
+/// analysisResultId column relaxes from Uuid → TEXT in migration 13.
+model AnalysisResult {
+  id             String   @id @default(cuid())
+  userProfileId  String
+  outreachGoal   String
+  companyProfile Json
+  topMatches     Json
+  orgNames       Json
+  timings        Json?
+  videoMetadata  Json?
+  createdAt      DateTime @default(now())
+
+  userProfile       UserProfile        @relation(fields: [userProfileId], references: [id])
+  valuationSubjects ValuationSubject[]
+
+  @@index([userProfileId, createdAt])
+  @@map("analysis_results")
 }
 
 // ─── UserCompanyProfile — LTM-aligned (line 2005 of LTM schema, minimum subset) ──

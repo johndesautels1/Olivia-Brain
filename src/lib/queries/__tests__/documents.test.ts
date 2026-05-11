@@ -70,21 +70,23 @@ describe("getDocumentCollections", () => {
 });
 
 describe("getDocumentById", () => {
-  it("includes collection + versions relations (migration 11 additions)", async () => {
-    p.document.findUnique.mockResolvedValueOnce({
-      id: "doc1",
-      collection: { id: "c1", name: "X" },
-      versions: [],
-    });
+  it("includes all five relations (migration 11 + 13 additions)", async () => {
+    p.document.findUnique.mockResolvedValueOnce({ id: "doc1" });
     await getDocumentById("doc1");
     const args = p.document.findUnique.mock.calls[0][0];
     expect(args.where).toEqual({ id: "doc1" });
     expect(args.include.collection).toBeDefined();
     expect(args.include.versions).toBeDefined();
     expect(args.include.packageDocs).toBeDefined();
+    // Migration-13 additions:
+    expect(args.include.modules).toBeDefined();
+    expect(args.include.fromRelations).toBeDefined();
+    expect(args.include.toRelations).toBeDefined();
     // versions ordered desc + capped at 10
     expect(args.include.versions.orderBy).toEqual({ versionNumber: "desc" });
     expect(args.include.versions.take).toBe(10);
+    // modules ordered by sortOrder asc
+    expect(args.include.modules.orderBy).toEqual({ sortOrder: "asc" });
   });
 });
 

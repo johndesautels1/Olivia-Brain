@@ -69,7 +69,7 @@ describe("cascade/prompts · getJudgePrompt", () => {
   it("returns a non-empty string for a known task", () => {
     const prompt = getJudgePrompt(
       "london_funding_rounds",
-      [{ provider: "sonnet", items: [{ company: "Example" }] }],
+      { sonnet: [{ company: "Example" }] } as unknown as Record<string, unknown>,
     );
     expect(typeof prompt).toBe("string");
     expect(prompt.length).toBeGreaterThan(100);
