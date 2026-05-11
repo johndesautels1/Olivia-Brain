@@ -241,3 +241,6 @@ registerHandler(modernSlaveryStatementGeneratorHandler);
 
 import { pitchDeckLondonFilterHandler } from "./impl/g1-076-pitch-deck-london-filter";
 registerHandler(pitchDeckLondonFilterHandler);
+
+import { thoughtLeadershipGhostwriterHandler } from "./impl/g1-107-thought-leadership-ghostwriter";
+registerHandler(thoughtLeadershipGhostwriterHandler);
