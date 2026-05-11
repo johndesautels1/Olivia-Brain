@@ -2621,3 +2621,40 @@ model AvatarEvalRun {
   @@index([scriptId, vendor])
   @@map("avatar_eval_runs")
 }
+
+// ─── CascadeEvent — Track G Session 19 (cascade orchestrator port) ────────
+
+/// Append-only breadcrumb table. The cascade orchestrator drops a row
+/// after every task completion (success / partial / error). Agents call
+/// `getRecentCascadeEvents(taskId, lastRunAt)` to know what changed
+/// since their last run without coupling to cascade internals.
+///
+/// LTM-aligned (port of `D:\London-Tech-Map\prisma\schema.prisma` line
+/// 3072): the schema is identical so this table is forward-compatible
+/// with the LTM cascade events stream when the bicycle-wheel routes
+/// LTM cascade output through Olivia Brain.
+model CascadeEvent {
+  id           String   @id @default(cuid())
+  /// CascadeTaskId value (e.g. "london_funding_rounds"). String not enum
+  /// so the catalogue can grow without a schema migration per task.
+  taskId       String
+  /// "success" | "partial" | "error"
+  status       String   @default("success")
+  /// Items injected into DB on this cascade run.
+  itemCount    Int      @default(0)
+  /// Items skipped (duplicates, validation failures, etc.).
+  skippedCount Int      @default(0)
+  /// Total cascade runtime in ms. Nullable when not measured.
+  durationMs   Int?
+  /// Error detail when status != "success".
+  errorMessage String?  @db.Text
+  /// Extra context (providerCount, individual provider errors, etc.).
+  metadata     Json?
+  completedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([taskId])
+  @@index([completedAt])
+  @@index([taskId, completedAt])
+  @@map("cascade_events")
+}
