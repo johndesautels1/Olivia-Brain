@@ -262,3 +262,6 @@ registerHandler(emailNegotiatorHandler);
 
 import { procurementAgentHandler } from "./impl/g1-150-procurement-agent";
 registerHandler(procurementAgentHandler);
+
+import { confidenceScoreDecisionEngineHandler } from "./impl/g1-141-confidence-score-decision-engine";
+registerHandler(confidenceScoreDecisionEngineHandler);
