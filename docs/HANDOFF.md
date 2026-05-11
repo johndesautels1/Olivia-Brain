@@ -1,11 +1,11 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-11 — Track **H S21** opened + extended twice. **SEVEN ported LTM per-company agent handlers** live in Olivia Brain (G1-033, G1-048, G1-076, G1-107, G1-105, G1-115, G1-110). Canonical infrastructure (llm.ts + resolve-company.ts + document-mirror.ts + 3 Prisma models + seeded SQL migration + tolerant-FK fix). 14 commits since `669a6d0` (6 foundation + 2 G1-048 close + 1 SQL fix + 5 handler ports + 1 docs close).
-> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0 (with `NODE_OPTIONS=--max-old-space-size=4096`). Full vitest suite **1245/1245 in 248.14s** (1070 prior baseline + 143 new this session: 20 llm + 9 resolve-company + 10 document-mirror + 14 g1-033 + 15 g1-048 + 15 g1-076 + 15 g1-107 + 15 g1-105 + 16 g1-115 + 14 g1-110 + 32 that pre-existed and weren't counted).
-> **Latest HEAD:** the docs commit that ships this handoff (`git log -1` to confirm — should be the most recent push).
-> **Status:** SEVEN per-company handlers live. The canonical pattern is now both **locked AND validated by repetition**: G1-033 introduced the primitives; G1-048 + G1-076 + G1-107 + G1-105 + G1-115 + G1-110 each ported in one mechanical commit using zero new infrastructure. Three distinct document-mirror shapes exercised (legal-compliance / pitch-decks / sales-marketing). Two handlers exercise the web-search opt-in (G1-105 + G1-110). Numeric-threshold severity + conditional audience/purpose derivation patterns added by G1-115. See `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` for the full narrative across all three addenda.
+> **Last updated:** 2026-05-11 — Track **H S21 COMPLETE**: **TWELVE ported LTM per-company agent handlers** live in Olivia Brain (G1-033, G1-048, G1-076, G1-107, G1-105, G1-115, G1-110, G1-130, G1-149, G1-150, G1-141, G1-136). Canonical infrastructure (llm.ts + resolve-company.ts + document-mirror.ts + 3 Prisma models + seeded SQL migration + tolerant-FK fix + migration applied to production Supabase). 21 commits since `669a6d0`.
+> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0 (NODE_OPTIONS=--max-old-space-size=4096). Full vitest suite **1314/1314 in 101.00s** (1070 prior baseline + 244 new this session).
+> **Latest HEAD:** the docs commit that ships this handoff (`git log -1` to confirm).
+> **Status:** **The complete queue of per-company doc-spawn handlers is ported.** 12/12 done. The canonical pattern is proven by 12-fold repetition. Three distinct document-mirror shapes exercised (legal-compliance / pitch-decks / sales-marketing / licensing-commercial — wait, 4 distinct). Three handlers exercise web-search opt-in (G1-105 / G1-110 / G1-150). Three handlers are briefing-only without document mirror (G1-130 / G1-141 / G1-136). Three handlers use three-level severity (G1-130 / G1-149 / G1-141 / G1-136 — actually 4). Migration 11 confirmed applied in production Supabase. See `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` for the full narrative across all FOUR addenda.
 
-### Today's batch (14 commits since `669a6d0`)
+### Today's batch (21 commits since `669a6d0`)
 
 1. `6c37ff0` — **Track H S21 C1**: port `callLLM` bridge from LTM (`src/lib/agents/llm.ts`, ~580 lines, 7-provider fan-out with opt-in web search, graceful degradation, rich cost/token return). 20 vitest tests.
 2. `3966525` — **Track H S21 C2**: Prisma foundation. New `CollectionType` enum + 3 new models (`DocumentCollection`, `DocumentVersion`, `UserCompanyProfile` as minimum 10-column LTM subset). Privacy contract codified inline. SQL migration `prisma/sql/11-add-agent-handler-foundation.sql` (idempotent throughout, seeds 12 collection rows). `prisma format` + `prisma generate` ran clean.
@@ -21,7 +21,14 @@
 12. `9e6c221` — **G1-105 Journalist Matchmaker** (~450 lines + 15 tests). UK tech journalist matching + personalised pitch. **First handler to opt into provider-native web search** (`enableWebSearch: true`) — validates the search-opt-in machinery from llm.ts (commit 1) end-to-end. sales-marketing mirror.
 13. `b180f29` — **G1-115 Social Proof Agent** (~420 lines + 16 tests). Proof package across 8 categories × 4 use contexts. **Numeric-threshold severity** (legitimacyScore < 50 → warning) and **conditional audience/purpose derivation** from targetUseContext (first handler to do this).
 14. `3324525` — **G1-110 Podcast Booker** (~460 lines + 14 tests). London-tech podcast matching with per-show `<<HOOK>>` placeholders + booking expectations. Second handler with `enableWebSearch: true`.
-15. **(this commit)** — **Track H S21 extended-batch close**: SESSION_LOG addendum 2 + this HANDOFF.md update.
+15. `7805bd4` — Extended-batch close 1: SESSION_LOG addendum 2 + HANDOFF update.
+16. `545d7f9` — fix(sql): migration 11 paste-and-go version (operator successfully applied this in Supabase).
+17. `f761213` — **G1-130 Build-vs-Buy Decision** (~525 lines + 16 tests). First briefing-only. First three-level severity (critical). Self-validation of rubric weights + option coverage.
+18. `401718e` — **G1-149 Email Negotiator** (~520 lines + 20 tests). Typed `@prisma/client` audience/purpose routing matrix (7 request types). Stance-gated mirror.
+19. `89a9e02` — **G1-150 Procurement Agent** (~480 lines + 10 tests). SOW + 5-vendor shortlist. First handler using licensing-commercial collection. Third web-search handler.
+20. `f863687` — **G1-141 Confidence Score Decision Engine** (~430 lines + 12 tests). Calibrated 0-100 + reversibility-aware severity escalation (critical when low + hard-to-reverse). Briefing-only.
+21. `c705cf7` — **G1-136 Second-Order Consequence Modeler** (~480 lines + 11 tests). 3-order cascading consequences across 8 domains. Default model claude-opus-4-7. Briefing-only. **Closes the per-company handler queue.**
+22. **(this commit)** — **Track H S21 final close**: SESSION_LOG addendum 3 + this HANDOFF.md update.
 
 ### What this batch did NOT touch
 
@@ -539,23 +546,14 @@ The session-end state is:
 
 ### Resume options (pick one)
 
-**Option A (Recommended) — Track H S21 continuation — port handler #8.**
-- **Why this:** The pattern is now proven across SEVEN handlers. Each new port lands in ~1 commit. Five candidate per-company handlers still queued.
-- **Remaining per-company doc-spawn candidates (5):**
-    - `g1-130-build-vs-buy-decision-agent.ts`
-    - `g1-136-second-order-consequence-modeler.ts`
-    - `g1-141-confidence-score-decision-engine.ts`
-    - `g1-149-email-negotiator.ts`
-    - `g1-150-procurement-agent.ts`
-- **AVOID without LTM authorization:** G1-005 / G1-034 / G1-036 / G1-050 — all need LTM org/district/role data that the walled garden blocks.
-- **First read:** the chosen LTM handler source cold + `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` (addenda 1 + 2 together survey all 7 patterns landed) + one of the existing ports as a reference. Pattern picks per handler:
-    - For a versioned-output handler: G1-033 (`OUTPUT_SCHEMA_VERSION = "1"`).
-    - For a no-versioning handler: G1-048 (LTM is inconsistent — port byte-for-byte).
-    - For a matchmaker-style handler with per-match objects: G1-105 (deep validation of matches[]).
-    - For a web-search handler: G1-105 or G1-110 (`enableWebSearch: true`).
-    - For a numeric-threshold severity handler: G1-115 (`score < 50` → warning).
-    - For a conditional document-mirror shape: G1-115 (audienceType + purposeType derived from input enum).
-- **Plan:** mirror G1-076's or G1-115's commit structure (handler + tests + 2-line registry add) in one commit. ~1 session.
+**Option A (Recommended) — Track H S21 is COMPLETE. Pick a different track.**
+- **Why Track H S21 is closed:** All 12 per-company doc-spawn handlers are ported. There is no remaining queue of LTM handlers that can be ported without LTM-data-bridge access.
+- **The 4 remaining LTM handlers (G1-005 / G1-034 / G1-036 / G1-050) are BLOCKED** behind the walled-garden direction. They need LTM-side v1 API extension (district score history, time-windowed organization groupings, person-organization-role data). Park until founder reopens the LTM boundary.
+- **Highest-leverage next moves (in this order):**
+    1. **AGENT_DEFINITIONS registry rows for all 12 handlers** — without these, schedulers can't auto-run any handler. ~30 min: add 12 rows to `src/lib/agents/registry.ts AGENT_DEFINITIONS` mirroring existing entries.
+    2. **`/admin/tools getOwedMigrations()` detection for migration 11** — closes the in-product-UX-matches-chat-rule gap. ~20 min.
+    3. **Migrations 08 + 09 application** + re-run migration 11 to land the deferred FKs (currently migration 11's three FKs to `documents` / `user_profiles` are skipped via the tolerant path).
+    4. **Track B document workspace routes** — port `/documents/[id]/page.tsx` + `/documents/[id]/workspace/*` from LTM. 9 of the 12 ported handlers spawn documents but no UI surfaces them yet.
 
 **Option B — `/admin/tools` getOwedMigrations() extension for migration 11.**
 - **Why this:** Closes the in-product-UX-matches-chat-rule gap from this batch. ~30 minutes scope.

@@ -614,3 +614,111 @@ This is the regime the foundation work was built for — each
 | Track B document workspace routes | Owed | Port `/documents/[id]/page.tsx` + `/documents/[id]/workspace/*` from LTM so the 7 ported handlers' spawned documents are actually viewable in the UI. |
 | Remaining 5 per-company handlers | Open | g1-130 (build-vs-buy-decision), g1-136 (second-order-consequence-modeler), g1-141 (confidence-score-decision-engine), g1-149 (email-negotiator), g1-150 (procurement-agent). Each ~1 session. |
 | LTM-data handlers (G1-005 / G1-034 / G1-036 / G1-050) | Blocked | Need LTM org/district/role data not exposed in the v1 bridge. Walled-garden direction blocks LTM-side extension. Park until founder reopens the boundary. |
+
+---
+
+## Addendum 3 — 2026-05-11 final wave — queue closed (12/12 handlers ported)
+
+Founder kept pushing: "continue committing to github and building", "what
+are you doing keep working", "commit to github and keep going". Five more
+per-company handlers ported in mechanical succession, **closing the
+entire queue** of per-company doc-spawn agents that can be ported without
+LTM data access.
+
+### Final five commits
+
+1. **`f761213`** — **G1-130 Build-vs-Buy Decision Agent** (~525 lines,
+   16 tests). Six options × UK compliance × cost × time-to-value ×
+   talent lock-in. **First briefing-only handler** (no document
+   mirror). **First three-level severity** (info / warning / critical).
+   **Self-validation** (rubric weights ±0.05; all 6 options covered).
+2. **`401718e`** — **G1-149 Email Negotiator** (~520 lines, 20 tests).
+   Classifies inbound emails, scores leverage, drafts reply in
+   founder's voice. **First handler to import DocAudienceType +
+   PurposeType from `@prisma/client`** for typed audience/purpose
+   routing matrix (7 request types → 7 distinct audience+purpose
+   pairs). Stance-gated mirror (skip when stance='ignore').
+3. **`89a9e02`** — **G1-150 Procurement Agent** (~480 lines, 10 tests).
+   SOW + 5-vendor shortlist. **First handler to use licensing-commercial
+   collection** (proposal / internal / partnership). Third web-search
+   handler.
+4. **`f863687`** — **G1-141 Confidence Score Decision Engine** (~430
+   lines, 12 tests). Calibrated 0-100 confidence per option +
+   recommendation confidence + reversibility-aware severity escalation
+   (critical when lowConfidence + hard-to-reverse). Briefing-only.
+5. **`c705cf7`** — **G1-136 Second-Order Consequence Modeler** (~480
+   lines, 11 tests). 3-order cascading consequence map across 8 domains
+   (finance / team / product / market / regulator / brand / customers /
+   network). Critical severity when any company_defining negative.
+   Default model `claude-opus-4-7` for the cascade-reasoning workload.
+   50s LLM timeout. Briefing-only. **Closes the queue.**
+
+### Bugs caught + fixed mid-batch
+
+- **G1-141 test fixture**: `decisionDescription: "..."` (length 3) hit
+  Zod min(10), falling back to the missing-input early exit instead of
+  exercising severity logic. Fixed by passing a real-length decision
+  string.
+- **G1-076 test expectation**: hand-counted `inputSource` mismatch
+  (`profile` vs `input+profile`). Same lesson as G1-033's slug-tail
+  miscount — hand-crafted test fixtures stay tighter when they
+  match the schema constraints.
+
+### Pattern wrinkles surfaced from porting at scale
+
+- **Briefing-only handlers** (G1-130 / G1-141 / G1-136): 3 of 12. The
+  pattern works fine without `spawnDocumentFromAgent` — the structured
+  output lives on briefing.details and is reachable from the Olivia
+  briefing reports surface (when Track B ports the doc workspace
+  routes).
+- **Three-level severity** (G1-130 / G1-149 / G1-141 / G1-136): 4 of 12.
+  `critical` is reserved for *founder must look NOW* situations:
+  recommended option violates a hard constraint (G1-130), founder
+  needs personal touch (G1-149), low confidence on irreversible call
+  (G1-141), or company-defining negative cascade (G1-136).
+- **Self-validation of LLM output** (G1-130 / G1-150): rubric weight
+  sum + option coverage. Pattern generalises to any handler whose
+  output has an internal-consistency invariant the LLM might violate.
+- **Numeric-threshold severity** (G1-115 legitimacyScore < 50; G1-141
+  recommendationConfidence < 60): pattern for handlers where the
+  trigger is a number rather than a flag.
+- **Stance-gated mirror** (G1-149): the document spawn is conditional
+  on the recommendation actually producing something worth saving.
+  G1-076 + G1-115 + G1-107 also use this (empty markdown short-
+  circuit) but G1-149 is the first to use it for a semantic stance
+  rather than empty content.
+- **Typed audience/purpose routing** (G1-115 inline switch; G1-149
+  exported function with @prisma/client types): both patterns work.
+  G1-149's typed export is cleaner when more than one collection
+  shape is supported, but inline switch is fine when the mapping is
+  obvious from the handler context.
+
+### Verification at HEAD `c705cf7`
+
+- `npx tsc --noEmit` exit 0 across the full chain of 5 new handlers
+  (NODE_OPTIONS=--max-old-space-size=4096).
+- Full vitest suite **1314 / 1314** in 101s (1245 prior + 69 new this
+  wave: 16 + 20 + 10 + 12 + 11).
+- Migration 11 confirmed applied in production Supabase by founder
+  (the 12 DocumentCollection rows are live, the user_company_profiles
+  + document_versions tables exist, FKs to documents.collectionId
+  deferred until migrations 08+09 land).
+
+### Queue status
+
+**12 / 12 per-company doc-spawn handlers ported.** This is the
+complete set of LTM handlers that use `resolveUserCompany` and
+DON'T need LTM organization / district / role data. The 4 remaining
+LTM-data handlers (G1-005 / G1-034 / G1-036 / G1-050) stay blocked
+until LTM-side API extension is authorised.
+
+### Carry-forwards into the next session
+
+| Track | Status | Next step |
+|---|---|---|
+| /admin/tools getOwedMigrations() for migration 11 | Owed | Extend the page component's `getOwedMigrations()` to probe via `prisma.documentCollection.count()`. Migration 11 SQL is inline-ready in HANDOFF § 4. |
+| AGENT_DEFINITIONS registry rows for ALL 12 ported handlers | Owed | Add G1-033 / 048 / 076 / 107 / 105 / 115 / 110 / 130 / 149 / 150 / 141 / 136 to `src/lib/agents/registry.ts AGENT_DEFINITIONS`. Without these, schedulers can't auto-run any of the handlers — operator must call `executeAgent()` directly. |
+| Track B document workspace routes | Owed | Port `/documents/[id]/page.tsx` + `/documents/[id]/workspace/*` from LTM. Nine of the 12 handlers spawn documents; without the workspace they only exist in DB. |
+| Migrations 08+09 (documents engine + foundation) | Owed | When applied, re-run migration 11 to land the deferred FKs. Until then, document-mirror calls silently fail (best-effort returns null) — handlers still execute fine but no rows hit `documents` table. |
+| LTM-data handlers (G1-005 / 034 / 036 / 050) | Blocked | Need founder to reopen the LTM walled garden for a v1 API extension. Park. |
+| Larger LTM agent inventory | Open | 100+ remaining LTM handlers in `D:\London-Tech-Map\src\lib\agents\impl\` that don't import resolveUserCompany — most are LTM-data agents that need the bridge extension. Out of scope for this batch. |
