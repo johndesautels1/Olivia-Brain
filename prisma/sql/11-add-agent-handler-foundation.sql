@@ -100,13 +100,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS "user_company_profiles_userProfileId_key"
 CREATE INDEX IF NOT EXISTS "user_company_profiles_primarySector_idx"
   ON "user_company_profiles" ("primarySector");
 
--- 5) Foreign keys
+-- 5) Foreign keys -- tolerant of missing parent tables (catches 42P01).
+-- Migrations 08+09 (documents engine + foundation) create the parent
+-- `documents` table; user_profiles comes from an earlier migration. If
+-- either is missing, skip the FK cleanly and emit a NOTICE so the
+-- operator knows to re-run migration 11 after those parents land.
 DO $$ BEGIN
   ALTER TABLE "documents"
     ADD CONSTRAINT "documents_collectionId_fkey"
     FOREIGN KEY ("collectionId") REFERENCES "document_collections"("id")
     ON DELETE RESTRICT ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN null;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_table THEN RAISE NOTICE 'Skipping documents FK: table not yet created (apply migrations 08+09 first, then re-run migration 11)';
 END $$;
 
 DO $$ BEGIN
@@ -114,7 +120,9 @@ DO $$ BEGIN
     ADD CONSTRAINT "document_versions_documentId_fkey"
     FOREIGN KEY ("documentId") REFERENCES "documents"("id")
     ON DELETE RESTRICT ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN null;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_table THEN RAISE NOTICE 'Skipping document_versions FK: documents table not yet created';
 END $$;
 
 DO $$ BEGIN
@@ -122,7 +130,9 @@ DO $$ BEGIN
     ADD CONSTRAINT "user_company_profiles_userProfileId_fkey"
     FOREIGN KEY ("userProfileId") REFERENCES "user_profiles"("id")
     ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN null;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_table THEN RAISE NOTICE 'Skipping user_company_profiles FK: user_profiles table not yet created';
 END $$;
 
 -- 6) Seed the 12 LTM-aligned collections (idempotent via id+ON CONFLICT)

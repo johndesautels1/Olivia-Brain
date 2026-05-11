@@ -373,12 +373,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS "user_company_profiles_userProfileId_key"
 CREATE INDEX IF NOT EXISTS "user_company_profiles_primarySector_idx"
   ON "user_company_profiles" ("primarySector");
 
+-- Foreign keys -- tolerant of missing parent tables (catches 42P01).
 DO $$ BEGIN
   ALTER TABLE "documents"
     ADD CONSTRAINT "documents_collectionId_fkey"
     FOREIGN KEY ("collectionId") REFERENCES "document_collections"("id")
     ON DELETE RESTRICT ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN null;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_table THEN RAISE NOTICE 'Skipping documents FK: table not yet created (apply migrations 08+09 first, then re-run migration 11)';
 END $$;
 
 DO $$ BEGIN
@@ -386,7 +389,9 @@ DO $$ BEGIN
     ADD CONSTRAINT "document_versions_documentId_fkey"
     FOREIGN KEY ("documentId") REFERENCES "documents"("id")
     ON DELETE RESTRICT ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN null;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_table THEN RAISE NOTICE 'Skipping document_versions FK: documents table not yet created';
 END $$;
 
 DO $$ BEGIN
@@ -394,7 +399,9 @@ DO $$ BEGIN
     ADD CONSTRAINT "user_company_profiles_userProfileId_fkey"
     FOREIGN KEY ("userProfileId") REFERENCES "user_profiles"("id")
     ON DELETE CASCADE ON UPDATE CASCADE;
-EXCEPTION WHEN duplicate_object THEN null;
+EXCEPTION
+  WHEN duplicate_object THEN null;
+  WHEN undefined_table THEN RAISE NOTICE 'Skipping user_company_profiles FK: user_profiles table not yet created';
 END $$;
 
 INSERT INTO "document_collections"
