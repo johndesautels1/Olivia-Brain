@@ -227,9 +227,11 @@ export function getHandlerCount(): number {
 
 // ─────────────────────────────────────────────
 // Handler Implementation Registration
-// Future agent implementations will be imported and registered here
+// New agent implementations import + register at the bottom of this file.
+// Each handler is the canonical singleton (see G1-033 for the reference
+// pattern: strict Zod extension, versioned output, type guard, structured
+// fallback, document mirror).
 // ─────────────────────────────────────────────
 
-// Example: When implementing O1-001 Client Intake Orchestrator
-// import { clientIntakeOrchestratorHandler } from "./impl/o1-001-client-intake-orchestrator";
-// registerHandler(clientIntakeOrchestratorHandler);
+import { dataProtectionOrchestratorHandler } from "./impl/g1-033-data-protection-orchestrator";
+registerHandler(dataProtectionOrchestratorHandler);
