@@ -244,3 +244,6 @@ registerHandler(pitchDeckLondonFilterHandler);
 
 import { thoughtLeadershipGhostwriterHandler } from "./impl/g1-107-thought-leadership-ghostwriter";
 registerHandler(thoughtLeadershipGhostwriterHandler);
+
+import { journalistMatchmakerHandler } from "./impl/g1-105-journalist-matchmaker";
+registerHandler(journalistMatchmakerHandler);
