@@ -1,9 +1,9 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-11 — Five tracks closed or advanced today in one extended session. 35 commits since `669a6d0`. **Track H S21 COMPLETE** (12 per-company handlers ported). **Track B 8c COMPLETE** (Studio v1 engine port — 38 files, ~12,800 LOC). **AGENT_DEFINITIONS + /admin/tools migration-11 auto-detect** shipped. **Queries upgrade** for migration-11 models. **Track G S19 partially open** (cascade types + events + 15 prompts ported; orchestrator + injector + providers deferred — they need adaptation to OB's existing `lib/agents/llm.ts` instead of straight byte-for-byte port).
-> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0. Full vitest suite **1382/1382 expected** (1314 prior + 53 from Track B 8c smoke + 9 from queries upgrade + 6 cascade events + 14 cascade prompts after these latest commits).
-> **Latest HEAD:** `462174a` (Track G S19 prompts port). The docs commit that ships this handoff is the most recent push.
-> **Status:** Both flagship surfaces (clueslondon-Studio and cluesintelligence-cascade) now have substantial OB infrastructure. Studio engine renders at `/studio/[id]` against a stub. Cascade event breadcrumb + 15 production-tuned prompts are in OB. Operator action OWED: apply migration 12 (cascade_events) — SQL inline in `§ 4`. See three SESSION_LOG addenda for the H S21 narrative; see commit messages on `8b99f7b` and `370024c` / `462174a` for B 8c + G S19 detail.
+> **Last updated:** 2026-05-11 — Six tracks closed or advanced today. **37 commits** since `669a6d0`. **Track H S21 COMPLETE** (12 per-company handlers). **Track B 8c COMPLETE** (Studio v1 engine — 38 files, ~12,800 LOC). **Track B 8d-routes-2 COMPLETE** (3 new Prisma models + heavy documents routes ported). **AGENT_DEFINITIONS** + **`/admin/tools` migration-11 auto-detect** shipped. **Track G S19 partial** (cascade types + events + 15 prompts ported; orchestrator + injector + providers deferred — they need adaptation to OB's `lib/agents/llm.ts`).
+> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0. Full vitest suite **1381/1381 in 156s**.
+> **Latest HEAD:** the docs commit that ships this handoff is the most recent push (`git log -1` to confirm).
+> **Status:** Both flagship surfaces have substantial OB infrastructure. Studio engine renders at `/studio/[id]` against a stub; documents detail + workspace routes mount against real DB-backed Documents with full module + relation + version surfaces. Cascade event breadcrumb + 15 production-tuned prompts ready. Operator actions OWED: migration 12 (cascade_events) + migration 13 (document_modules + document_relationships + analysis_results) — full SQL inlined in `§ 4`.
 
 ### Today's batch (21 commits since `669a6d0`)
 
@@ -38,7 +38,15 @@
 29. `96f3815` — **Track B 8d-routes-2 queries upgrade**: `getDocumentCollections` + `getDocumentById.include.{collection,versions}` + `getCollectionSiblings` + `getDocumentFilterOptions` all promoted from stubs to real migration-11-backed queries. 9 new tests.
 30. `370024c` — **Track G S19 (1/3)**: CascadeEvent Prisma model + migration 12 (paste-and-go SQL) + cascade/types.ts (576 LOC) + cascade/events.ts (133 LOC) + 6 event-helper tests.
 31. `462174a` — **Track G S19 (2/3)**: cascade/prompts/index.ts byte-for-byte port (1060 LOC, 15 production-tuned cascade prompts) + 14 prompt-resolver tests.
-32. **(this commit)** — Session-close HANDOFF update.
+32. `324e41b` — Mid-session HANDOFF push (Track G S19 partial close).
+33. `ebd1b65` — **Track B 8d-routes-2 CLOSED**: 3 Prisma models (DocumentModule + DocumentRelationship + AnalysisResult) + migration 13 + heavy route ports (`/documents/[id]/page.tsx` + `/documents/[id]/workspace/*`). 1072 LOC added.
+34. **(this commit)** — Final session-close HANDOFF update.
+
+What's still owed (deferred to next session):
+- Track G S19 (3/3) — orchestrator + injector + provider-adapter wiring.
+- Track G S20 — LangGraph 5-node wrap.
+- Track C 11-14 — Studio UI rebuild (4 sessions). Replaces the v1 chrome ported in Track B 8c with the GrandMaster prototype shell.
+- Track L cluesintelligence Unification (~10 sessions, FLAGSHIP). Direct on the "cluesintelligence right after clueslondon" sequencing.
 
 What's NOT in this batch (deferred to next session):
 - Track G S19 (3/3) — orchestrator + injector + provider-adapter wiring. The injector has 30+ touchpoints with LTM-specific Prisma writes (Organization, FundingRound, DistrictEvent) that need bridge adaptation. The orchestrator imports its own provider abstractions that overlap with OB's existing `lib/agents/llm.ts` 7-provider fan-out — needs an adapter layer, not a straight copy.
