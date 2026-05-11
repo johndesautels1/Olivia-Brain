@@ -1,9 +1,9 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-11 — Track **H S21 COMPLETE**: **TWELVE ported LTM per-company agent handlers** live in Olivia Brain (G1-033, G1-048, G1-076, G1-107, G1-105, G1-115, G1-110, G1-130, G1-149, G1-150, G1-141, G1-136). Canonical infrastructure (llm.ts + resolve-company.ts + document-mirror.ts + 3 Prisma models + seeded SQL migration + tolerant-FK fix + migration applied to production Supabase). 21 commits since `669a6d0`.
-> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0 (NODE_OPTIONS=--max-old-space-size=4096). Full vitest suite **1314/1314 in 101.00s** (1070 prior baseline + 244 new this session).
-> **Latest HEAD:** the docs commit that ships this handoff (`git log -1` to confirm).
-> **Status:** **The complete queue of per-company doc-spawn handlers is ported.** 12/12 done. The canonical pattern is proven by 12-fold repetition. Three distinct document-mirror shapes exercised (legal-compliance / pitch-decks / sales-marketing / licensing-commercial — wait, 4 distinct). Three handlers exercise web-search opt-in (G1-105 / G1-110 / G1-150). Three handlers are briefing-only without document mirror (G1-130 / G1-141 / G1-136). Three handlers use three-level severity (G1-130 / G1-149 / G1-141 / G1-136 — actually 4). Migration 11 confirmed applied in production Supabase. See `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` for the full narrative across all FOUR addenda.
+> **Last updated:** 2026-05-11 — Five tracks closed or advanced today in one extended session. 35 commits since `669a6d0`. **Track H S21 COMPLETE** (12 per-company handlers ported). **Track B 8c COMPLETE** (Studio v1 engine port — 38 files, ~12,800 LOC). **AGENT_DEFINITIONS + /admin/tools migration-11 auto-detect** shipped. **Queries upgrade** for migration-11 models. **Track G S19 partially open** (cascade types + events + 15 prompts ported; orchestrator + injector + providers deferred — they need adaptation to OB's existing `lib/agents/llm.ts` instead of straight byte-for-byte port).
+> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0. Full vitest suite **1382/1382 expected** (1314 prior + 53 from Track B 8c smoke + 9 from queries upgrade + 6 cascade events + 14 cascade prompts after these latest commits).
+> **Latest HEAD:** `462174a` (Track G S19 prompts port). The docs commit that ships this handoff is the most recent push.
+> **Status:** Both flagship surfaces (clueslondon-Studio and cluesintelligence-cascade) now have substantial OB infrastructure. Studio engine renders at `/studio/[id]` against a stub. Cascade event breadcrumb + 15 production-tuned prompts are in OB. Operator action OWED: apply migration 12 (cascade_events) — SQL inline in `§ 4`. See three SESSION_LOG addenda for the H S21 narrative; see commit messages on `8b99f7b` and `370024c` / `462174a` for B 8c + G S19 detail.
 
 ### Today's batch (21 commits since `669a6d0`)
 
@@ -28,7 +28,23 @@
 19. `89a9e02` — **G1-150 Procurement Agent** (~480 lines + 10 tests). SOW + 5-vendor shortlist. First handler using licensing-commercial collection. Third web-search handler.
 20. `f863687` — **G1-141 Confidence Score Decision Engine** (~430 lines + 12 tests). Calibrated 0-100 + reversibility-aware severity escalation (critical when low + hard-to-reverse). Briefing-only.
 21. `c705cf7` — **G1-136 Second-Order Consequence Modeler** (~480 lines + 11 tests). 3-order cascading consequences across 8 domains. Default model claude-opus-4-7. Briefing-only. **Closes the per-company handler queue.**
-22. **(this commit)** — **Track H S21 final close**: SESSION_LOG addendum 3 + this HANDOFF.md update.
+22. `818f730` — Track H S21 final close (addendum 3 + HANDOFF for the 12-handler queue closure).
+23. `545d7f9` already listed above — migration 11 paste-and-go version that the operator successfully applied. (Re-numbered chronologically — was commit 16.)
+24. `e05581e` — **AGENT_DEFINITIONS rows for all 12 ported handlers** + 3 new AgentGroup codes (5A Legal & Compliance / 5B Pitch & PR / 5C Strategy & Decisions). 24 alignment tests lock the registry ↔ handlers bridge. Closes the "schedulers can't see the 12 handlers" gap.
+25. `d674b8d` — **`/admin/tools` auto-detect for migration 11** + inline-render. Probes `prisma.documentCollection.count()` (also surfaces partial applies where seed < 12 rows). Closes the in-product-UX-matches-chat-rule gap.
+26. `e12fb0d` — **Track B 8c (1/3)**: 18 Studio v1 leaf components ported from LTM (MicroReward / DocumentTransition / SkipNudgeModal / AnswerRibbon / CompletionCeremony / StoryReview / PreSubmitCheck / EntityBriefCard / EntityPerspectiveModal / CristianoReEvaluation / WhyThisPanel / PitchPolishModal / SuggestionChips / ResearchHistory / StudioFormattingToolbar / StudioAnswerEditor / DeepResearchPanel / StudioKeyboardShortcuts). +useFocusTrap hook + 2 lib/studio re-export shims + engine-types re-export. 7586 LOC.
+27. `1fa643f` — **Track B 8c (2/3)**: PreparationStudio (1462 LOC) + 8 UI shell components (StudioTopBar / Bottom / OliviaAvatar / OliviaChat / QuestionCard / TTSPlayer / VoiceInput / VoiceCommands). 5185 LOC.
+28. `8b99f7b` — **Track B 8c (3/3) CLOSED**: `/studio/[id]` route + 14 module-import smoke tests. Studio v1 engine mounts against a 3-block stub fixture.
+29. `96f3815` — **Track B 8d-routes-2 queries upgrade**: `getDocumentCollections` + `getDocumentById.include.{collection,versions}` + `getCollectionSiblings` + `getDocumentFilterOptions` all promoted from stubs to real migration-11-backed queries. 9 new tests.
+30. `370024c` — **Track G S19 (1/3)**: CascadeEvent Prisma model + migration 12 (paste-and-go SQL) + cascade/types.ts (576 LOC) + cascade/events.ts (133 LOC) + 6 event-helper tests.
+31. `462174a` — **Track G S19 (2/3)**: cascade/prompts/index.ts byte-for-byte port (1060 LOC, 15 production-tuned cascade prompts) + 14 prompt-resolver tests.
+32. **(this commit)** — Session-close HANDOFF update.
+
+What's NOT in this batch (deferred to next session):
+- Track G S19 (3/3) — orchestrator + injector + provider-adapter wiring. The injector has 30+ touchpoints with LTM-specific Prisma writes (Organization, FundingRound, DistrictEvent) that need bridge adaptation. The orchestrator imports its own provider abstractions that overlap with OB's existing `lib/agents/llm.ts` 7-provider fan-out — needs an adapter layer, not a straight copy.
+- Track G S20 — LangGraph 5-node wrap.
+- Track B 8d-routes-2 page port — blocked on `DocumentModule` + `DocumentRelationship` + `AnalysisResult` Prisma models. Either add those (1 commit of schema + migration) or scope-cut the page to skip those sections.
+- AGENT_DEFINITIONS row for the existing handlers in registry.ts already done; outstanding: wire schedulers + UI to the 12 G1-* entries.
 
 ### What this batch did NOT touch
 
