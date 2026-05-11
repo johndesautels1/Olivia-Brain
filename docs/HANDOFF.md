@@ -1,11 +1,33 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-10 — Track **O5c-Lift** fully closed (4 commits) + cold-start test backport (1 commit). 5 commits since `f474739`.
-> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0 (with `NODE_OPTIONS=--max-old-space-size=4096` to dodge default-heap OOM on Windows). Full vitest suite 1070/1070 in 97s after the pre-warm backport. Avatar tests 58/58, AvatarOrb 19/19, new live-route tests 9/9.
+> **Last updated:** 2026-05-11 — Track **H S21** opened. G1-033 Data Protection Orchestrator ported + canonical handler infrastructure landed (llm.ts + resolve-company.ts + document-mirror.ts + 3 Prisma models + seeded SQL migration). 6 commits since `669a6d0`.
+> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0 (with `NODE_OPTIONS=--max-old-space-size=4096` to dodge default-heap OOM on Windows). Full vitest suite **1155/1155 in 125.96s** (1070 prior baseline + 53 new tests in this batch: 20 llm + 9 resolve-company + 10 document-mirror + 14 g1-033 + 32 that pre-existed and weren't counted in the prior batch's number).
 > **Latest HEAD:** the docs commit that ships this handoff (`git log -1` to confirm — should be the most recent push).
-> **Status:** Track O5c-Lift CLOSED. `OliviaVideoAvatar` no longer holds inline LiveKit + WebSocket lifecycle — it dispatches via the new `LiveAvatarHandle` factory in `src/lib/avatar/`, takes a `provider?: LiveAvatarProvider` prop, and shrunk by ~210 lines. Tavus + Simli "Run live (TTFM)" buttons now wired in the harness via a new server-proxied route. Two follow-ups deferred (NOT regressions — explicit scope cuts): real Tavus video render via Daily SDK; real Simli realtime via PCM bridge + Simli WebRTC SDK. See `docs/SESSION_LOG_2026-05-10_O5C_LIFT.md` for full carry-forward.
+> **Status:** First ported LTM agent handler is live. `getHandler("G1-033")` returns the real implementation instead of `DefaultHandler`. Three new Prisma models (`UserCompanyProfile`, `DocumentCollection`, `DocumentVersion`) + one idempotent SQL migration (seeds the 12 LTM-aligned DocumentCollection rows). The canonical handler pattern is now locked in OB code per the `feedback_ltm_agent_handler_pattern.md` memory note. See `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` for the full per-commit narrative + carry-forwards.
 
-### Today's batch (5 commits since `f474739`)
+### Today's batch (6 commits since `669a6d0`)
+
+1. `6c37ff0` — **Track H S21 C1**: port `callLLM` bridge from LTM (`src/lib/agents/llm.ts`, ~580 lines, 7-provider fan-out with opt-in web search, graceful degradation, rich cost/token return). 20 vitest tests.
+2. `3966525` — **Track H S21 C2**: Prisma foundation. New `CollectionType` enum + 3 new models (`DocumentCollection`, `DocumentVersion`, `UserCompanyProfile` as minimum 10-column LTM subset). Privacy contract codified inline. SQL migration `prisma/sql/11-add-agent-handler-foundation.sql` (idempotent throughout, seeds 12 collection rows). `prisma format` + `prisma generate` ran clean.
+3. `0afe8a8` — **Track H S21 C3**: port `resolve-company` helper (`src/lib/agents/resolve-company.ts`, byte-for-byte LTM port). `BaseCompanyInputSchema` (Zod, passthrough) + `resolveUserCompany()` with profile/input/input+profile/default precedence + source tagging. Never throws. 9 vitest tests.
+4. `84e0d74` — **Track H S21 C4**: port `document-mirror` (`src/lib/agents/document-mirror.ts`, byte-for-byte LTM port). `spawnDocumentFromAgent()` resolves UserProfile -> Clerk userId, looks up DocumentCollection by slug, creates Document + DocumentVersion v1 with canonical /api/documents POST shape, idempotent via slug, best-effort throughout. 10 vitest tests.
+5. `738fabc` — **Track H S21 C5**: port `g1-033-data-protection-orchestrator` (`src/lib/agents/impl/g1-033-data-protection-orchestrator.ts`, byte-for-byte LTM port). Versioned output schema, `isDpiaDocument` type guard, fence+brace JSON parser, structured fallback briefings on both failure modes, spawn-when-userProfileId flow. Wired into `handlers.ts` registry. 14 vitest tests.
+6. **(this commit)** — **Track H S21 C6**: `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` + this HANDOFF.md update (inlines the migration 11 SQL body per the README ABSOLUTE RULE).
+
+### What this batch did NOT touch
+
+- LTM repo: **zero touches**. LTM remains a walled garden to OB sessions per founder direction.
+- The Studio engine port (Track B Session 8c) and document workspace routes (Track B Session 8d-routes-2) — unchanged. The Document + DocumentVersion rows G1-033 spawns have the right shape for those routes to consume when they land.
+- The cascade orchestrator (`runModelCascade`). `callLLM` does NOT delegate through it — the two LLM surfaces coexist (cascade for multi-step chat, callLLM for direct agent narrative generation). Mirrors LTM exactly.
+- G1-005 Property Gravity Forecaster — explicitly NOT ported. Needs LTM-side API extension (district score history + time-windowed organization groupings + `computeTechGravityScore` utility) which is blocked by the walled-garden direction. Parked.
+
+### Architectural facts captured this batch
+
+- **G1-033 is the canonical per-company handler pattern.** Memory note `feedback_ltm_agent_handler_pattern.md` (locked 2026-05-08) is now grounded in OB code. Future ports reuse `resolveUserCompany` + `callLLM` + `spawnDocumentFromAgent` + `parseLlmJson` + `isXxxDocument` instead of reinventing. Subsequent per-company handlers should port in ~1 session each because the infrastructure is now in place.
+- **UserCompanyProfile in OB is a deliberate minimum subset** of LTM's ~85-field source — 10 columns covering exactly what `resolve-company.ts` selects. The privacy-contract doc-comment on the schema model locks the deadline-data boundary explicitly so future agents can't accidentally project deadline columns onto the public profile path.
+- **Migration 11 is owed; SQL body lives in `§ 4 below` AND in `docs/SESSION_LOG_2026-05-11_*.md`** per the README ABSOLUTE RULE (never reference an unapplied migration without printing the SQL inline). `/admin/tools` auto-detection for migration 11 is a carry-forward (the in-product UX matching the chat rule).
+
+### Previous batch — 2026-05-10 (closed at `669a6d0`, 5 commits since `f474739`)
 
 1. `07eb914` — `test(api): pre-warm route modules in 8 surface tests to fix cold-start timeout`. Backports the `c5ee644` pattern to 8 admin/API route test files that were timing out at 15s under full-suite parallel load. Pre-existing infra debt; suite went 1058/1070 in 329s → 1070/1070 in 97s.
 2. `d4cfb7b` — **O5c-Lift C1**: `LiveAvatarHandle` interface + `LiveAvatarProvider` union + `SpeakErrorReason` + `LiveAvatarHandleEventMap` + `CreateLiveAvatarHandleOptions` in `src/lib/avatar/types.ts`. `AvatarState` moved from `OliviaVideoAvatar` to `types.ts` with re-export for back-compat.
@@ -266,6 +288,135 @@ prisma/sql/07-add-counter-term-sheets.sql        — Track P6
 prisma/sql/08-add-documents-engine-write-surface.sql — Track B
 prisma/sql/09-add-documents-foundation.sql       — Track B
 prisma/sql/10-add-avatar-eval-run.sql            — Track O5c S1 (avatar A/B harness foundation)
+prisma/sql/11-add-agent-handler-foundation.sql   — Track H S21 (DocumentCollection + DocumentVersion + UserCompanyProfile + FKs + 12 seeded collections; required for G1-033 to work end-to-end)
+```
+
+**Migration 11 — agent handler foundation (paste into Supabase SQL editor):**
+
+```sql
+-- 11-add-agent-handler-foundation.sql
+-- Track H S21 -- foundation tables for LTM-style agent handlers.
+-- ASCII-only inside comments to dodge Supabase paste corruption.
+DO $$ BEGIN
+  CREATE TYPE "CollectionType" AS ENUM (
+    'company_core',
+    'pitch_decks',
+    'strategic_partnerships',
+    'product_technology',
+    'financials_models',
+    'licensing_commercial',
+    'legal_compliance',
+    'due_diligence',
+    'sales_marketing',
+    'methodology',
+    'sample_reports',
+    'acquisition_exit'
+  );
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "document_collections" (
+  "id"             TEXT             NOT NULL,
+  "name"           TEXT             NOT NULL,
+  "slug"           TEXT             NOT NULL,
+  "description"    TEXT,
+  "collectionType" "CollectionType" NOT NULL,
+  "isActive"       BOOLEAN          NOT NULL DEFAULT true,
+  "createdAt"      TIMESTAMP(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"      TIMESTAMP(3)     NOT NULL,
+  CONSTRAINT "document_collections_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "document_collections_slug_key"
+  ON "document_collections" ("slug");
+CREATE INDEX IF NOT EXISTS "document_collections_collectionType_idx"
+  ON "document_collections" ("collectionType");
+CREATE INDEX IF NOT EXISTS "document_collections_isActive_idx"
+  ON "document_collections" ("isActive");
+
+CREATE TABLE IF NOT EXISTS "document_versions" (
+  "id"               TEXT         NOT NULL,
+  "documentId"       TEXT         NOT NULL,
+  "versionNumber"    INTEGER      NOT NULL,
+  "titleSnapshot"    TEXT,
+  "contentSnapshot"  TEXT,
+  "filePathSnapshot" TEXT,
+  "changeNotes"      TEXT,
+  "createdBy"        TEXT,
+  "createdAt"        TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "document_versions_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "document_versions_documentId_idx"
+  ON "document_versions" ("documentId");
+CREATE INDEX IF NOT EXISTS "document_versions_versionNumber_idx"
+  ON "document_versions" ("versionNumber");
+
+CREATE TABLE IF NOT EXISTS "user_company_profiles" (
+  "id"                   TEXT             NOT NULL,
+  "userProfileId"        TEXT             NOT NULL,
+  "companyName"          TEXT             NOT NULL,
+  "primarySector"        TEXT,
+  "headquartersLocation" TEXT,
+  "employeeCount"        INTEGER,
+  "arr"                  DOUBLE PRECISION,
+  "totalRaised"          DOUBLE PRECISION,
+  "regulatoryBody"       TEXT,
+  "certifications"       TEXT[]           NOT NULL DEFAULT '{}'::TEXT[],
+  "customerCount"        INTEGER,
+  "createdAt"            TIMESTAMP(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"            TIMESTAMP(3)     NOT NULL,
+  CONSTRAINT "user_company_profiles_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "user_company_profiles_userProfileId_key"
+  ON "user_company_profiles" ("userProfileId");
+CREATE INDEX IF NOT EXISTS "user_company_profiles_primarySector_idx"
+  ON "user_company_profiles" ("primarySector");
+
+DO $$ BEGIN
+  ALTER TABLE "documents"
+    ADD CONSTRAINT "documents_collectionId_fkey"
+    FOREIGN KEY ("collectionId") REFERENCES "document_collections"("id")
+    ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "document_versions"
+    ADD CONSTRAINT "document_versions_documentId_fkey"
+    FOREIGN KEY ("documentId") REFERENCES "documents"("id")
+    ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "user_company_profiles"
+    ADD CONSTRAINT "user_company_profiles_userProfileId_fkey"
+    FOREIGN KEY ("userProfileId") REFERENCES "user_profiles"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+INSERT INTO "document_collections"
+  ("id", "name", "slug", "description", "collectionType", "isActive", "createdAt", "updatedAt")
+VALUES
+  ('cdoc_company_core',           'Company Core',           'company-core',           'Foundational corporate documents',                'company_core',           true, NOW(), NOW()),
+  ('cdoc_pitch_decks',            'Pitch Decks',            'pitch-decks',            'Investor-facing slide decks',                     'pitch_decks',            true, NOW(), NOW()),
+  ('cdoc_strategic_partnerships', 'Strategic Partnerships', 'strategic-partnerships', 'Partnership memoranda and co-marketing assets',   'strategic_partnerships', true, NOW(), NOW()),
+  ('cdoc_product_technology',     'Product & Technology',   'product-technology',     'Technical and product specifications',            'product_technology',     true, NOW(), NOW()),
+  ('cdoc_financials_models',      'Financials & Models',    'financials-models',      'Financial statements and valuation models',       'financials_models',      true, NOW(), NOW()),
+  ('cdoc_licensing_commercial',   'Licensing & Commercial', 'licensing-commercial',   'License agreements and commercial terms',         'licensing_commercial',   true, NOW(), NOW()),
+  ('cdoc_legal_compliance',       'Legal & Compliance',     'legal-compliance',       'Legal agreements and compliance artefacts (DPIA)', 'legal_compliance',       true, NOW(), NOW()),
+  ('cdoc_due_diligence',          'Due Diligence',          'due-diligence',          'Diligence room exhibits and disclosures',         'due_diligence',          true, NOW(), NOW()),
+  ('cdoc_sales_marketing',        'Sales & Marketing',      'sales-marketing',        'Sales collateral and marketing assets',           'sales_marketing',        true, NOW(), NOW()),
+  ('cdoc_methodology',            'Methodology',            'methodology',            'Internal methodology and how-we-work docs',       'methodology',            true, NOW(), NOW()),
+  ('cdoc_sample_reports',         'Sample Reports',         'sample-reports',         'Anonymised sample outputs',                       'sample_reports',         true, NOW(), NOW()),
+  ('cdoc_acquisition_exit',       'Acquisition & Exit',     'acquisition-exit',       'M and A + exit-readiness documents',              'acquisition_exit',       true, NOW(), NOW())
+ON CONFLICT ("id") DO NOTHING;
+```
+
+Verify (12 rows expected):
+
+```sql
+SELECT slug, name FROM "document_collections" ORDER BY slug;
 ```
 
 **Per the README ABSOLUTE RULE** (top of `README.md`), every unapplied migration must be inlined in chat for the operator to paste, never just referenced by file path. The bodies of 04–09 live on disk under `prisma/sql/`; the body of migration 10 (this batch's addition) is below — and `/admin/tools` auto-detects whether 10 is applied and renders it inline with a Copy-SQL button when not. Future agents adding migrations should extend `getOwedMigrations()` in `src/app/admin/tools/page.tsx` so `/admin/tools` covers them too.
@@ -366,35 +517,48 @@ Full inventory with scope rules in `docs/RUNBOOK.md` § 2.
 
 The session-end state is:
 - Working tree clean on `main`
-- **19 commits this session** since `4808d6c` (the prior batch's tip). Itemised in the header section "Today's full batch (19 commits since `4808d6c`)".
-- Track O is now functionally closed; only the optional `OliviaVideoAvatar` 867-line abstraction lift remains, tracked as "Track O5c-Lift".
-- Cumulative across all batches: ~75 commits since the Track-U-handoff prior-prior batch tip.
+- **6 commits this session** since `669a6d0` (the prior batch's tip). Itemised in the header section "Today's batch (6 commits since `669a6d0`)".
+- Track O5c-Lift remains CLOSED (no changes in this batch).
+- Track H S21 is OPEN — first per-company handler (G1-033) ported + canonical infrastructure (llm.ts + resolve-company.ts + document-mirror.ts + 3 Prisma models + 12-row collection seed) landed. Future per-company handler ports should take ~1 session each now that the infrastructure exists.
 
 ### Resume options (pick one)
 
-**Option A — Track O5c-Lift (deferred refactor; ~1–2 sessions, low-medium risk).** Close the only loose end on Track O.
-- **First read:** `src/components/olivia/OliviaVideoAvatar.tsx` cold (867 lines, LiveKit + LiveAvatar LITE protocol + MediaRecorder) + `docs/SESSION_LOG_2026-05-09_O5C_S3_DECISION_AND_TRIGGERS.md` "Carry-forward" section + `src/lib/avatar/types.ts` + each existing adapter (`tavus.ts`, `simli.ts`, `liveavatar.ts`).
-- **Plan:** extract a `LiveAvatarHandle` interface (`connect / disconnect / speak / interrupt`) into `src/lib/avatar/types.ts`. Have each vendor adapter implement it. Refactor `OliviaVideoAvatar` to take a `provider` prop and dispatch. Once that lands, the harness's "Run live (TTFM)" button can be enabled for Tavus + Simli too (today it's LiveAvatar-only).
-- **Why this and not H S21:** I have maximum context on the avatar surface today, lowest-risk window to do this is now. Estimate: ~2 sessions of careful staged commits.
+**Option A (Recommended) — Track H S21 continuation — port a second per-company handler.**
+- **Why this:** The canonical pattern is fresh in context. Each subsequent port is mechanical now that `resolveUserCompany` + `callLLM` + `spawnDocumentFromAgent` + `parseLlmJson` + `isXxxDocument` are in place. ~1 session per handler.
+- **Candidate handlers (LTM `src/lib/agents/impl/`)** — pick one whose dependencies are already in OB:
+    - **G1-034** / **G1-036** / **G1-048** / **G1-050** — other per-company doc-spawn agents that mirror G1-033's shape. Each adds its own `XxxExtensionSchema` + `XxxDocument` shape + system/user prompts. No new infra needed.
+    - **G1-005 Property Gravity Forecaster** is still BLOCKED on LTM v1 API extension (district score history + time-windowed organization groupings + `computeTechGravityScore` utility). Don't pick this one without first re-opening the LTM walled garden with explicit founder authorization.
+- **First read:** the chosen LTM handler source cold + `docs/SESSION_LOG_2026-05-11_TRACK_H_S21_G1_033_PORT.md` for the canonical pattern + `src/lib/agents/impl/g1-033-data-protection-orchestrator.ts` as the reference.
+- **Plan:** mirror G1-033's commit structure (handler file + tests + handlers.ts registry add) in one commit. If the new handler needs a new DocumentCollection, no migration needed — extend `getOwedMigrations()` for migration 11's auto-detect first (carry-forward item from this batch).
 
-**Option B — Track H S21 (LTM agent port; ~2 sessions per agent, NOT 1).**
-- **⚠ Estimate correction (added 2026-05-09):** the prior handoff said "1 session per agent." After reading `D:\London-Tech-Map\src\lib\agents\impl\g1-005-property-gravity-forecaster.ts` cold, this is wrong. The agent uses `prisma.location.findMany` with `districtOrganizations` + `districtEvents` relations, `prisma.districtScoreHistory.findMany` distinct, `prisma.organization.groupBy` time-windowed by `createdAt`, AND a LTM-only `computeTechGravityScore` utility. The OB bridge (`src/lib/bridge/providers/ltm.ts`) only exposes the v1 LTM API which has `organizations` and `districts` endpoints — NO score history, NO time-windowed groupings, NO scoring utility. So porting one agent realistically requires either (a) a "narrative-only" degraded version that drops the gravity-trajectory math (~1 session, but lower output quality), or (b) extending the LTM v1 API to expose more data + porting the scoring utility into OB (~2+ sessions). Pick the angle deliberately.
-- **First read:** `D:\London-Tech-Map\src\lib\agents\impl\g1-005-property-gravity-forecaster.ts` (cold, full file) + `D:\Olivia Brain\src\lib\bridge\providers\ltm.ts` + `D:\Olivia Brain\src\lib\bridge\types.ts` (UKP definitions).
-- **Plan:** read both ends, pick the angle (degraded vs. extend), document the choice in the SESSION_LOG, then port one agent end-to-end with tests.
+**Option B — `/admin/tools` getOwedMigrations() extension for migration 11.**
+- **Why this:** Closes the in-product-UX-matches-chat-rule gap from this batch. ~30 minutes scope.
+- **First read:** `src/app/admin/tools/page.tsx` (existing `getOwedMigrations()` pattern that auto-detects migration 10 via `prisma.avatarEvalRun.count()`).
+- **Plan:** add migration 11 detection via `try { await prisma.documentCollection.count() } catch` + inline the full SQL body in the banner. Migration 11's SQL is in § 4 above + in the SESSION_LOG; copy-paste into the page component.
 
-**Option C — Track N4 (generative UI / 3D scenes; multi-session).**
-- **First read:** `src/components/home/reply-renderer/MarkdownReply.tsx` (existing manifest fence pattern) + `lib/services/model-cascade.ts buildSystemPrompt()` (where new fences get taught to the cascade).
-- **Plan:** pick ~5 safe React components Olivia can reference (Card / Stat / Progress / Button / Form), define the JSON contract, parse + render. Skip eval-time JSX entirely.
+**Option C — AGENT_DEFINITIONS registry row for G1-033.**
+- **Why this:** Lets schedulers auto-run G1-033. Today the handler is registered (`getHandler("G1-033")` returns the real impl) but the agent isn't in the `AGENT_DEFINITIONS` array in `src/lib/agents/registry.ts`, so schedulers iterating over that list won't see it.
+- **First read:** `src/lib/agents/registry.ts` — pattern from existing entries.
+- **Plan:** add one row with agentId="G1-033", group="1F" (or whichever Legal & Compliance group code is canonical), `defaultSchedule: "on_demand"`, `defaultModel: "claude-sonnet-4-6"`, etc.
 
-**Option D — Track N2 (Mapbox 3D fly-to animation; flagged risky).**
-- **First read:** `src/components/map/GoogleMap3DView.tsx` (substantial Map3DElement integration) + `src/components/map/MapView.tsx` (Mapbox dual-impl). Two different map surfaces; risk of breaking the existing one is real.
-- I judged this too risky for a single session in today's batch — surface it again only if you have appetite to read both files cold first.
+**Option D — Track B carry-forwards (document workspace routes).**
+- **Why this:** The DPIA document G1-033 spawns has the right shape but no UI surfaces it yet. Porting `/documents/[id]/page.tsx` + `/documents/[id]/workspace/...` from LTM makes the agent end-to-end visible.
+- **First read:** LTM's `documents/[id]/page.tsx` (16.9 KB) + `documents/[id]/workspace/{page,layout,DocumentWorkspaceClient}.tsx`.
+- **Caveat:** Use `Copy-Item -LiteralPath` to avoid the PowerShell `[id]` bracket wildcard issue documented in `§ 7`.
 
-**Option E — Pre-launch (S30 production deploy).**
+**Option E — Track N4 (generative UI / 3D scenes; multi-session).**
+- **First read:** `src/components/home/reply-renderer/MarkdownReply.tsx` (existing manifest fence pattern) + `lib/services/model-cascade.ts buildSystemPrompt()`.
+- **Plan:** pick ~5 safe React components Olivia can reference (Card / Stat / Progress / Button / Form), define the JSON contract, parse + render.
+
+**Option F — Track N2 (Mapbox 3D fly-to animation; flagged risky).**
+- **First read:** `src/components/map/GoogleMap3DView.tsx` + `src/components/map/MapView.tsx`.
+- I judged this too risky in this batch — surface it again only with appetite to read both files cold first.
+
+**Option G — Pre-launch (S30 production deploy).**
 - **First read:** `docs/RUNBOOK.md` end-to-end.
-- **Action:** apply the 7 SQL migrations in § 4 (now 8 — see operator-actions section), set the env vars in § 4, run the smoke tests in RUNBOOK § 5.
+- **Action:** apply the **9 SQL migrations** in § 4 (04, 05, 06, 07, 08, 09, 10, 11, seed-investor-reputations), set the env vars in § 4, run the smoke tests in RUNBOOK § 5.
 
-**Recommended pick:** Option A (Track O5c-Lift). It uses fresh context from today's avatar work, has a lower estimate-error risk than H S21, and closes the only Track O loose end before context is lost.
+**Recommended pick:** Option A (Track H S21 continuation — port a second per-company handler like G1-034 or G1-048). The canonical pattern is locked and the infrastructure investment pays back across every subsequent port. Capability leverage is highest here.
 
 ---
 
