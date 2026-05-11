@@ -259,3 +259,6 @@ registerHandler(buildVsBuyDecisionAgentHandler);
 
 import { emailNegotiatorHandler } from "./impl/g1-149-email-negotiator";
 registerHandler(emailNegotiatorHandler);
+
+import { procurementAgentHandler } from "./impl/g1-150-procurement-agent";
+registerHandler(procurementAgentHandler);
