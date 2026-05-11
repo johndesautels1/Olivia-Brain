@@ -197,3 +197,8 @@ export function toDeck(
     slideCount: isTemplate ? raw.sections : raw.slideCount,
   };
 }
+
+// Track B 8c engine types — re-exported from ./engine/types so leaf studio
+// components (StudioAnswerEditor, SuggestionChips, AnswerRibbon, WhyThisPanel,
+// StoryReview, etc.) can import them from the canonical @/lib/studio/types path.
+export * from "./engine/types";
