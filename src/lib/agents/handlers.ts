@@ -238,3 +238,6 @@ registerHandler(dataProtectionOrchestratorHandler);
 
 import { modernSlaveryStatementGeneratorHandler } from "./impl/g1-048-modern-slavery-statement-generator";
 registerHandler(modernSlaveryStatementGeneratorHandler);
+
+import { pitchDeckLondonFilterHandler } from "./impl/g1-076-pitch-deck-london-filter";
+registerHandler(pitchDeckLondonFilterHandler);
