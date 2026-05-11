@@ -37,17 +37,17 @@ model conversation_turns {
 }
 
 model conversations {
-  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title              String?
-  metadata           Json                 @default("{}")
-  last_message_at    DateTime             @default(now()) @db.Timestamptz(6)
-  created_at         DateTime             @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
-  client_id            String?
-  conversation_turns   conversation_turns[]
-  conversation_events  conversation_events[]
-  journey_snapshots    journey_snapshots[]
-  action_budgets       action_budgets[]
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title               String?
+  metadata            Json                  @default("{}")
+  last_message_at     DateTime              @default(now()) @db.Timestamptz(6)
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime              @default(now()) @db.Timestamptz(6)
+  client_id           String?
+  conversation_turns  conversation_turns[]
+  conversation_events conversation_events[]
+  journey_snapshots   journey_snapshots[]
+  action_budgets      action_budgets[]
 
   @@index([client_id, created_at(sort: Desc)], map: "conversations_client_id_idx")
 }
@@ -56,18 +56,18 @@ model conversations {
 /// Layered on top of conversation_turns (additive, does not replace).
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model conversation_events {
-  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversation_id  String               @db.Uuid
-  client_id        String?
-  event_type       String
-  sequence_num     Int
-  payload          Json                 @default("{}")
-  actor            String
-  parent_event_id  String?              @db.Uuid
-  created_at       DateTime             @default(now()) @db.Timestamptz(6)
-  conversation     conversations        @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  parent_event     conversation_events? @relation("event_chain", fields: [parent_event_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  child_events     conversation_events[] @relation("event_chain")
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String                @db.Uuid
+  client_id       String?
+  event_type      String
+  sequence_num    Int
+  payload         Json                  @default("{}")
+  actor           String
+  parent_event_id String?               @db.Uuid
+  created_at      DateTime              @default(now()) @db.Timestamptz(6)
+  conversation    conversations         @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  parent_event    conversation_events?  @relation("event_chain", fields: [parent_event_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  child_events    conversation_events[] @relation("event_chain")
 
   @@unique([conversation_id, sequence_num], map: "conversation_events_sequence_unique")
   @@index([conversation_id, sequence_num(sort: Asc)], map: "conversation_events_replay_idx")
@@ -142,18 +142,18 @@ model mem0_memories {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// Knowledge graph entity storage — hybrid public/private isolation
 model graph_entities {
-  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                  String
-  type                  String                 @default("concept")
-  properties            Json                   @default("{}")
-  embedding             Unsupported("vector")?
-  chunk_ids             String[]               @default([])
-  source                String?
-  client_id             String?
-  created_at            DateTime               @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime               @default(now()) @db.Timestamptz(6)
-  outgoing_relationships graph_relationships[] @relation("source_entity")
-  incoming_relationships graph_relationships[] @relation("target_entity")
+  id                     String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String
+  type                   String                 @default("concept")
+  properties             Json                   @default("{}")
+  embedding              Unsupported("vector")?
+  chunk_ids              String[]               @default([])
+  source                 String?
+  client_id              String?
+  created_at             DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime               @default(now()) @db.Timestamptz(6)
+  outgoing_relationships graph_relationships[]  @relation("source_entity")
+  incoming_relationships graph_relationships[]  @relation("target_entity")
 
   @@index([type], map: "graph_entities_type_idx")
   @@index([embedding], map: "graph_entities_embedding_idx")
@@ -162,18 +162,18 @@ model graph_entities {
 
 /// Knowledge graph relationship storage — connects entities with typed, weighted edges
 model graph_relationships {
-  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  source_entity_id String          @db.Uuid
-  target_entity_id String          @db.Uuid
-  type             String          @default("related_to")
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source_entity_id String         @db.Uuid
+  target_entity_id String         @db.Uuid
+  type             String         @default("related_to")
   label            String?
-  weight           Float           @default(0.5) @db.Real
-  properties       Json            @default("{}")
+  weight           Float          @default(0.5) @db.Real
+  properties       Json           @default("{}")
   evidence         String?
   client_id        String?
-  created_at       DateTime        @default(now()) @db.Timestamptz(6)
-  source_entity    graph_entities  @relation("source_entity", fields: [source_entity_id], references: [id], onDelete: Cascade)
-  target_entity    graph_entities  @relation("target_entity", fields: [target_entity_id], references: [id], onDelete: Cascade)
+  created_at       DateTime       @default(now()) @db.Timestamptz(6)
+  source_entity    graph_entities @relation("source_entity", fields: [source_entity_id], references: [id], onDelete: Cascade)
+  target_entity    graph_entities @relation("target_entity", fields: [target_entity_id], references: [id], onDelete: Cascade)
 
   @@index([source_entity_id], map: "graph_relationships_source_idx")
   @@index([target_entity_id], map: "graph_relationships_target_idx")
@@ -238,20 +238,20 @@ model semantic_memories {
 /// Public procedures (client_id NULL) shared. Private procedures (client_id set) isolated.
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model procedural_memories {
-  id            String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  client_id     String?
-  name          String
-  description   String
-  trigger       String
-  steps         Json                   @default("[]")
-  category      String                 @default("workflow")
-  success_count Int                    @default(0)
-  failure_count Int                    @default(0)
-  embedding          Unsupported("vector")?
-  is_active          Boolean                @default(true)
-  created_at         DateTime               @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime               @default(now()) @db.Timestamptz(6)
-  journey_snapshots  journey_snapshots[]
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id         String?
+  name              String
+  description       String
+  trigger           String
+  steps             Json                   @default("[]")
+  category          String                 @default("workflow")
+  success_count     Int                    @default(0)
+  failure_count     Int                    @default(0)
+  embedding         Unsupported("vector")?
+  is_active         Boolean                @default(true)
+  created_at        DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime               @default(now()) @db.Timestamptz(6)
+  journey_snapshots journey_snapshots[]
 
   @@index([client_id, is_active], map: "procedural_memories_client_active_idx")
   @@index([category], map: "procedural_memories_category_idx")
@@ -263,21 +263,21 @@ model procedural_memories {
 /// Always private (client_id required). Links to active procedure and conversation events.
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model journey_snapshots {
-  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversation_id      String                @db.Uuid
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id      String               @db.Uuid
   client_id            String
-  snapshot_type        String                @default("auto")
-  active_procedure_id  String?               @db.Uuid
-  procedure_step_index Int                   @default(0)
-  collected_data       Json                  @default("{}")
-  pending_questions    Json                  @default("[]")
+  snapshot_type        String               @default("auto")
+  active_procedure_id  String?              @db.Uuid
+  procedure_step_index Int                  @default(0)
+  collected_data       Json                 @default("{}")
+  pending_questions    Json                 @default("[]")
   context_summary      String
   sentiment            String?
-  last_event_sequence  Int                   @default(0)
-  metadata             Json                  @default("{}")
-  created_at           DateTime              @default(now()) @db.Timestamptz(6)
-  conversation         conversations         @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  active_procedure     procedural_memories?  @relation(fields: [active_procedure_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  last_event_sequence  Int                  @default(0)
+  metadata             Json                 @default("{}")
+  created_at           DateTime             @default(now()) @db.Timestamptz(6)
+  conversation         conversations        @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  active_procedure     procedural_memories? @relation(fields: [active_procedure_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([conversation_id, created_at(sort: Desc)], map: "journey_snapshots_conversation_idx")
   @@index([client_id, created_at(sort: Desc)], map: "journey_snapshots_client_idx")
@@ -382,7 +382,7 @@ model agents {
   description        String?
   group_id           String            @db.Uuid
   status             String            @default("initializing") // active, paused, disabled, error, initializing
-  persona            String?           // olivia, cristiano, emelia, system
+  persona            String? // olivia, cristiano, emelia, system
   llm_model          String            @default("gpt-4o")
   temperature        Float             @default(0.7) @db.Real
   max_tokens         Int               @default(4096)
@@ -419,23 +419,23 @@ model agents {
 
 /// Individual agent execution runs
 model agent_runs {
-  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agent_id         String            @db.Uuid
-  status           String            @default("running") // running, completed, failed, timeout, cancelled
-  trigger_type     String            @default("manual") // manual, scheduled, event, api, cascade, user_request
-  trigger_user_id  String?
-  input_json       Json              @default("{}")
-  output_json      Json              @default("{}")
-  error_message    String?
-  duration_ms      Int?
-  tokens_used      Int?
-  cost_usd         Float?            @db.Real
-  llm_model        String?
-  cascade_step     Int?
-  started_at       DateTime          @default(now()) @db.Timestamptz(6)
-  completed_at     DateTime?         @db.Timestamptz(6)
-  agent            agents            @relation(fields: [agent_id], references: [id], onDelete: Cascade)
-  agent_learnings  agent_learnings[]
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id        String            @db.Uuid
+  status          String            @default("running") // running, completed, failed, timeout, cancelled
+  trigger_type    String            @default("manual") // manual, scheduled, event, api, cascade, user_request
+  trigger_user_id String?
+  input_json      Json              @default("{}")
+  output_json     Json              @default("{}")
+  error_message   String?
+  duration_ms     Int?
+  tokens_used     Int?
+  cost_usd        Float?            @db.Real
+  llm_model       String?
+  cascade_step    Int?
+  started_at      DateTime          @default(now()) @db.Timestamptz(6)
+  completed_at    DateTime?         @db.Timestamptz(6)
+  agent           agents            @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+  agent_learnings agent_learnings[]
 
   @@index([agent_id, started_at(sort: Desc)])
   @@index([status, started_at(sort: Desc)])
@@ -459,19 +459,19 @@ model agent_configs {
 
 /// Agent briefings (daily summaries, alerts, milestones)
 model agent_briefings {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agent_id           String   @db.Uuid
-  briefing_type      String   @default("daily") // daily, weekly, alert, milestone
-  title              String
-  summary            String
-  findings_json      Json     @default("{}")
-  recommendations_json Json   @default("{}")
-  severity           String   @default("info") // info, warning, critical
-  is_read            Boolean  @default(false)
-  period_start       DateTime @db.Timestamptz(6)
-  period_end         DateTime @db.Timestamptz(6)
-  created_at         DateTime @default(now()) @db.Timestamptz(6)
-  agent              agents   @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id             String   @db.Uuid
+  briefing_type        String   @default("daily") // daily, weekly, alert, milestone
+  title                String
+  summary              String
+  findings_json        Json     @default("{}")
+  recommendations_json Json     @default("{}")
+  severity             String   @default("info") // info, warning, critical
+  is_read              Boolean  @default(false)
+  period_start         DateTime @db.Timestamptz(6)
+  period_end           DateTime @db.Timestamptz(6)
+  created_at           DateTime @default(now()) @db.Timestamptz(6)
+  agent                agents   @relation(fields: [agent_id], references: [id], onDelete: Cascade)
 
   @@index([agent_id, created_at(sort: Desc)])
   @@index([is_read, created_at(sort: Desc)])
@@ -522,7 +522,7 @@ model agent_metrics {
 /// System alerts (cross-agent, system-level)
 model system_alerts {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  source     String   // "cascade", "agent_O1-001", "system"
+  source     String // "cascade", "agent_O1-001", "system"
   severity   String   @default("info") // info, warning, critical
   title      String
   message    String
@@ -546,15 +546,15 @@ model feature_toggles {
 
 /// Authorized admin emails for system access
 model admin_emails {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email      String   @unique
-  role       String   @default("admin") // superadmin, admin, viewer
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String    @unique
+  role       String    @default("admin") // superadmin, admin, viewer
   name       String?
-  is_active  Boolean  @default(true)
+  is_active  Boolean   @default(true)
   added_by   String?
   last_login DateTime? @db.Timestamptz(6)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([is_active])
   @@index([role])
@@ -566,36 +566,36 @@ model admin_emails {
 
 /// Core tenant identity — isolated organizational units
 model tenants {
-  id                     String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  slug                   String                    @unique // URL-safe identifier: "acme-corp"
-  name                   String                    // Display name: "Acme Corporation"
-  status                 String                    @default("active") // active, suspended, trial, churned
-  tier                   String                    @default("starter") // starter, professional, enterprise, white_label
-  domain                 String?                   @unique // Custom domain: "ai.acmecorp.com"
-  logo_url               String?
-  primary_color          String?                   // Brand color hex
-  timezone               String                    @default("UTC")
-  locale                 String                    @default("en-US")
+  id                    String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug                  String                     @unique // URL-safe identifier: "acme-corp"
+  name                  String // Display name: "Acme Corporation"
+  status                String                     @default("active") // active, suspended, trial, churned
+  tier                  String                     @default("starter") // starter, professional, enterprise, white_label
+  domain                String?                    @unique // Custom domain: "ai.acmecorp.com"
+  logo_url              String?
+  primary_color         String? // Brand color hex
+  timezone              String                     @default("UTC")
+  locale                String                     @default("en-US")
   // Limits
-  max_seats              Int                       @default(5)
-  max_conversations_day  Int                       @default(100)
-  max_tokens_month       Int                       @default(1000000)
-  tokens_used_month      Int                       @default(0)
+  max_seats             Int                        @default(5)
+  max_conversations_day Int                        @default(100)
+  max_tokens_month      Int                        @default(1000000)
+  tokens_used_month     Int                        @default(0)
   // Billing
-  stripe_customer_id     String?
-  billing_email          String?
-  trial_ends_at          DateTime?                 @db.Timestamptz(6)
+  stripe_customer_id    String?
+  billing_email         String?
+  trial_ends_at         DateTime?                  @db.Timestamptz(6)
   // Metadata
-  metadata               Json                      @default("{}")
-  created_at             DateTime                  @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime                  @default(now()) @db.Timestamptz(6)
+  metadata              Json                       @default("{}")
+  created_at            DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                   @default(now()) @db.Timestamptz(6)
   // Relations
-  members                tenant_members[]
-  configs                tenant_configs[]
-  adapter_overrides      tenant_adapter_overrides[]
-  model_overrides        tenant_model_overrides[]
-  policies               tenant_policies[]
-  api_keys               tenant_api_keys[]
+  members               tenant_members[]
+  configs               tenant_configs[]
+  adapter_overrides     tenant_adapter_overrides[]
+  model_overrides       tenant_model_overrides[]
+  policies              tenant_policies[]
+  api_keys              tenant_api_keys[]
 
   @@index([status])
   @@index([tier])
@@ -604,18 +604,18 @@ model tenants {
 
 /// Tenant membership — users belong to tenants with roles
 model tenant_members {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id   String   @db.Uuid
-  user_id     String   // External user ID (Clerk, Auth0, etc.)
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String    @db.Uuid
+  user_id     String // External user ID (Clerk, Auth0, etc.)
   email       String
-  role        String   @default("member") // owner, admin, member, viewer, api_only
-  status      String   @default("active") // active, invited, suspended
-  invited_by  String?  @db.Uuid
+  role        String    @default("member") // owner, admin, member, viewer, api_only
+  status      String    @default("active") // active, invited, suspended
+  invited_by  String?   @db.Uuid
   joined_at   DateTime? @db.Timestamptz(6)
   last_active DateTime? @db.Timestamptz(6)
-  created_at  DateTime @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime @default(now()) @db.Timestamptz(6)
-  tenant      tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @default(now()) @db.Timestamptz(6)
+  tenant      tenants   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@unique([tenant_id, user_id])
   @@unique([tenant_id, email])
@@ -627,7 +627,7 @@ model tenant_members {
 model tenant_configs {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenant_id   String   @db.Uuid
-  key         String   // "default_persona", "welcome_message", "max_context_turns"
+  key         String // "default_persona", "welcome_message", "max_context_turns"
   value       String
   value_type  String   @default("string") // string, number, boolean, json
   is_secret   Boolean  @default(false)
@@ -642,17 +642,17 @@ model tenant_configs {
 
 /// Tenant adapter overrides — which external services each tenant uses
 model tenant_adapter_overrides {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id     String   @db.Uuid
-  adapter_type  String   // "calendar", "crm", "email", "voice", "avatar", "realtime"
-  adapter_name  String   // "london_calendar", "hubspot", "salesforce", "nylas"
-  is_enabled    Boolean  @default(true)
-  priority      Int      @default(0) // Higher = preferred when multiple available
-  config        Json     @default("{}") // Adapter-specific config (non-secret)
-  credentials   Json     @default("{}") // Encrypted credentials reference
-  created_at    DateTime @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime @default(now()) @db.Timestamptz(6)
-  tenant        tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id    String   @db.Uuid
+  adapter_type String // "calendar", "crm", "email", "voice", "avatar", "realtime"
+  adapter_name String // "london_calendar", "hubspot", "salesforce", "nylas"
+  is_enabled   Boolean  @default(true)
+  priority     Int      @default(0) // Higher = preferred when multiple available
+  config       Json     @default("{}") // Adapter-specific config (non-secret)
+  credentials  Json     @default("{}") // Encrypted credentials reference
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+  tenant       tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@unique([tenant_id, adapter_type, adapter_name])
   @@index([tenant_id, adapter_type])
@@ -660,19 +660,19 @@ model tenant_adapter_overrides {
 
 /// Tenant model overrides — per-tenant LLM preferences and routing
 model tenant_model_overrides {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id       String   @db.Uuid
-  intent          String   // "general", "planning", "research", "operations", "math", "judge"
-  provider        String   // "anthropic", "openai", "google", "xai", "mistral", "perplexity"
-  model           String   // "claude-sonnet-4-20250514", "gpt-4o", etc.
-  temperature     Float    @default(0.7) @db.Real
-  max_tokens      Int      @default(4096)
-  is_enabled      Boolean  @default(true)
-  priority        Int      @default(0) // Cascade order within intent
-  fallback_model  String?  // If primary fails
-  created_at      DateTime @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime @default(now()) @db.Timestamptz(6)
-  tenant          tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String   @db.Uuid
+  intent         String // "general", "planning", "research", "operations", "math", "judge"
+  provider       String // "anthropic", "openai", "google", "xai", "mistral", "perplexity"
+  model          String // "claude-sonnet-4-20250514", "gpt-4o", etc.
+  temperature    Float    @default(0.7) @db.Real
+  max_tokens     Int      @default(4096)
+  is_enabled     Boolean  @default(true)
+  priority       Int      @default(0) // Cascade order within intent
+  fallback_model String? // If primary fails
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @default(now()) @db.Timestamptz(6)
+  tenant         tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@unique([tenant_id, intent, provider, model])
   @@index([tenant_id, intent])
@@ -680,25 +680,25 @@ model tenant_model_overrides {
 
 /// Tenant policies — approval rules, feature access, rate limits
 model tenant_policies {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id       String   @db.Uuid
-  policy_type     String   // "approval_rule", "rate_limit", "feature_access", "data_residency"
-  policy_name     String   // "require_approval_for_emails", "max_api_calls_per_minute"
-  is_enabled      Boolean  @default(true)
-  config          Json     @default("{}") // Policy-specific configuration
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id          String   @db.Uuid
+  policy_type        String // "approval_rule", "rate_limit", "feature_access", "data_residency"
+  policy_name        String // "require_approval_for_emails", "max_api_calls_per_minute"
+  is_enabled         Boolean  @default(true)
+  config             Json     @default("{}") // Policy-specific configuration
   // For approval rules
-  approval_threshold Float? @db.Real // Confidence below this requires approval
-  approvers       String[] @default([]) // User IDs who can approve
+  approval_threshold Float?   @db.Real // Confidence below this requires approval
+  approvers          String[] @default([]) // User IDs who can approve
   // For rate limits
-  limit_value     Int?
-  limit_period    String?  // "minute", "hour", "day", "month"
+  limit_value        Int?
+  limit_period       String? // "minute", "hour", "day", "month"
   // For feature access
-  features        String[] @default([]) // Feature keys this policy controls
+  features           String[] @default([]) // Feature keys this policy controls
   // For data residency
-  allowed_regions String[] @default([]) // "us", "eu", "uk", "ap"
-  created_at      DateTime @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime @default(now()) @db.Timestamptz(6)
-  tenant          tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  allowed_regions    String[] @default([]) // "us", "eu", "uk", "ap"
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime @default(now()) @db.Timestamptz(6)
+  tenant             tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@unique([tenant_id, policy_type, policy_name])
   @@index([tenant_id, policy_type])
@@ -707,19 +707,19 @@ model tenant_policies {
 
 /// Tenant API keys — programmatic access tokens
 model tenant_api_keys {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id       String    @db.Uuid
-  name            String    // "Production API Key", "Staging Key"
-  key_prefix      String    // First 8 chars for identification: "sk_live_"
-  key_hash        String    // Hashed full key
-  scopes          String[]  @default(["read", "write"]) // "read", "write", "admin", "billing"
-  rate_limit      Int       @default(100) // Requests per minute
-  last_used_at    DateTime? @db.Timestamptz(6)
-  expires_at      DateTime? @db.Timestamptz(6)
-  is_active       Boolean   @default(true)
-  created_by      String    @db.Uuid // User ID who created it
-  created_at      DateTime  @default(now()) @db.Timestamptz(6)
-  tenant          tenants   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id    String    @db.Uuid
+  name         String // "Production API Key", "Staging Key"
+  key_prefix   String // First 8 chars for identification: "sk_live_"
+  key_hash     String // Hashed full key
+  scopes       String[]  @default(["read", "write"]) // "read", "write", "admin", "billing"
+  rate_limit   Int       @default(100) // Requests per minute
+  last_used_at DateTime? @db.Timestamptz(6)
+  expires_at   DateTime? @db.Timestamptz(6)
+  is_active    Boolean   @default(true)
+  created_by   String    @db.Uuid // User ID who created it
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  tenant       tenants   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@unique([key_hash])
   @@index([tenant_id, is_active])
@@ -1597,19 +1597,19 @@ model ValuationSubject {
   financialDataJson Json?
 
   /// Shape: { founderDependencyRisk, legalRisk, ipStrength, productMaturity, goToMarketMaturity, londonStrategicFit, scorecardFactors{team,opportunity,product,...} }
-  qualitativeJson   Json?
+  qualitativeJson Json?
 
   /// Shape: { capitalizedBuildCost, replacementCost, patentsCount, proprietaryDataScore, trademarksCount, regulatoryApprovals }
-  ipDataJson        Json?
+  ipDataJson Json?
 
   /// Shape: { tam, sam, som, marketGrowthPct } — each MetricEvidence
-  marketDataJson    Json?
+  marketDataJson Json?
 
   /// Shape: { cashOnHand, debt, fullyDilutedShares, optionPoolPct }
-  capitalDataJson   Json?
+  capitalDataJson Json?
 
   /// Shape: { capitalRaisedToDate, lastRoundPreMoney, lastRoundPostMoney }
-  fundingDataJson   Json?
+  fundingDataJson Json?
 
   /// Quantara intake-form extension column (Track Q Session Q1).
   /// Holds the ~36 fields from the 56-field founder valuation intake that
@@ -1629,7 +1629,7 @@ model ValuationSubject {
   ///   rdSpendPctOfRevenue, projectedRevenueY1, projectedRevenueY2,
   ///   projectedRevenueY3, pathToProfitabilityMonths,
   ///   targetExitTimelineYears.
-  quantaraJson      Json?
+  quantaraJson Json?
 
   /// Plain String — AnalysisResult model not in OB; bridge V2 routes through
   /// UKP bridge if needed.
@@ -1824,26 +1824,26 @@ model FounderPersona {
   valuationSubjectId String @db.Uuid
 
   /// One-paragraph summary surfaced in the Olivia inspector tab.
-  summary        String @db.Text
+  summary              String @db.Text
   /// One-line narrative angle for pitch / business plan introductions.
-  narrativeAngle String @db.Text
+  narrativeAngle       String @db.Text
   /// Shape: `{ strengths: string[], workingStyle: string, archetype: string,
   ///           riskTolerance: "low" | "medium" | "high" }`. JSON so the
   /// shape can evolve without schema churn.
-  strengthsJson  Json
+  strengthsJson        Json
   /// Shape: `{ gaps: string[], openQuestions: string[] }`.
-  gapsJson       Json
+  gapsJson             Json
   /// Stable schema version — bumped when the synthesis prompt changes
   /// in a non-additive way. Lets BEE invalidate dependent records when a
   /// schema-version bump lands (post-Q7).
-  personaSchemaVersion Int  @default(1)
+  personaSchemaVersion Int    @default(1)
   /// Cascade trail — which provider produced the synthesis + per-attempt
   /// durationMs + success flag. Same shape as `conversation_turns.metadata.attempts`.
-  modelTrailJson Json
+  modelTrailJson       Json
   /// "live" | "mock" — surfaces in the UI so the founder knows whether
   /// the persona was synthesised against real LLMs or the mock-mode
   /// degraded path.
-  runtimeMode    String
+  runtimeMode          String
 
   generatedAt DateTime @default(now())
   isArchived  Boolean  @default(false)
@@ -1864,19 +1864,19 @@ model CompanyPersona {
   userId             String @db.Uuid
   valuationSubjectId String @db.Uuid
 
-  summary       String @db.Text
+  summary              String @db.Text
   /// What the company sells, how it makes money, what's unique.
-  positioning   String @db.Text
+  positioning          String @db.Text
   /// "We grew from X to Y because Z" — narrative anchor for decks.
-  tractionStory String @db.Text
+  tractionStory        String @db.Text
   /// Shape: `{ differentiators: string[], idealCustomer: string,
   ///           defensibility: string }`. JSON so the shape can evolve.
-  differentiatorsJson Json
+  differentiatorsJson  Json
   /// Shape: `{ watchOuts: string[], openQuestions: string[] }`.
-  watchOutsJson       Json
-  personaSchemaVersion Int   @default(1)
-  modelTrailJson      Json
-  runtimeMode         String
+  watchOutsJson        Json
+  personaSchemaVersion Int    @default(1)
+  modelTrailJson       Json
+  runtimeMode          String
 
   generatedAt DateTime @default(now())
   isArchived  Boolean  @default(false)
@@ -1931,22 +1931,22 @@ model DealAnalysis {
 
   /// Term-sheet text the analysis ran on. Optional in P1 (the analysis
   /// can run on structured inputs); P3's parser populates it.
-  termSheetText     String? @db.Text
+  termSheetText      String? @db.Text
   /// Investor names on the deal — for InvestorReputation lookup. Array of
   /// names; matched case-insensitively against `investor_reputations.name`.
-  investorNamesJson Json?
+  investorNamesJson  Json?
   /// Per-clause analysis array — populated by P2 clause classifier.
   /// Shape: `[{ clauseType, severity, toxicity, founderFriendlyAlternative }]`.
   clauseAnalysisJson Json?
   /// 0-1 confidence on the smart score itself, derived from V3
   /// confidence math. Lower = "review with counsel".
-  confidenceScore   Decimal @db.Decimal(3, 2)
+  confidenceScore    Decimal @db.Decimal(3, 2)
   /// Cascade trail (provider + model + per-attempt durationMs / success).
   /// Same shape as `conversation_turns.metadata.attempts`.
-  modelTrailJson    Json?
+  modelTrailJson     Json?
   /// "live" | "mock" — surfaces in the UI so a mock-mode run is never
   /// mistaken for live cascade output.
-  runtimeMode       String  @default("mock")
+  runtimeMode        String  @default("mock")
 
   generatedAt DateTime @default(now())
   isArchived  Boolean  @default(false)
@@ -2017,12 +2017,12 @@ model CounterTermSheet {
 /// the same term sheet from a known-aggressive investor scores worse than
 /// from a known-friendly one.
 model InvestorReputation {
-  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Canonical investor name (e.g. "Atomico", "Octopus Ventures"). Case-
   /// preserving on display; matched case-insensitively at lookup time.
-  name            String @unique
+  name            String  @unique
   /// Stable lowercase slug for URLs / API lookups.
-  slug            String @unique
+  slug            String  @unique
   /// 'angel' | 'vc' | 'private_equity' | 'strategic' | 'family_office' | 'other'.
   investorType    String
   /// Geographic focus — free text (e.g. "UK + EU", "Global", "London-only").
@@ -2043,18 +2043,18 @@ model InvestorReputation {
   /// Common patterns this investor has shown — array of strings from a
   /// stable vocabulary (e.g. 'standard_1x_liq_pref',
   /// 'aggressive_anti_dilution', 'multi_tranche_milestone_gated').
-  patternsJson    Json?
+  patternsJson Json?
   /// Editor's note — plain-text caveat / context / "watch out for X".
-  notes           String? @db.Text
+  notes        String? @db.Text
 
   /// Origin: 'seed' (P4 initial London-ecosystem seed), 'admin' (P4 manual
   /// entry), 'founder_submitted' (P4 moderation queue path).
-  source          String  @default("seed")
+  source     String  @default("seed")
   /// Whether this entry surfaces in the smart-score lookup. Toggled off
   /// (rather than archived) when a record is being reviewed but not yet
   /// removed.
-  isActive        Boolean @default(true)
-  isArchived      Boolean @default(false)
+  isActive   Boolean @default(true)
+  isArchived Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2363,6 +2363,24 @@ enum PackageStatus {
   package_archived
 }
 
+/// LTM-aligned 12-value catalogue. Slugs in code (`legal-compliance`,
+/// `due-diligence`, …) map onto enum values via the hyphen-to-underscore
+/// convention used by document-mirror.
+enum CollectionType {
+  company_core
+  pitch_decks
+  strategic_partnerships
+  product_technology
+  financials_models
+  licensing_commercial
+  legal_compliance
+  due_diligence
+  sales_marketing
+  methodology
+  sample_reports
+  acquisition_exit
+}
+
 // ─── Document — LTM-aligned (line 1189 of LTM schema) ──────────────────────
 
 /// Top-level document record. Templates have `isTemplate = true` and
@@ -2403,12 +2421,15 @@ model Document {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
-  sourceTemplate Document?  @relation("TemplateCopies", fields: [sourceTemplateId], references: [id], onDelete: SetNull)
-  copies         Document[] @relation("TemplateCopies")
+  collection     DocumentCollection? @relation(fields: [collectionId], references: [id], onDelete: Restrict)
+  sourceTemplate Document?           @relation("TemplateCopies", fields: [sourceTemplateId], references: [id], onDelete: SetNull)
+  copies         Document[]          @relation("TemplateCopies")
+  versions       DocumentVersion[]
   packageDocs    PackageDocument[]
   bookmarks      DocumentBookmark[]
   shares         DocumentShare[]
 
+  @@unique([ownerUserId, sourceTemplateId])
   @@index([documentType])
   @@index([audienceType])
   @@index([purposeType])
@@ -2420,8 +2441,56 @@ model Document {
   @@index([status, updatedAt])
   @@index([ownerUserId, authoringState])
   @@index([ownerUserId, sourceKind])
-  @@unique([ownerUserId, sourceTemplateId])
   @@map("documents")
+}
+
+// ─── DocumentCollection — LTM-aligned (line 1169 of LTM schema) ──────────
+
+/// Slug-keyed grouping for Documents. Seeded with the 12 LTM categories
+/// (legal-compliance, due-diligence, pitch-decks, …) so agent handlers
+/// like G1-033 can call `spawnDocumentFromAgent({collectionSlug: …})`
+/// without operator setup. Slug is canonical; `collectionType` mirrors
+/// LTM's enum for analytics. Soft-deactivate via `isActive: false`.
+model DocumentCollection {
+  id             String         @id @default(cuid())
+  name           String
+  slug           String         @unique
+  description    String?
+  collectionType CollectionType
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  documents Document[]
+
+  @@index([collectionType])
+  @@index([isActive])
+  @@map("document_collections")
+}
+
+// ─── DocumentVersion — LTM-aligned (line 1245 of LTM schema) ──────────────
+
+/// Append-only edit history for a Document. Created v1 alongside the
+/// initial Document.create (per the canonical /api/documents POST
+/// contract); subsequent versions accumulate as the founder edits in
+/// the workspace. `createdBy` is the Clerk userId — matches LTM's
+/// convention so OB ↔ LTM rows stay schema-compatible.
+model DocumentVersion {
+  id               String   @id @default(cuid())
+  documentId       String
+  versionNumber    Int
+  titleSnapshot    String?
+  contentSnapshot  String?  @db.Text
+  filePathSnapshot String?
+  changeNotes      String?
+  createdBy        String?
+  createdAt        DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
+  @@index([documentId])
+  @@index([versionNumber])
+  @@map("document_versions")
 }
 
 // ─── UserProfile — LTM-aligned (line 1694 of LTM schema, minimum subset) ──
@@ -2459,8 +2528,63 @@ model UserProfile {
   updatedAt DateTime @updatedAt
 
   documentBookmarks DocumentBookmark[]
+  companyProfile    UserCompanyProfile?
 
   @@map("user_profiles")
+}
+
+// ─── UserCompanyProfile — LTM-aligned (line 2005 of LTM schema, minimum subset) ──
+
+/// Per-founder company profile. One-to-one with UserProfile. Holds the
+/// fields G1-033 (DPIA orchestrator), G1-048 (turnover proxy), and
+/// future per-company handlers reason over.
+///
+/// ⚠ PRIVACY CONTRACT — NEVER project deadline data onto this model.
+/// Critical-date data (license / trademark / patent / tradename /
+/// regulatory / insurance / board / investor / cap-table / IP-assignment
+/// deadlines) lives in `UserCompanyDeadline` (NOT yet ported to OB) and
+/// is owned by that table. See `~/CLAUDE.md` top-of-file for the rule.
+/// Any future agent that needs a deadline column must add it to
+/// `UserCompanyDeadline` — not here.
+///
+/// This is a deliberate minimum subset of LTM's ~85-field
+/// `UserCompanyProfile`. Future handlers that need additional columns
+/// (productStage, fundingStage, dnaParagraphsJson, etc.) should add
+/// them in a follow-up migration, not block on the full LTM port.
+model UserCompanyProfile {
+  id            String @id @default(cuid())
+  userProfileId String @unique
+
+  // ── Identity ─────────────────────────────────────
+  companyName String
+
+  // ── Classification (free-text strings, NOT enums — matches LTM) ──
+  primarySector String?
+
+  // ── Geography ────────────────────────────────────
+  headquartersLocation String?
+
+  // ── Operating metrics ────────────────────────────
+  employeeCount Int?
+
+  // ── Financials (GBP majors — bridge converts for valuation engine) ──
+  arr         Float?
+  totalRaised Float?
+
+  // ── IP & compliance ──────────────────────────────
+  regulatoryBody String?
+  certifications String[] @default([])
+
+  // ── Customer + growth ────────────────────────────
+  customerCount Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+
+  @@index([primarySector])
+  @@map("user_company_profiles")
 }
 
 // ─── AvatarEvalRun — Track O5c (Tavus + A/B harness) ──────────────────────
