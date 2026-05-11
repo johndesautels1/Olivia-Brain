@@ -386,3 +386,92 @@ handler that exercises the canonical pattern (G1-034 / G1-036 / G1-048 /
 G1-050 are good candidates depending on which weakness the founder wants
 to close next). Each subsequent port is ~1 session because the
 infrastructure is now in place.
+
+---
+
+## Addendum — 2026-05-11 same-session continuation (G1-048 port)
+
+After the 6-commit foundation batch closed at `770cb8d`, the founder
+said "keep going" + "keep committing to github". This addendum captures
+the continuation work: a single follow-up commit porting the **second**
+per-company handler.
+
+### Survey of candidate handlers
+
+The HANDOFF.md § 6 listed G1-034 / G1-036 / G1-048 / G1-050 as good
+candidates. Cold-read of all four showed:
+
+| Handler | Status | Why |
+|---|---|---|
+| G1-034 FCA Authorization Packager | ❌ BLOCKED | Uses `prisma.organization.findMany` with LTM-only relations. Same blocker as G1-005. |
+| G1-036 EMI Share Option Manager | ❌ BLOCKED | Uses `prisma.organization` + `prisma.personOrganizationRole` (LTM-only). |
+| **G1-048 Modern Slavery Statement Generator** | ✅ Clean | Pure per-company doc-spawn handler, identical shape to G1-033. Zero new infra. |
+| G1-050 Corporate Governance Agent | ❌ BLOCKED | Uses `prisma.organization` + `prisma.personOrganizationRole`. |
+
+So the "good candidates" list in HANDOFF § 6 was partially
+wrong — 3 of the 4 actually need LTM-data access that the
+walled-garden direction blocks. Updated `resolveUserCompany`-based
+inventory (the real per-company handler list): grep across
+`D:\London-Tech-Map\src\lib\agents\impl` for `resolveUserCompany` →
+12 files total. After G1-033 + G1-048, **10 remain ported-eligible**:
+
+- `g1-076-pitch-deck-london-filter.ts`
+- `g1-105-journalist-matchmaker.ts`
+- `g1-107-thought-leadership-ghostwriter.ts`
+- `g1-110-podcast-booker.ts`
+- `g1-115-social-proof-agent.ts`
+- `g1-130-build-vs-buy-decision-agent.ts`
+- `g1-136-second-order-consequence-modeler.ts`
+- `g1-141-confidence-score-decision-engine.ts`
+- `g1-149-email-negotiator.ts`
+- `g1-150-procurement-agent.ts`
+
+Each ports in ~1 session using the G1-033 + G1-048 reference.
+
+### `e619332` — feat(agents): port G1-048 + register
+
+- **New:** `src/lib/agents/impl/g1-048-modern-slavery-statement-generator.ts`
+  (~340 lines, identical to LTM source). UK Modern Slavery Act 2015
+  s.54 compliance statement generator. £36M turnover threshold
+  derivation (`above-threshold` / `below-threshold` /
+  `turnover-not-provided`). ARR-as-turnover-proxy fallback when no
+  explicit `turnoverGbp`. legal-compliance document-mirror spawn.
+- **Pattern fidelity:** same Zod extension shape, same provenance
+  matrix, same two-mode fallback briefing, same document-mirror
+  contract as G1-033. Zero new infra needed — validated the
+  canonical pattern works in one commit.
+- **Pattern divergence (noted, not fixed):** G1-048 source does NOT
+  include `OUTPUT_SCHEMA_VERSION`. The memory note's "versioned
+  output schema" canonical-pattern bullet is G1-033's flavour, not
+  uniform. Ported byte-for-byte (no version field) to match LTM.
+  Future refactor opportunity: add it to both 033 + 048 in lockstep.
+- **15 vitest tests** mirroring G1-033's structure: module surface,
+  isStatement guard, parseLlmJson, LLM-unavailable, parse-fail,
+  happy path (3 cases incl. threshold flips), explicit turnover
+  override.
+- **Registry wiring:** appended to `handlers.ts` below the G1-033
+  registration. `getHandler("G1-048")` now returns the real handler.
+
+### Verification at HEAD `e619332`
+
+- `npx tsc --noEmit` exit 0.
+- Full vitest suite **1170 / 1170** in 122.67s (1155 prior + 15
+  new G1-048 tests).
+
+### Carry-forwards (unchanged from the foundation batch)
+
+- `/admin/tools getOwedMigrations()` detection for migration 11.
+- AGENT_DEFINITIONS registry rows for G1-033 + G1-048 (so schedulers
+  can auto-run them, not just `executeAgent({agentId, ...})` direct
+  calls).
+- Document workspace routes (Track B carry-forward).
+- 10 more per-company handlers to port mechanically using the
+  canonical pattern.
+
+### Why this addendum and not a separate SESSION_LOG file
+
+The foundation batch (6 commits) AND this continuation (1 commit)
+are the same calendar day, the same context, the same founder
+direction ("keep going"). Splitting into two SESSION_LOG files
+would fragment the narrative across reads. Keeping them in one
+file makes the next session's read-on-arrival cleaner.
