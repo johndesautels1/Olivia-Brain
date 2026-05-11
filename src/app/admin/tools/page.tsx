@@ -59,6 +59,88 @@ CREATE INDEX IF NOT EXISTS "avatar_eval_runs_scriptId_vendor_idx"
 const MIGRATION_10_VERIFY = `SELECT table_name FROM information_schema.tables
   WHERE table_schema = 'public' AND table_name = 'avatar_eval_runs';`;
 
+const MIGRATION_11_SQL = `DO $$ BEGIN
+  CREATE TYPE "CollectionType" AS ENUM ('company_core','pitch_decks','strategic_partnerships','product_technology','financials_models','licensing_commercial','legal_compliance','due_diligence','sales_marketing','methodology','sample_reports','acquisition_exit');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+CREATE TABLE IF NOT EXISTS "document_collections" (
+  "id" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "slug" TEXT NOT NULL,
+  "description" TEXT,
+  "collectionType" "CollectionType" NOT NULL,
+  "isActive" BOOLEAN NOT NULL DEFAULT true,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "document_collections_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "document_collections_slug_key" ON "document_collections" ("slug");
+CREATE INDEX IF NOT EXISTS "document_collections_collectionType_idx" ON "document_collections" ("collectionType");
+CREATE INDEX IF NOT EXISTS "document_collections_isActive_idx" ON "document_collections" ("isActive");
+
+CREATE TABLE IF NOT EXISTS "document_versions" (
+  "id" TEXT NOT NULL,
+  "documentId" TEXT NOT NULL,
+  "versionNumber" INTEGER NOT NULL,
+  "titleSnapshot" TEXT,
+  "contentSnapshot" TEXT,
+  "filePathSnapshot" TEXT,
+  "changeNotes" TEXT,
+  "createdBy" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "document_versions_pkey" PRIMARY KEY ("id")
+);
+CREATE INDEX IF NOT EXISTS "document_versions_documentId_idx" ON "document_versions" ("documentId");
+CREATE INDEX IF NOT EXISTS "document_versions_versionNumber_idx" ON "document_versions" ("versionNumber");
+
+CREATE TABLE IF NOT EXISTS "user_company_profiles" (
+  "id" TEXT NOT NULL,
+  "userProfileId" TEXT NOT NULL,
+  "companyName" TEXT NOT NULL,
+  "primarySector" TEXT,
+  "headquartersLocation" TEXT,
+  "employeeCount" INTEGER,
+  "arr" DOUBLE PRECISION,
+  "totalRaised" DOUBLE PRECISION,
+  "regulatoryBody" TEXT,
+  "certifications" TEXT[] NOT NULL DEFAULT '{}'::TEXT[],
+  "customerCount" INTEGER,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "user_company_profiles_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "user_company_profiles_userProfileId_key" ON "user_company_profiles" ("userProfileId");
+CREATE INDEX IF NOT EXISTS "user_company_profiles_primarySector_idx" ON "user_company_profiles" ("primarySector");
+
+DO $$ BEGIN
+  ALTER TABLE "documents" ADD CONSTRAINT "documents_collectionId_fkey" FOREIGN KEY ("collectionId") REFERENCES "document_collections"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; WHEN undefined_table THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "document_versions" ADD CONSTRAINT "document_versions_documentId_fkey" FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; WHEN undefined_table THEN null; END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "user_company_profiles" ADD CONSTRAINT "user_company_profiles_userProfileId_fkey" FOREIGN KEY ("userProfileId") REFERENCES "user_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; WHEN undefined_table THEN null; END $$;
+
+INSERT INTO "document_collections" ("id","name","slug","description","collectionType","isActive","createdAt","updatedAt") VALUES
+  ('cdoc_company_core','Company Core','company-core','Foundational corporate documents','company_core',true,NOW(),NOW()),
+  ('cdoc_pitch_decks','Pitch Decks','pitch-decks','Investor-facing slide decks','pitch_decks',true,NOW(),NOW()),
+  ('cdoc_strategic_partnerships','Strategic Partnerships','strategic-partnerships','Partnership memoranda and co-marketing assets','strategic_partnerships',true,NOW(),NOW()),
+  ('cdoc_product_technology','Product & Technology','product-technology','Technical and product specifications','product_technology',true,NOW(),NOW()),
+  ('cdoc_financials_models','Financials & Models','financials-models','Financial statements and valuation models','financials_models',true,NOW(),NOW()),
+  ('cdoc_licensing_commercial','Licensing & Commercial','licensing-commercial','License agreements and commercial terms','licensing_commercial',true,NOW(),NOW()),
+  ('cdoc_legal_compliance','Legal & Compliance','legal-compliance','Legal agreements and compliance artefacts (DPIA)','legal_compliance',true,NOW(),NOW()),
+  ('cdoc_due_diligence','Due Diligence','due-diligence','Diligence room exhibits and disclosures','due_diligence',true,NOW(),NOW()),
+  ('cdoc_sales_marketing','Sales & Marketing','sales-marketing','Sales collateral and marketing assets','sales_marketing',true,NOW(),NOW()),
+  ('cdoc_methodology','Methodology','methodology','Internal methodology and how-we-work docs','methodology',true,NOW(),NOW()),
+  ('cdoc_sample_reports','Sample Reports','sample-reports','Anonymised sample outputs','sample_reports',true,NOW(),NOW()),
+  ('cdoc_acquisition_exit','Acquisition & Exit','acquisition-exit','M and A + exit-readiness documents','acquisition_exit',true,NOW(),NOW())
+ON CONFLICT ("id") DO NOTHING;`;
+
+const MIGRATION_11_VERIFY = `SELECT slug, name FROM "document_collections" ORDER BY slug;`;
+
 async function getOwedMigrations(): Promise<OwedMigration[]> {
   const owed: OwedMigration[] = [];
 
@@ -71,6 +153,30 @@ async function getOwedMigrations(): Promise<OwedMigration[]> {
       table: "avatar_eval_runs",
       sql: MIGRATION_10_SQL,
       verifySql: MIGRATION_10_VERIFY,
+    });
+  }
+
+  // Migration 11 — agent handler foundation (Track H S21)
+  // Probe DocumentCollection: it carries the 12 seeded rows, so a thrown
+  // count() means the migration hasn't run. Seed-without-tables and
+  // tables-without-seed are both surfaced (count throws OR count < 12
+  // when the table exists but the INSERT block was skipped).
+  try {
+    const seedCount = await prisma.documentCollection.count();
+    if (seedCount < 12) {
+      owed.push({
+        filename: "prisma/sql/11-add-agent-handler-foundation.sql",
+        table: "document_collections (seed)",
+        sql: MIGRATION_11_SQL,
+        verifySql: MIGRATION_11_VERIFY,
+      });
+    }
+  } catch {
+    owed.push({
+      filename: "prisma/sql/11-add-agent-handler-foundation.sql",
+      table: "document_collections + document_versions + user_company_profiles",
+      sql: MIGRATION_11_SQL,
+      verifySql: MIGRATION_11_VERIFY,
     });
   }
 
