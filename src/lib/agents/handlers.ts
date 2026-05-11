@@ -250,3 +250,6 @@ registerHandler(journalistMatchmakerHandler);
 
 import { socialProofAgentHandler } from "./impl/g1-115-social-proof-agent";
 registerHandler(socialProofAgentHandler);
+
+import { podcastBookerHandler } from "./impl/g1-110-podcast-booker";
+registerHandler(podcastBookerHandler);
