@@ -253,3 +253,6 @@ registerHandler(socialProofAgentHandler);
 
 import { podcastBookerHandler } from "./impl/g1-110-podcast-booker";
 registerHandler(podcastBookerHandler);
+
+import { buildVsBuyDecisionAgentHandler } from "./impl/g1-130-build-vs-buy-decision-agent";
+registerHandler(buildVsBuyDecisionAgentHandler);
