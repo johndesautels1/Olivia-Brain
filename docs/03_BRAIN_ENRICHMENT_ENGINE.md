@@ -370,6 +370,81 @@ Four primitives the brain will need before this becomes a correctness problem:
 
 **Where it lives when built:** as a `_shared/precedence.ts` + `_shared/provenance.ts` + `_shared/confidence.ts` triad inside `D:\Olivia Brain\src\lib\bridge/` (the brain's existing UniversalKnowledgeProvider layer is the natural integration point), plus a `ConflictReport` Prisma model in the brain's DB schema for the audit cron's findings.
 
+### 14a.1. Wire-shape contract: `NormalizedResponse<T>` (cross-linked from LTM tooling deliverable #5 of 5)
+
+> **Surfaced 2026-05-17** during the same 8-LLM synthesis pass that produced LTM's probe / scaffold / deferred-registry / freshness-contract tooling. Idea #11 in the synthesis. Folded into Phase 3 here (rather than retrofit into the 16 already-wired LTM integration clients) per the no-breaking-changes rule the founder locked in the same session.
+
+**What it is.** A uniform response envelope that EVERY wired integration client (in LTM, and eventually in OB's own integration layer) emits at the point where Phase 3 orchestration starts consuming it. Today each LTM client returns its own `XxxResult<T>` discriminated union (`{ ok: true; data: T } | { ok: false; error; status? }`). That's correct for the consumer-side contract but leaves the Phase 3 layer with no place to attach **source-precedence weight, provenance, confidence, freshness signals** without parsing each vendor's payload bespoke.
+
+The envelope (forthcoming — DO NOT pre-build per `feedback_question_specs_dont_guess`):
+
+```ts
+export interface NormalizedResponse<T> {
+  /** Vendor's original response, post-Zod-parse. Same shape the existing
+   *  XxxResult<T> Ok branch carries today. */
+  data: T;
+
+  /** Per-row provenance — every field of `data` MAY carry a
+   *  `__provenance` sidecar that points back here. Filled by the
+   *  orchestrator, not the integration client. */
+  provenance: {
+    /** Slug matching `src/lib/integrations/<slug>/` AND the LTM
+     *  `_MASTER_REGISTER.md §2` row. Single grep-able identifier. */
+    source: string;
+    /** ISO 8601 timestamp the fetch completed. */
+    fetchedAt: string;
+    /** Canonical URL we fetched — for "click to see the source"
+     *  affordances in the UI. */
+    provenanceUrl: string;
+  };
+
+  /** Freshness signals captured from response headers — same fields
+   *  recorded by `scripts/probe-source.ts` (LTM tooling deliverable #1).
+   *  Cross-link to the per-source freshness contract in LTM
+   *  `_MASTER_REGISTER.md §11`. */
+  freshness: {
+    /** Vendor-documented refresh cadence — pulled from the §11.2 row
+     *  for this source. */
+    refreshInterval: "realtime" | "hourly" | "daily" | "weekly" | "monthly" | "quarterly" | "annual" | "static" | "varies";
+    /** Period the data CURRENTLY represents — distinct from
+     *  `refreshInterval`. */
+    dataAsOf: "realtime" | "hourly" | "daily" | "weekly" | "monthly" | "quarterly" | "annual" | "static" | "varies";
+    /** Duration string (e.g. "5m", "30d") past which consumers should
+     *  flag the row as stale. */
+    stalenessThreshold: string;
+    /** Headers captured at fetch time. */
+    lastModified: string | null;
+    etag: string | null;
+  };
+
+  /** Vendor rate-limit signals — useful to the orchestrator for
+   *  prioritising which sources to re-fetch first when filling a
+   *  precedence-ranked merge. */
+  rateLimit: {
+    remaining: number | null;
+    reset: string | null;
+  };
+
+  /** 0-100 confidence score. Filled by the orchestrator after combining
+   *  source-precedence weight (§14a.1) + freshness factor (§14a.3) +
+   *  corroboration count. Integration clients MUST NOT populate this
+   *  themselves — they have no view of the cross-source picture. */
+  confidence?: number;
+}
+```
+
+**Backward-compatibility contract.** Existing per-client `XxxResult<T>` discriminated unions stay bit-for-bit unchanged. The `NormalizedResponse<T>` envelope is introduced as a thin **decorator** that the orchestrator calls — `decorate(result, ctx)` — only at the point where Phase 3 actually starts consuming cross-source merges. No retrofit pass on the 16 already-wired LTM clients.
+
+**Where it lives when built.** Co-located with the precedence / provenance / confidence triad in `D:\Olivia Brain\src\lib\bridge/_shared/normalized.ts`. The LTM-side decorator is a thin re-export under `src/lib/integrations/_shared/normalized.ts` that depends only on `_shared/http.ts` types (zero new third-party deps).
+
+**When to build.** Same trigger as §14a — first real cross-source conflict surfaces in production. Until then, this section is the design lock so the next session can implement without re-deriving the envelope.
+
+**Cross-references:**
+- LTM tooling deliverable #1: `scripts/probe-source.ts` records the freshness signals this envelope embeds — see `D:\London-Tech-Map\scripts\probe-source.ts`.
+- LTM tooling deliverable #4: per-source freshness contract — see `D:\London-Tech-Map\docs\api-specs\_MASTER_REGISTER.md §11`.
+- LTM Phase 3 gap entry: `_MASTER_REGISTER.md §7` row "Phase 3 architectural gap: data-source orchestration".
+- Memory: `reference_data_source_orchestration_gap.md`.
+
 ---
 
 ## 15. The mandate
