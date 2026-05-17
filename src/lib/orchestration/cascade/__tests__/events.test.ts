@@ -14,6 +14,7 @@ vi.mock("@/lib/db/client", () => ({
     cascadeEvent: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      create: vi.fn(),
     },
   },
 }));
@@ -24,18 +25,21 @@ import {
   getLatestCascadeEvent,
   getLatestSuccessfulEvent,
   getCascadeEventsSummary,
+  recordCascadeEvent,
 } from "../events";
 
 const p = prisma as unknown as {
   cascadeEvent: {
     findMany: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
   };
 };
 
 beforeEach(() => {
   p.cascadeEvent.findMany.mockReset();
   p.cascadeEvent.findFirst.mockReset();
+  p.cascadeEvent.create.mockReset();
 });
 
 afterEach(() => {
@@ -120,5 +124,40 @@ describe("getCascadeEventsSummary", () => {
     p.cascadeEvent.findMany.mockResolvedValueOnce([]);
     await getCascadeEventsSummary();
     expect(p.cascadeEvent.findMany.mock.calls[0][0].take).toBe(100);
+  });
+});
+
+describe("recordCascadeEvent", () => {
+  it("writes a row with all fields populated", async () => {
+    p.cascadeEvent.create.mockResolvedValueOnce({ id: "evt_1" });
+    await recordCascadeEvent({
+      taskId: "london_funding_rounds",
+      status: "success",
+      itemCount: 12,
+      skippedCount: 3,
+      durationMs: 4200,
+      errorMessage: null,
+      metadata: { providersAttempted: ["sonnet", "gpt"] },
+    });
+    const args = p.cascadeEvent.create.mock.calls[0][0];
+    expect(args.data.taskId).toBe("london_funding_rounds");
+    expect(args.data.status).toBe("success");
+    expect(args.data.itemCount).toBe(12);
+    expect(args.data.skippedCount).toBe(3);
+    expect(args.data.durationMs).toBe(4200);
+    expect(args.data.errorMessage).toBeNull();
+    expect(args.data.metadata).toEqual({ providersAttempted: ["sonnet", "gpt"] });
+  });
+
+  it("defaults skippedCount to 0 when omitted", async () => {
+    p.cascadeEvent.create.mockResolvedValueOnce({ id: "evt_2" });
+    await recordCascadeEvent({
+      taskId: "london_ai_ecosystem",
+      status: "error",
+      itemCount: 0,
+      durationMs: 100,
+      errorMessage: "boom",
+    });
+    expect(p.cascadeEvent.create.mock.calls[0][0].data.skippedCount).toBe(0);
   });
 });

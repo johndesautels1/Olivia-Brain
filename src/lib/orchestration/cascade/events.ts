@@ -102,6 +102,37 @@ export async function getLatestSuccessfulEvent(
 }
 
 /**
+ * Append-only write helper. Called by the orchestrator at the end of every
+ * cascade run (success / partial / error) so agents have a breadcrumb to
+ * read via the helpers above. Best-effort — callers swallow failures.
+ */
+export interface RecordCascadeEventInput {
+  taskId: CascadeTaskId;
+  status: "success" | "partial" | "error";
+  itemCount: number;
+  skippedCount?: number;
+  durationMs: number | null;
+  errorMessage: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export async function recordCascadeEvent(
+  input: RecordCascadeEventInput,
+): Promise<void> {
+  await prisma.cascadeEvent.create({
+    data: {
+      taskId: input.taskId,
+      status: input.status,
+      itemCount: input.itemCount,
+      skippedCount: input.skippedCount ?? 0,
+      durationMs: input.durationMs,
+      errorMessage: input.errorMessage,
+      metadata: (input.metadata ?? undefined) as never,
+    },
+  });
+}
+
+/**
  * Get a summary of all cascade tasks' latest events.
  * Useful for agent dashboards or briefings — "what's the data freshness?"
  */
