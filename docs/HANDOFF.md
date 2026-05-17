@@ -1,13 +1,21 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-17 — **Track G S19 (3/3) CLOSED.** Cascade orchestrator + 8 provider files + write-side breadcrumb helper landed. `c2106e3` since `c3a2760`. Full cascade module: **34/34 vitest passing in 6.44s.**
+> **Last updated:** 2026-05-17 — **Track G FULLY CLOSED.** S19 (3/3) + S20 LangGraph wrap both landed. `c2106e3` + `18bd216` (+ this docs commit) since `c3a2760`. Full cascade module: **41/41 vitest passing.**
 > **Working tree:** clean on `main`. Full `npx tsc --noEmit` not run this session — see § 7 note (multiple zombie tsc processes from prior sessions caused contention; skipped in favor of focused vitest). Vercel runs the full typecheck on push.
-> **Latest HEAD:** `c2106e3` (Track G S19 3/3). `git log -1` to confirm.
-> **Status:** Cascade machinery now runs end-to-end. 6 LLM web-search providers in parallel → Tavily + Companies House gap-fill → Opus judge (batched) → ValidatedDataset. Phase 4 injector explicitly DEFERRED (LTM-shaped, would crash in OB — see § 3). Migrations OWED unchanged: 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, seed-investor-reputations. SQL inlined in § 4.
+> **Latest HEAD:** `18bd216` (Track G S20). `git log -1` to confirm.
+> **Status:** Track G done end-to-end. `runCascade()` returns a `ValidatedDataset<T>`; `runCascadeGraph()` wraps it in a LangGraph state machine with retry + escalate semantics. Any future agent can call `runCascadeGraph({ taskId })` as a planning primitive. Phase 4 injector explicitly DEFERRED (LTM-shaped, would crash in OB — see § 3). Migrations OWED unchanged: 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, seed-investor-reputations. SQL inlined in § 4.
 >
 > **Prior batch (2026-05-11) summary preserved below.**
 
-### Today's batch (2026-05-17 — 1 commit since `c3a2760`)
+### Today's batch (2026-05-17 — 2 code commits + 2 docs commits since `c3a2760`)
+
+2. `18bd216` — **Track G S20 CLOSED**: LangGraph 5-node wrap around `runCascade()`.
+   - `src/lib/orchestration/cascade/graph.ts` (~250 LOC). Nodes: plan → search → judge → validate → finalize, with conditional retry loop from validate back to search.
+   - Validate-node rules: manualReview > 0 → escalate; status=error + retries remain → retry; status=error + exhausted → escalate; status=partial + high/total < 0.5 + retries → retry; otherwise → accept.
+   - Two public exports: `buildCascadeGraph()` (reusable compiled instance) and `runCascadeGraph({ taskId, lastCollectionDate?, maxAttempts? })` convenience invoker.
+   - Exported constants for tuning: `DEFAULT_MAX_ATTEMPTS = 2`, `RETRY_CONFIDENCE_THRESHOLD = 0.5`.
+   - 7 vitest tests covering every branch: accept on first attempt, escalate on manual review, escalate after max retries, retry-then-accept on partial+low confidence, no-retry-on-good-partial, lastCollectionDate wiring, graph reuse across invocations. All passing in 322ms.
+   - LTM untouched (no LTM equivalent — LTM doesn't use LangGraph).
 
 1. `c2106e3` — **Track G S19 (3/3) CLOSED**: cascade orchestrator + 8 provider files + write-side breadcrumb helper.
    - `src/lib/orchestration/cascade/orchestrator.ts` (~370 LOC, 4 exit points each emitting `CascadeEvent`). Copied byte-for-byte from `D:\London-Tech-Map\src\lib\cascade\orchestrator.ts` with the addition of `emitBreadcrumb()` calls at every return path. LTM is **walled-garden, read-only**: zero LTM files touched.
@@ -309,7 +317,7 @@ Listed in rough leverage order. Each entry is honest about scope.
 ### 🔥 High demo leverage, medium scope
 1. **Track N4 — Generative UI / 3D scenes.** Add a `ui` or `component` manifest fence that mounts runtime React components from a constrained schema. Big design + safety implications (sandboxing). Start with N4-foundations: pick ~5 safe components Olivia can reference (Card / Stat / Progress / Button / Form), define the JSON contract, parse + render. Skip eval-time JSX entirely.
 
-2. **Track G S20 — LangGraph 5-node wrap on top of the cascade orchestrator.** S19 (3/3) closed 2026-05-17 — `runCascade()` in `src/lib/orchestration/cascade/orchestrator.ts` returns a `ValidatedDataset<T>` to the caller. S20 wraps that in a LangGraph state machine (5 nodes: plan → search → judge → validate → finalize). Start by reading the new orchestrator + the LangGraph docs. Phase 4 injector is explicitly deferred — see § 6 Option A discussion.
+2. **Track G — FULLY CLOSED 2026-05-17.** S19 (3/3) shipped `runCascade()` returning `ValidatedDataset<T>`; S20 shipped `runCascadeGraph()` LangGraph wrap with retry + escalate semantics. Any future agent can consume the cascade as a single planning primitive. Phase 4 injector remains deferred — see § 6 discussion.
 
 ### 🛠 High capability leverage, large scope
 3. **Track H S21–S23 — 94 LTM named agents consolidation.** LTM has 116 fully-implemented agents at `D:\London-Tech-Map\src\lib\agents\impl\g1-001-…` through `g1-116-…`. They reference LTM-only Prisma models (`location` / `districtOrganizations` / `fundingRound` / `event`) so direct port 500s. Two paths:
@@ -631,7 +639,7 @@ The session-end state is:
 - **First read:** `docs/RUNBOOK.md` end-to-end.
 - **Action:** apply the **9 SQL migrations** in § 4 (04, 05, 06, 07, 08, 09, 10, 11, seed-investor-reputations), set the env vars in § 4, run the smoke tests in RUNBOOK § 5.
 
-**Recommended pick (updated 2026-05-17):** Track G S20 — LangGraph 5-node wrap around `runCascade()`. S19 (3/3) is now closed (commit `c2106e3`); the cascade machinery returns a `ValidatedDataset<T>` end-to-end. S20 is the natural next step and unblocks any future agent that wants the cascade as a planning primitive. Phase 4 injector remains deferred until a concrete consumer surface lands (Track L cluesintelligence is the leading candidate).
+**Recommended pick (updated 2026-05-17, end of batch):** **Track G is fully closed** (S19 3/3 → `c2106e3`, S20 → `18bd216`). Next sensible pick is **Track C 11** (first of 4 Studio UI rebuild sessions) — replace the Studio v1 chrome ported in Track B 8c with the GrandMaster prototype shell. Pure frontend, no migrations needed, single session. Alternative: **Track L** cluesintelligence Unification (FLAGSHIP, ~10 sessions, this is what `00_PRODUCT_TRUTH.md` calls priority-2-but-the-company-is-built-on-it). Phase 4 injector remains deferred until a concrete consumer surface lands (Track L is the leading candidate to surface it).
 
 ---
 
