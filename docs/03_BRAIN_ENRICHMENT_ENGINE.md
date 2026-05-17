@@ -349,6 +349,31 @@ The `@olivia/enrichment-client` package (phase B6) ships these as drop-in utilit
 
 ---
 
+## ⚠️ 14a. Phase 3 gap: data-source orchestration (precedence / provenance / confidence / conflict detection)
+
+> **Surfaced 2026-05-17** during a ChatGPT strategic review of the clueslondon integration stack. Committed to the build at the same time. See the corresponding LTM register entry: `D:\London-Tech-Map\docs\api-specs\_MASTER_REGISTER.md §7` + memory `reference_data_source_orchestration_gap.md`.
+
+BEE today handles **schema / data / knowledge events from each spoke** but does NOT yet specify how the brain resolves **conflicts between EXTERNAL data sources** that contribute facts about the same entity. With 15+ third-party integrations now wired into clueslondon (Companies House REST + Streaming, Apollo, GitHub, GLEIF, GDELT, OpenAlex, Crossref, Open-Meteo, HN Algolia, Reddit, Foursquare, TfL, UK Police, HM Land Registry as of wave 7/12 on 2026-05-17), the conflict surface grows quadratically. Examples that will appear at Phase 3 scale:
+
+- GDELT (news) says "Acme raised £8M" and Companies House Streaming (regulator) says "Acme filed SH01 for £12M" — same entity, conflicting amount.
+- GitHub says a founder is at company X; Apollo says they're at company Y; LinkedIn (hypothetically) says Z — which wins on the founder card?
+- OpenAlex + Crossref both publish the same paper with slightly different author affiliations.
+
+Four primitives the brain will need before this becomes a correctness problem:
+
+1. **Source precedence ranking.** Per entity-field, define which source wins in a conflict (e.g., for funding-amount: CH Streaming > GDELT > LLM inference). Probably a `<entityType>.<field>` → ranked-source-array config that lives next to the knowledgeRegistry.
+2. **Provenance tracking per field.** Every entity-field value carries `{ value, source, observedAt }` — UI surfaces can show "from Companies House, refreshed 2 hours ago" instead of bare values.
+3. **Confidence scoring (0-100).** Combines source-reliability + freshness + corroboration count. Downstream consumers weight high-confidence fields more in valuation / matching / narrative agents.
+4. **Cross-source conflict detection.** Audit cron that flags entities where two sources disagree on a tracked field by more than a configurable tolerance. Surfaces to admin for inspection or to the LLM cascade for tie-breaking.
+
+**When to build:** when the first real conflict surfaces in production (e.g., a founder calls out "your directory card and your valuation tile disagree about my company's funding"). Build from real cases, not imagined ones — `feedback_question_specs_dont_guess`. Do NOT pre-build a generic precedence framework before there's a concrete consumer surface that suffers from a conflict.
+
+**Where it lives when built:** as a `_shared/precedence.ts` + `_shared/provenance.ts` + `_shared/confidence.ts` triad inside `D:\Olivia Brain\src\lib\bridge/` (the brain's existing UniversalKnowledgeProvider layer is the natural integration point), plus a `ConflictReport` Prisma model in the brain's DB schema for the audit cron's findings.
+
+---
+
 ## 15. The mandate
 
 Every spoke app, current and future, **emits** to BEE on schema / data / knowledge change. Every spoke app **may subscribe** to brain events. This is non-negotiable for any product that joins the bicycle wheel (`00_PRODUCT_TRUTH.md`). When a new product is added to the wheel, **wiring it into BEE is part of its definition-of-done.** No silent drift.
+
+The Phase 3 extension in §14a above is **part of this mandate** once it lands — every spoke + every wired third-party source eventually feeds the brain's precedence / provenance / confidence layer.
