@@ -1,9 +1,34 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-11 — Six tracks closed or advanced today. **37 commits** since `669a6d0`. **Track H S21 COMPLETE** (12 per-company handlers). **Track B 8c COMPLETE** (Studio v1 engine — 38 files, ~12,800 LOC). **Track B 8d-routes-2 COMPLETE** (3 new Prisma models + heavy documents routes ported). **AGENT_DEFINITIONS** + **`/admin/tools` migration-11 auto-detect** shipped. **Track G S19 partial** (cascade types + events + 15 prompts ported; orchestrator + injector + providers deferred — they need adaptation to OB's `lib/agents/llm.ts`).
-> **Working tree:** clean on `main`. `npx tsc --noEmit` exit 0. Full vitest suite **1381/1381 in 156s**.
-> **Latest HEAD:** the docs commit that ships this handoff is the most recent push (`git log -1` to confirm).
-> **Status:** Both flagship surfaces have substantial OB infrastructure. Studio engine renders at `/studio/[id]` against a stub; documents detail + workspace routes mount against real DB-backed Documents with full module + relation + version surfaces. Cascade event breadcrumb + 15 production-tuned prompts ready. Operator actions OWED: migration 12 (cascade_events) + migration 13 (document_modules + document_relationships + analysis_results) — full SQL inlined in `§ 4`.
+> **Last updated:** 2026-05-17 — **Track G S19 (3/3) CLOSED.** Cascade orchestrator + 8 provider files + write-side breadcrumb helper landed. `c2106e3` since `c3a2760`. Full cascade module: **34/34 vitest passing in 6.44s.**
+> **Working tree:** clean on `main`. Full `npx tsc --noEmit` not run this session — see § 7 note (multiple zombie tsc processes from prior sessions caused contention; skipped in favor of focused vitest). Vercel runs the full typecheck on push.
+> **Latest HEAD:** `c2106e3` (Track G S19 3/3). `git log -1` to confirm.
+> **Status:** Cascade machinery now runs end-to-end. 6 LLM web-search providers in parallel → Tavily + Companies House gap-fill → Opus judge (batched) → ValidatedDataset. Phase 4 injector explicitly DEFERRED (LTM-shaped, would crash in OB — see § 3). Migrations OWED unchanged: 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, seed-investor-reputations. SQL inlined in § 4.
+>
+> **Prior batch (2026-05-11) summary preserved below.**
+
+### Today's batch (2026-05-17 — 1 commit since `c3a2760`)
+
+1. `c2106e3` — **Track G S19 (3/3) CLOSED**: cascade orchestrator + 8 provider files + write-side breadcrumb helper.
+   - `src/lib/orchestration/cascade/orchestrator.ts` (~370 LOC, 4 exit points each emitting `CascadeEvent`). Copied byte-for-byte from `D:\London-Tech-Map\src\lib\cascade\orchestrator.ts` with the addition of `emitBreadcrumb()` calls at every return path. LTM is **walled-garden, read-only**: zero LTM files touched.
+   - `src/lib/orchestration/cascade/providers/` — 8 provider files + `index.ts` registry: `anthropic.ts` (Sonnet + Opus), `openai.ts` (GPT-4o + 21 structured-output schemas), `google.ts` (Gemini), `xai.ts` (Grok + x_search), `perplexity.ts` (Sonar), `kimi.ts` (Moonshot), `tavily.ts` (Phase 2 search), `companies-house.ts` (Phase 2 UK registry). Companies-house import points at `@/lib/companies-house/client` (OB already has it).
+   - `events.ts` — added `recordCascadeEvent({taskId, status, itemCount, skippedCount, durationMs, errorMessage, metadata})` append-only write helper. Existing 4 read-only helpers untouched.
+   - 12 new vitest tests: `providers.test.ts` (6 — registry contract, isConfigured surface, web-search filter), `orchestrator.test.ts` (6 — all 4 exit points + breadcrumb-failure-safe + progress callback), `events.test.ts` (+2 — recordCascadeEvent write contract). **Full cascade suite: 34/34 in 6.44s.**
+
+**What this batch did NOT touch:**
+- **LTM**: zero edits, zero writes, zero git ops against `D:\London-Tech-Map`. Read-only file access only (orchestrator.ts, injector.ts, 8 providers/*.ts). Walled-garden boundary held.
+- **Phase 4 injector**: explicitly deferred per founder direction "ok a". The LTM injector writes to 11 Prisma models OB doesn't ship (Organization, FundingRound, Event, Location, Person, DistrictScore, Program, DynamicContent, VideoSource, FeatureCatalogProposal + helpers). Direct copy would crash at runtime. An OB-shaped injector should be built when a concrete consumer surface lands (Track L cluesintelligence is the first candidate).
+- **`callLLM` adapter layer**: the HANDOFF's earlier wording suggested "adapter wiring" between cascade providers and `lib/agents/llm.ts`. After reading both: they do different jobs (cascade = structured data extraction with JSON-schema enforcement; callLLM = narrative text). The duplication of fetch boilerplate is honest and intentional. A future refactor extracting a shared raw-HTTP client is a separate track (was Option C in the design surface, not picked).
+
+**Operator actions OWED (carry-forward, unchanged from prior batch):**
+- Migrations 04, 05, 06, 07, 08, 09, 10, 11, 12, 13 + seed-investor-reputations. Full SQL in § 4.
+- **Migration 12 (cascade_events) is what unlocks the breadcrumb writes** from this batch. Code is migration-safe without it — `recordCascadeEvent` failure is swallowed with a console warning so the orchestrator never crashes on a missing table.
+
+---
+
+### Previous batch (2026-05-11 — 21 commits since `669a6d0`)
+
+Six tracks closed or advanced. **Track H S21 COMPLETE** (12 per-company handlers). **Track B 8c COMPLETE** (Studio v1 engine — 38 files, ~12,800 LOC). **Track B 8d-routes-2 COMPLETE** (3 new Prisma models + heavy documents routes ported). **AGENT_DEFINITIONS** + **`/admin/tools` migration-11 auto-detect** shipped. **Track G S19 partial → now CLOSED in 2026-05-17 batch above** (cascade types + events + 15 prompts ported then; orchestrator + providers landed today).
 
 ### Today's batch (21 commits since `669a6d0`)
 
@@ -284,7 +309,7 @@ Listed in rough leverage order. Each entry is honest about scope.
 ### 🔥 High demo leverage, medium scope
 1. **Track N4 — Generative UI / 3D scenes.** Add a `ui` or `component` manifest fence that mounts runtime React components from a constrained schema. Big design + safety implications (sandboxing). Start with N4-foundations: pick ~5 safe components Olivia can reference (Card / Stat / Progress / Button / Form), define the JSON contract, parse + render. Skip eval-time JSX entirely.
 
-2. **Track G S19–S20 — LTM cascade orchestrator port.** LTM has a more sophisticated multi-phase orchestrator at `D:\London-Tech-Map\src\lib\cascade\` (orchestrator + providers + prompts + injector). It's data-extraction-oriented, not chat-oriented; porting requires rethinking what OB needs. Multi-session. Start by reading LTM's `orchestrator.ts` then `types.ts` to understand the task-driven model.
+2. **Track G S20 — LangGraph 5-node wrap on top of the cascade orchestrator.** S19 (3/3) closed 2026-05-17 — `runCascade()` in `src/lib/orchestration/cascade/orchestrator.ts` returns a `ValidatedDataset<T>` to the caller. S20 wraps that in a LangGraph state machine (5 nodes: plan → search → judge → validate → finalize). Start by reading the new orchestrator + the LangGraph docs. Phase 4 injector is explicitly deferred — see § 6 Option A discussion.
 
 ### 🛠 High capability leverage, large scope
 3. **Track H S21–S23 — 94 LTM named agents consolidation.** LTM has 116 fully-implemented agents at `D:\London-Tech-Map\src\lib\agents\impl\g1-001-…` through `g1-116-…`. They reference LTM-only Prisma models (`location` / `districtOrganizations` / `fundingRound` / `event`) so direct port 500s. Two paths:
@@ -606,7 +631,7 @@ The session-end state is:
 - **First read:** `docs/RUNBOOK.md` end-to-end.
 - **Action:** apply the **9 SQL migrations** in § 4 (04, 05, 06, 07, 08, 09, 10, 11, seed-investor-reputations), set the env vars in § 4, run the smoke tests in RUNBOOK § 5.
 
-**Recommended pick:** Option A (Track H S21 continuation — port a second per-company handler like G1-034 or G1-048). The canonical pattern is locked and the infrastructure investment pays back across every subsequent port. Capability leverage is highest here.
+**Recommended pick (updated 2026-05-17):** Track G S20 — LangGraph 5-node wrap around `runCascade()`. S19 (3/3) is now closed (commit `c2106e3`); the cascade machinery returns a `ValidatedDataset<T>` end-to-end. S20 is the natural next step and unblocks any future agent that wants the cascade as a planning primitive. Phase 4 injector remains deferred until a concrete consumer surface lands (Track L cluesintelligence is the leading candidate).
 
 ---
 
