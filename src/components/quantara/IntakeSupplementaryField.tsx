@@ -72,7 +72,6 @@ const inputStyle: React.CSSProperties = {
   color: "var(--fg-primary)",
   fontFamily: "var(--font-sans)",
   fontSize: "var(--text-sm)",
-  outline: "none",
   touchAction: "manipulation",
 };
 

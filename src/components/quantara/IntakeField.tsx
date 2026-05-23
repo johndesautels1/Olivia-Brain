@@ -712,7 +712,6 @@ function CurrencyInput({
           fontFeatureSettings: '"tnum" 1, "lnum" 1',
           fontSize: "var(--text-lg)",
           fontWeight: 500,
-          outline: "none",
           touchAction: "manipulation",
         }}
       />
@@ -785,7 +784,6 @@ function NumberInput({
           fontFeatureSettings: '"tnum" 1, "lnum" 1',
           fontSize: "var(--text-lg)",
           fontWeight: 500,
-          outline: "none",
           touchAction: "manipulation",
         }}
       />
@@ -930,7 +928,6 @@ function TextInput({
         fontFamily: "var(--font-sans)",
         fontSize: "var(--text-base)",
         fontWeight: 400,
-        outline: "none",
         touchAction: "manipulation",
       }}
     />
@@ -973,7 +970,6 @@ function SelectInput({
         fontFamily: "var(--font-sans)",
         fontSize: "var(--text-base)",
         fontWeight: 500,
-        outline: "none",
         touchAction: "manipulation",
         cursor: "pointer",
       }}

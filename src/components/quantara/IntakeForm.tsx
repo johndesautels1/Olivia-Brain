@@ -1014,7 +1014,6 @@ function FormHero({
               fontFamily: "var(--font-sans)",
               fontSize: "var(--text-md)",
               fontWeight: 500,
-              outline: "none",
               touchAction: "manipulation",
             }}
           />
@@ -1053,7 +1052,6 @@ function FormHero({
               fontFamily: "var(--font-sans)",
               fontSize: "var(--text-md)",
               fontWeight: 500,
-              outline: "none",
               touchAction: "manipulation",
             }}
           >
