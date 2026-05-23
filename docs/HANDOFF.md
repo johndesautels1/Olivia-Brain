@@ -1,5 +1,87 @@
 # Olivia Brain — Handoff to next agent
 
+> **Last updated:** 2026-05-24 (LiveAvatar persona batch close — 6 commits) — **Olivia ⇄ LTM parity verified (forward-port C1 = no-op, OB is at LTM contract + beyond) + persona-aware LiveAvatar LITE pipeline (single pipeline, two personas — Olivia + Cristiano) + `OliviaVideoAvatar` accepts `personaId` prop + Cristiano cinematic verdict mounted in `CristianoReEvaluation` + `HEYGEN_LTM_CONFIG.md` § 0 addendum + consent route 2026-bar fix (JSON guard, auth-misconfig 503).**
+
+---
+
+## 🤝 TODAY'S BATCH — 2026-05-24 — LiveAvatar persona pipeline (6 commits since `1458d90`)
+
+| # | Hash | What |
+|---|---|---|
+| 1 | `304b24c` | test(api/olivia/consent): surface-contract route tests (11 cases) |
+| 2 | `70ec03d` | fix(api/olivia/consent): 2026-standard error contracts at boundaries — JSON parse 500 → 400 + auth misconfig 500 → 503 via new `requireUserOrResponse` helper modeled on canonical `requireAdmin()` from admin/investors; test suite grew to 15 cases |
+| 3 | `6868f0e` | **feat(avatar): persona-aware LiveAvatar LITE pipeline (Olivia + Cristiano)** — new `src/lib/avatar/personas.ts` Result-style resolver + `LIVEAVATAR_CRISTIANO_AVATAR_ID` + `ELEVENLABS_CRISTIANO_VOICE_ID` env vars (defaults set per LTM ref) + persona-param threading through `createSessionToken(personaId)` + 3 routes (`/api/olivia/liveavatar`, `/speak`, `/speak-stream`) + `createLiveAvatarLiveHandle({ personaId })` + 15 unit tests covering eligibility / Zod / Result branches / throw-on-miss. Backwards compatible: every parameter defaults to "olivia". |
+| 4 | `4f91eab` | **feat(olivia-video-avatar): persona-aware UI labels + handle wiring** — `OliviaVideoAvatar` accepts optional `personaId` prop (default "olivia"). Per-persona display copy via `PERSONA_LABELS` table (connect button, status pills, recording filename prefix). `aria-hidden` on decorative SVG. |
+| 5 | `cc03204` | **feat(studio/cristiano-re-evaluation): mount LiveAvatar verdict (Cristiano)** — replaces CSS-pulse placeholder with `<OliviaVideoAvatar ref personaId="cristiano" lastReply={narrative} />`. Pre-connects during analysis animation so cinematic verdict speaks immediately at phase 5 (no 2-5s gap between "Re-evaluation Complete" and Cristiano speaking). Explicit disconnect on dialog close to be a good LiveAvatar-credit citizen. Verdict text remains rendered below the video as accessibility fallback. `role="region"` + `aria-label="Cristiano's verdict"`. |
+| 6 | **(this commit)** | **docs(handoff + heygen-config): persona dimension + batch close** — `HEYGEN_LTM_CONFIG.md` gains § 0 addendum documenting the persona refactor + locked architectural decisions + env-var transfer checklist; THIS file gains this entry. |
+
+### Architecturally closed this batch
+
+- ✅ Consent route at 2026 bar (15/15 tests, JSON-parse guard, auth-misconfig 503 via `requireUserOrResponse` helper)
+- ✅ Persona-aware LiveAvatar LITE pipeline (Olivia + Cristiano on a single pipeline; adding a third persona is a 3-step diff with TS-enforced exhaustiveness)
+- ✅ Cristiano cinematic verdict shipped in `CristianoReEvaluation` (auto-connect during analysis → real-time speak at phase 5 reveal)
+- ✅ `HEYGEN_LTM_CONFIG.md` extended with § 0 persona dimension + § 0 env-var transfer checklist
+- ✅ Forward-port-from-LTM verified at C1 — OB's `lib/olivia/liveavatar.ts` + `/api/olivia/liveavatar/*` are at LTM byte-for-byte parity (and beyond — OB has the `createLiveAvatarHandle` lift + streaming TTS variant LTM doesn't). C1 was a no-op.
+
+### Test results this batch
+
+- 78/78 tests green after C2 (avatar + liveavatar + consent + chat)
+- 113/113 tests green after C3 (above + studio + olivia component suites)
+- 108/108 tests green after C4 (Cristiano mount didn't break PreparationStudio smoke)
+- 15/15 new personas resolver tests pass
+- 15/15 consent tests pass (up from 11 after auth-503 + strict-400 additions)
+- `npx tsc --noEmit --incremental` clean after every commit
+
+### Founder direction locked 2026-05-24 (verbatim)
+
+> "we must meet 2026 best coding standards with apple ibm microsoft and google"
+
+> "the LTM Olivia heygen live avatar is 100% fully wired correctly. If you forward port that into this olivia brain we have a turn key live olivia"
+
+> "for cristiano we should have cloned the olivia wiring in the ltm app for cristiano"
+
+> "we do have all and i mean all the env variables but they are in vercel in the LTM app. I can transfer them over"
+
+> "this olivia app will backport some components and integrate into LTM but it will also become a free standing app and an app that plugs into many other apps"
+
+> "stay out of ltm" (preserved from 2026-05-23)
+
+### Operator actions OWED to make Cristiano render
+
+Transfer from LTM Vercel to OB Vercel — Production + Preview, marked Sensitive per `~/CLAUDE.md`:
+
+```
+LIVEAVATAR_API_KEY                = <same as LTM — shared LiveAvatar account>
+LIVEAVATAR_OLIVIA_AVATAR_ID       = <Olivia's LiveAvatar UUID>
+LIVEAVATAR_CRISTIANO_AVATAR_ID    = <Cristiano's LiveAvatar UUID — founder confirmed they have it>
+ELEVENLABS_API_KEY                = <same as LTM>
+ELEVENLABS_OLIVIA_VOICE_ID        = rVk0ZvRulp6xrYJkGztP (per HEYGEN_LTM_CONFIG.md § 4)
+ELEVENLABS_CRISTIANO_VOICE_ID     = <Cristiano's voice — default yoZ06aMxZJJ28mfd3POQ already shipped; override if LTM has a different value>
+```
+
+The Cristiano voice id has a sensible default in `lib/config/env.ts`, so only `LIVEAVATAR_CRISTIANO_AVATAR_ID` is hard-required for the cinematic verdict moment. Without it, the avatar shows a clean 503 with the missing-var name in the payload and the verdict text remains rendered as the accessibility fallback — no broken UX.
+
+### Recommended next pickups (founder direction: strictly OB-internal, no LTM, no cross-app, no Track L)
+
+1. **Mount Cristiano in more surfaces** — `WarRoom.tsx` / `WarRoomBriefing.tsx` / `ValuationWorkbench.tsx` / `PreparationStudio.tsx`. Same pattern as `CristianoReEvaluation` (commit `cc03204`). One commit per surface.
+2. **More `olivia/*` route tests** — 21 routes still untested after consent shipped (calendar entries / prep-tasks / attendees / analytics / sync / voice sub-routes / call sub-routes / presentation).
+3. **Architecture Standards Law audits** — Law 5 (`dataSources` metadata on agents), Law 6 (regulatory constants in `src/lib/regulatory-config/` with `validUntil`), Law 8 (schema-first at every boundary).
+4. **S30 deploy prep doc** — walk `docs/RUNBOOK.md`, write a precise pre-deploy checklist (11 owed SQL migrations + Vercel env vars + smoke-test plan).
+5. **Plug-in contract for embedded OB in LTM** — React context provider OR `@olivia/avatar-config` package. Currently deferred per founder Option C choice 2026-05-24.
+6. **`callLLMWithTools` provider expansion** — currently Anthropic-only. OpenAI + Gemini tool-calling extension when a consumer surface needs it.
+
+### EXCLUDED / BLOCKED (unchanged from 2026-05-23)
+
+- **Track L cluesintelligence** (~10 sessions, FLAGSHIP) — EXCLUDED until founder unlocks
+- **Track H S22-S23** (4 remaining LTM handlers) — BLOCKED by walled-garden
+- **`@olivia/design-system` code extraction** — pending founder confirmation on 5 open questions in `05_DESIGN_SYSTEM_PACKAGE_SPEC.md § 9`
+- **Phase 4 cascade injector** — DEFERRED until consumer surface lands
+- **Any LTM repo edits** — walled garden, no exceptions
+
+---
+
+> **Prior session header (2026-05-23 mega-batch — 25 commits) preserved below for cross-batch context.**
+
 > **Last updated:** 2026-05-23 (mega-batch close, 25 commits) — **Track N closed + AGENTS.md drop + WCAG audit Phases 1+2+3 + regression guard + design-system spec + Architecture Standards Law 3 fully closed (5/5 raw-fetch sites + new `callLLMWithTools` API) + reply-renderer testing triangle complete (parser + mount + integration for 7/7 fences) + streaming chat route + intent classifier + cascade orchestrator branch coverage all tested.**
 >
 > **🤝 GITHUB REPO:** **https://github.com/johndesautels1/Olivia-Brain** — clone via `git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"`. Branch: `main`. Vercel auto-deploys from main in ~90s with no staging gate.

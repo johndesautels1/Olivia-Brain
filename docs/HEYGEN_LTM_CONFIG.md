@@ -1,7 +1,57 @@
 # LTM Avatar Configuration — The Contract Olivia Brain Must Honour
 
 > **Last audited:** 2026-05-02 against `D:\London-Tech-Map` HEAD.
+> **Persona refactor:** 2026-05-24 — OB pipeline now persona-aware (Olivia + Cristiano). See § 0 addendum below.
 > **Authoritative source files:** referenced inline. If the LTM file changes, this doc is wrong — re-audit.
+
+---
+
+## § 0 · 2026-05-24 ADDENDUM — Persona-Aware Pipeline in Olivia Brain
+
+**State change:** OB's LiveAvatar LITE pipeline is now persona-aware. Olivia + Cristiano share the same routes, the same handle factory, the same component, and the same wire contract — only the `personaId` parameter differs. Cristiano migrates off LTM's broken `LiveAvatarPlayer.tsx` (which used `@heygen/liveavatar-web-sdk` directly with a different SDK shape) onto the same proven Olivia LITE pipeline.
+
+**Founder direction (2026-05-24, verbatim):** "we must meet 2026 best coding standards with apple ibm microsoft and google" + "the LTM Olivia heygen live avatar is 100% fully wired correctly. If you forward port that into this olivia brain we have a turn key live olivia" + "for cristiano we should have cloned the olivia wiring in the ltm app for cristiano" + "we do have all and i mean all the env variables but they are in vercel in the LTM app. I can transfer them over" + "this olivia app will backport some components and integrate into LTM but it will also become a free standing app and an app that plugs into many other apps."
+
+**Architectural locks:**
+
+1. **One LITE pipeline, two personas.** `/api/olivia/liveavatar/*` accepts an optional `personaId` body field (defaults to "olivia" for backwards compat). `createLiveAvatarHandle()` accepts an optional `personaId` option. `OliviaVideoAvatar` accepts an optional `personaId` prop. Every layer defaults to "olivia" so existing call sites work unchanged.
+2. **Persona ⇄ env mapping is declarative.** `src/lib/avatar/personas.ts` is the single source of truth. Adding a third persona is a 3-step diff (id tuple + env-var pair + mapping row) — TypeScript fails the build if you skip any of the three.
+3. **No new routes for Cristiano.** Cristiano mounts the SAME `/api/olivia/liveavatar` URL with `{ personaId: "cristiano" }`. The route name is misleading (`/api/olivia/*` no longer means Olivia-only) but: zero breaking changes against deployed Olivia clients, single rate-limit + auth gate, single observability surface. A future rename to `/api/avatars/[personaId]/liveavatar` is on the table but deferred.
+4. **Plug-in contract DEFERRED.** When this OB instance is embedded in a host app (LTM, white-label tenant) the host doesn't yet pass tenant config in. Env vars are read from OB's own Vercel environment in the standalone case. The React-context-based plug-in surface is queued for a follow-up session.
+
+**Env vars Cristiano needs (operator action — transfer from LTM Vercel to OB Vercel, Production + Preview, marked Sensitive):**
+
+```
+LIVEAVATAR_API_KEY                 = <same as LTM — shared LiveAvatar account>
+LIVEAVATAR_OLIVIA_AVATAR_ID        = <Olivia's UUID — already documented in § 4>
+LIVEAVATAR_CRISTIANO_AVATAR_ID     = <Cristiano's UUID — founder has it in LiveAvatar dashboard>
+ELEVENLABS_API_KEY                 = <same as LTM>
+ELEVENLABS_OLIVIA_VOICE_ID         = <Olivia's voice — rVk0ZvRulp6xrYJkGztP per § 4>
+ELEVENLABS_CRISTIANO_VOICE_ID      = <Cristiano's voice — default yoZ06aMxZJJ28mfd3POQ shipped; founder overrides if LTM Vercel has a different value>
+```
+
+The Cristiano voice id has a sensible default in `lib/config/env.ts` so Cristiano speaks immediately even before the LTM transfer for voice — only the avatar id is hard-required for the cinematic verdict moment in `CristianoReEvaluation`.
+
+**Wire contract preserved per the rest of this doc:**
+
+- `mode: "LITE"` (non-negotiable — FULL would hand LLM+TTS to LiveAvatar)
+- PCM 16-bit / 24 kHz / base64 on `agent.speak`
+- 4-minute WebSocket keep-alive cadence
+- LiveKit `Room` with `adaptiveStream: true, dynacast: true`
+- WebSocket message format (`agent.speak` / `agent.speak_end` / `agent.interrupt` / `session.keep_alive` / `agent.start_listening` / `agent.stop_listening`)
+
+Only the `avatar_id` body field varies per persona. Nothing else changes.
+
+**Where Cristiano is mounted today (OB):**
+
+| Surface | File | Status |
+|---|---|---|
+| Re-evaluation cinematic theater | `src/components/studio/CristianoReEvaluation.tsx` | ✅ shipped commit `cc03204` — verdict speaks in real time when results reveal |
+| WarRoom | `src/components/valuation/WarRoom.tsx` | ⏳ not yet — verdict renders as plain text; mount queued as a follow-up commit pending founder approval (one task at a time outside this batch) |
+| PreparationStudio | `src/components/studio/PreparationStudio.tsx` | ⏳ not yet — same |
+| ValuationWorkbench | `src/components/valuation/ValuationWorkbench.tsx` | ⏳ not yet — same |
+
+**Pipelines #2 (LTM HeyGen v3 / `LiveAvatarPlayer.tsx`) + #3 (LTM legacy `/api/olivia/video`) per the table below remain LTM-only and untouched in OB.** When LTM does the eventual backport (separate session), it adopts OB's persona-aware pipeline and rips out `LiveAvatarPlayer.tsx`.
 
 ---
 
@@ -13,11 +63,11 @@ There are **three distinct avatar pipelines** in LTM. Olivia Brain only inherits
 
 | # | Pipeline | Vendor | Used For | Real-time? |
 |---|----------|--------|----------|------------|
-| 1 | **LiveAvatar LITE (Olivia)** | api.liveavatar.com | Live conversational Olivia (chat panel, /olivia, Studio circle) | YES — WebRTC streaming |
-| 2 | **HeyGen v3 Avatar V (Cristiano)** | api.heygen.com | Pre-rendered analysis result videos | NO — render & poll |
+| 1 | **LiveAvatar LITE (Olivia + Cristiano in OB as of 2026-05-24)** | api.liveavatar.com | Live conversational Olivia (chat panel, /olivia, Studio circle); cinematic Cristiano verdict in `CristianoReEvaluation` | YES — WebRTC streaming |
+| 2 | **HeyGen v3 Avatar V (legacy Cristiano in LTM only)** | api.heygen.com | Pre-rendered analysis result videos — LTM `LiveAvatarPlayer.tsx`; ripped out when LTM adopts OB persona pipeline | NO — render & poll |
 | 3 | **HeyGen v2 video/generate (legacy Olivia video mode)** | api.heygen.com | A separate "video reply" mode at `/api/olivia/video` (likely orphaned/unused) | NO — render & poll |
 
-Olivia Brain inherits **#1 only**. Pipelines #2 and #3 stay in LTM untouched.
+Olivia Brain inherits **#1 for both Olivia + Cristiano** as of 2026-05-24. Pipelines #2 and #3 stay in LTM untouched.
 
 ---
 
