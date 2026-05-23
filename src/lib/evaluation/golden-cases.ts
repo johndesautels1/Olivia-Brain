@@ -20,7 +20,14 @@
 
 import type { SpokeId } from "@/lib/orchestration/spoke-router";
 
-export type ManifestFence = "chart" | "timeline" | "sources" | "gamma";
+export type ManifestFence =
+  | "chart"
+  | "timeline"
+  | "sources"
+  | "gamma"
+  | "map"
+  | "ui"
+  | "comparison";
 
 export interface GoldenCase {
   id: string;
@@ -237,6 +244,61 @@ export const GOLDEN_CASES: readonly GoldenCase[] = [
     expect: {
       spoke: ["fl_realestate"],
       mustContain: ["homestead"],
+      maxDurationMs: 30_000,
+    },
+  },
+  {
+    id: "map-top-relocation-cities",
+    label: "Map manifestation — top-3 relocation cities",
+    /* Verifies the map fence (Track N N2) — when the response surfaces
+     * a top-N geographic comparison Olivia should pin them on a map
+     * via a fenced ```map block (kind:"cities"). System prompt teaches
+     * the shape; this case verifies the teaching landed. */
+    prompt:
+      "Show me the top 3 European cities for a London-based fintech founder relocating with a young family.",
+    expect: {
+      spoke: ["relocation"],
+      manifests: ["map"],
+      maxDurationMs: 30_000,
+    },
+  },
+  {
+    id: "ui-readiness-dashboard",
+    label: "UI manifestation — Series A readiness dashboard",
+    /* Verifies the ui fence (Track N N4-foundations) — when the response
+     * is best surfaced as a small KPI dashboard with headline numbers
+     * and a call-to-action, Olivia uses card/stat/progress/button
+     * primitives inside a fenced ```ui block rather than a chart or
+     * prose. Spoke is permissive (`london_tech` OR `general`) because
+     * the prompt is fundamentally about the UI fence routing, not
+     * about discriminating between spokes; the regex router is
+     * keyword-driven and KPI-language doesn't carry strong London-tech
+     * signal. */
+    prompt:
+      "Give me a Series A readiness dashboard for a 12-person London fintech: current ARR is £2.4M growing 18% QoQ, burn £180k/mo, pitch deck 74% complete. Surface the key stats and one action.",
+    expect: {
+      spoke: ["london_tech", "general"],
+      manifests: ["ui"],
+      maxDurationMs: 30_000,
+    },
+  },
+  {
+    id: "comparison-two-cities",
+    label: "Comparison manifestation — London vs Berlin head-to-head",
+    /* Verifies the comparison fence (cluesxscore primitive) — when the
+     * response compares 2-3 named entities Olivia uses the comparison
+     * fence (highlights/lowlights/verdict) rather than a chart or
+     * prose. This is the primitive that powers every cluesxscore
+     * mini-app verdict + cluesintelligence top-3 city render + Deal
+     * Protection offer-vs-offer. Spoke is permissive because the
+     * regex router doesn't reliably steer two-city HQ comparisons
+     * away from `general` — and the fence routing is what's being
+     * tested here. */
+    prompt:
+      "Compare London and Berlin as headquarters cities for a Series A fintech founder. Give me a clear verdict.",
+    expect: {
+      spoke: ["xscore", "london_tech", "relocation", "general"],
+      manifests: ["comparison"],
       maxDurationMs: 30_000,
     },
   },

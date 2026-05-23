@@ -62,6 +62,9 @@ const FENCE_PATTERNS: Record<ManifestFence, RegExp> = {
   timeline: /```timeline\b/i,
   sources: /```sources\b/i,
   gamma: /```gamma\b/i,
+  map: /```map\b/i,
+  ui: /```ui\b/i,
+  comparison: /```comparison\b/i,
 };
 
 function detectManifests(text: string): ManifestFence[] {
