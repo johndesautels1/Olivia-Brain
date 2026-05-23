@@ -65,14 +65,20 @@ describe("/api/olivia/consent — POST validation", () => {
     vi.unstubAllEnvs();
   });
 
-  it("rejects an unparseable body with 400", async () => {
+  it("rejects an unparseable body with 400 (Invalid JSON body)", async () => {
     const { POST } = await import("@/app/api/olivia/consent/route");
     const res = await POST(makeReq("POST", "not-json", "7.7.7.1") as never);
-    // Unparseable JSON throws inside req.json(); the route's try/catch turns
-    // that into the catch-all 500 since there's no dedicated JSON guard.
-    // This documents current behavior — surface as a pre-existing bug to
-    // founder if a 400 contract is preferred.
-    expect([400, 500]).toContain(res.status);
+    expect(res.status).toBe(400);
+    const data = (await res.json()) as { error: string };
+    expect(data.error).toMatch(/Invalid JSON/i);
+  });
+
+  it("DELETE rejects an unparseable body with 400 (Invalid JSON body)", async () => {
+    const { DELETE } = await import("@/app/api/olivia/consent/route");
+    const res = await DELETE(makeReq("DELETE", "not-json", "7.7.7.9") as never);
+    expect(res.status).toBe(400);
+    const data = (await res.json()) as { error: string };
+    expect(data.error).toMatch(/Invalid JSON/i);
   });
 
   it("rejects an empty consentTypes array with 400", async () => {
@@ -157,6 +163,42 @@ describe("/api/olivia/consent — DELETE validation", () => {
     const { DELETE } = await import("@/app/api/olivia/consent/route");
     const res = await DELETE(makeReq("DELETE", {}, "7.7.7.8") as never);
     expect(res.status).toBe(400);
+  });
+});
+
+describe("/api/olivia/consent — auth unavailable (STUB_USER_ID unset)", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("GET returns 503 when STUB_USER_ID is unset (auth misconfigured)", async () => {
+    const { GET } = await import("@/app/api/olivia/consent/route");
+    const res = await GET(makeReq("GET", undefined, "7.7.7.20") as never);
+    expect(res.status).toBe(503);
+  });
+
+  it("POST returns 503 when STUB_USER_ID is unset", async () => {
+    const { POST } = await import("@/app/api/olivia/consent/route");
+    const res = await POST(
+      makeReq("POST", { consentTypes: ["data_storage"] }, "7.7.7.21") as never,
+    );
+    expect(res.status).toBe(503);
+  });
+
+  it("DELETE returns 503 when STUB_USER_ID is unset", async () => {
+    const { DELETE } = await import("@/app/api/olivia/consent/route");
+    const res = await DELETE(
+      makeReq(
+        "DELETE",
+        { consentTypes: ["data_storage"] },
+        "7.7.7.22",
+      ) as never,
+    );
+    expect(res.status).toBe(503);
   });
 });
 

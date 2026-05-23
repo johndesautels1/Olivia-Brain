@@ -6,12 +6,31 @@ import { z } from "zod";
 
 // ─── Auth Helper ───────────────────────────────────────────────────────────────
 
-// Replaced for Olivia Brain — userId IS the canonical user ID directly
-// (Olivia Brain's calendar/voice/olivia models use `userId String @db.Uuid`,
-// not a UserProfile FK). Kept the function name for minimal call-site churn.
-async function getUserProfileId(): Promise<string | null> {
-  const { userId } = await getAuthSession();
-  return userId;
+// Returns a typed `{ userId }` on success or a fully-formed NextResponse on
+// failure (401 unauthenticated / 503 auth-misconfigured). Mirrors the canonical
+// `requireAdmin()` pattern in `src/app/api/admin/investors/route.ts` so the
+// auth call never leaks an uncaught throw to the Next.js runtime — that would
+// surface as a generic 500 with the underlying error message in the body,
+// violating the 2026 "no silent failure / actionable errors at every
+// boundary" bar. STUB_USER_ID unset in dev/test now returns 503 with the
+// throw message; missing Clerk session in production returns 401.
+//
+// Olivia Brain's calendar/voice/olivia models use `userId String @db.Uuid`
+// directly (not a UserProfile FK), so the returned `userId` is the canonical
+// owner key for OliviaConsent rows. Kept the helper name for minimal churn.
+async function requireUserOrResponse(): Promise<
+  { userId: string } | NextResponse
+> {
+  try {
+    const { userId } = await getAuthSession();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return { userId };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Auth unavailable";
+    return NextResponse.json({ error: message }, { status: 503 });
+  }
 }
 
 // ─── Schemas ───────────────────────────────────────────────────────────────────
@@ -34,10 +53,9 @@ export async function GET(req: NextRequest) {
   const limited = rateLimit(req, { limit: 30, windowMs: 60_000, prefix: "olivia-consent" });
   if (limited) return limited;
 
-  const userId = await getUserProfileId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireUserOrResponse();
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
 
   try {
     const consents = await prisma.oliviaConsent.findMany({
@@ -94,14 +112,23 @@ export async function POST(req: NextRequest) {
   const limited = rateLimit(req, { limit: 10, windowMs: 60_000, prefix: "olivia-consent" });
   if (limited) return limited;
 
-  const userId = await getUserProfileId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireUserOrResponse();
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
+
+  // Parse JSON outside the DB-error try/catch so a malformed body returns a
+  // clean 400 with "Invalid JSON body" rather than the catch-all 500 with
+  // "Failed to grant consent" (which buried the parse error and was caught
+  // by the consent surface-contract tests in `__tests__/route.test.ts`).
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   try {
-    const body = await req.json();
-    const validated = grantConsentSchema.safeParse(body);
+    const validated = grantConsentSchema.safeParse(rawBody);
 
     if (!validated.success) {
       return NextResponse.json(
@@ -164,14 +191,20 @@ export async function DELETE(req: NextRequest) {
   const limited = rateLimit(req, { limit: 10, windowMs: 60_000, prefix: "olivia-consent" });
   if (limited) return limited;
 
-  const userId = await getUserProfileId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireUserOrResponse();
+  if (auth instanceof NextResponse) return auth;
+  const { userId } = auth;
+
+  // Parse JSON outside the DB-error try/catch (see POST handler for rationale).
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   try {
-    const body = await req.json();
-    const validated = revokeConsentSchema.safeParse(body);
+    const validated = revokeConsentSchema.safeParse(rawBody);
 
     if (!validated.success) {
       return NextResponse.json(
