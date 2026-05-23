@@ -208,6 +208,8 @@ After reading, run the verify commands in § 0 again and review the latest `git 
 
 ## § 2 · What's done (cumulative across all batches)
 
+> **STALE-DOC NOTE (2026-05-23).** This handoff was last fully reconciled on 2026-05-17 before the 2026-05-23 batch (4 commits — see end of this section). The "closed tracks" table below was significantly stale relative to the git log on arrival 2026-05-23; **Track C and Track V are closed in git history** (commits `2653a67` "Track C CLOSED + Track V 3/9 ✅" and `7cba95d` "Track V CLOSED + O1 prep") but were missing from this table. Both are added below. If you arrive cold, **trust the git log over this table** when they disagree.
+
 ### ✅ Closed tracks
 | Track | Sessions | What it shipped |
 |---|---|---|
@@ -215,17 +217,42 @@ After reading, run the verify commands in § 0 again and review the latest `git 
 | **Track P** (Deal Protection) | P1–P7 | 5-band Smart Score, clause classifier, term-sheet parser, investor reputation, dilution math, email drafts, counter draft, rehearsal, versioning, consensus |
 | **Track F** (Clerk auth) | S18 | `@clerk/nextjs` wired with presence-gated middleware (Clerk currently NOT active in middleware — see § 4) |
 | **Track U** (Home page overhaul) | U1–U7 | 240px hero AvatarOrb, Bloomberg score chips, ⌘K palette, KPI tiles, Inspector reorg, /voice takeover, responsive shell |
+| **Track C** (Studio UI rebuild) | S14–S19 | Three-region shell + Aurum/Aether design system + Tailwind v4 (S14); 5 reusable primitives + Cristiano transition + council mode (S15); Library tab + scoring + Apply flow (S16); section nav + docs tree + frameworks panel + plan section nav (S17); right-pane tabs + audit log + theme picker (S18); J/K keyboard nav + autosave + theme switching (S19). Close: `2653a67`. **Sessions 9–14 in `BUILD_SEQUENCE.md` ↔ S14–S19 in commits** (Track Calendar's insertion shifted absolute session numbers by 5). |
+| **Track V** (LTM Valuation Engine Port) | V1–V9 | Schema port (V1) → types + bridge (V2) → 10-method engine math (V3) → Monte Carlo + sensitivity + war-room calendar (V4) → agents 1-7 + cascade-routed LLM adapter (V5) → agents 8-14 + Cristiano synergy bridge (V6) → 9 API routes + tier gate (V7) → ValuationWorkbench + 31 zone components (V8) → War Room family + Deal Room + Acquisition Mirror + Equity Waterfall (V9). Close: `7cba95d`. Olivia Brain Einstein-genius on valuation. |
 | **Track D** (Studio↔Brain wiring) | S15–S16 | Pitch helpers cascade-routed via `runPitchCascade`; PitchCoachTab Inspector |
 | **Track E** (Voice input) | S17 | Full STT → cascade → TTS chain on /voice with state-machine orb |
+| **Track G** (Cascade orchestrator port) | S19–S20 | Cascade types + events + Prisma model (S19 1/3); 15 cascade prompts byte-for-byte (S19 2/3); cascade orchestrator + 8 providers + write-side breadcrumb helper (S19 3/3 `c2106e3`); LangGraph 5-node wrap with retry + escalate semantics (S20 `18bd216`). Any future agent can call `runCascadeGraph({ taskId })` as a single planning primitive. Phase 4 injector explicitly DEFERRED (LTM-shaped, would crash in OB — see § 3). |
+| **Track H** (Agents consolidation, S21 slice) | S21 | 12 per-company doc-spawn handlers ported (G1-033 Data Protection Orchestrator, G1-048 Modern Slavery, G1-076 Pitch Deck London Filter, G1-105 Journalist Matchmaker, G1-107 Thought Leadership, G1-110 Podcast Booker, G1-115 Social Proof, G1-130 Build-vs-Buy, G1-136 Second-Order Consequence, G1-141 Confidence Score, G1-149 Email Negotiator, G1-150 Procurement) + `callLLM` bridge + `resolve-company` + `document-mirror` + 3 Prisma models + 12-row collection seed + AGENT_DEFINITIONS rows + `/admin/tools` migration-11 auto-detect. 4 remaining LTM handlers (G1-005 / G1-034 / G1-036 / G1-050) BLOCKED behind walled-garden direction. |
 | **Track I** (Multi-tenant + suppression) | S24 | `ui.suppressedSurfaces` / `ui.brandName` / `ui.accentColor` config keys + `useTenantUi` hook |
 | **Track J** (Vertical adapters) | S25–S26 | 4 vertical addenda (AI/SaaS, HealthTech, ClimateTech, PropTech) + provider preferences + free-form industry detection |
 | **Track K** (Hardening + launch prep) | S27–S29 | Security audit + rate limits on cost vectors; Cache-Control headers (60-80% TTFB drop); `docs/RUNBOOK.md` |
-| **Track O** (Weakness closure) | O3 + O4 + O5a + O5b + O5d + O5e + O5c-S1 + O5c-S2 + O5c-S3 | W-002 / W-003 / W-004 / W-005 closed. O5d closed REJECTED — vendor surface check showed no integrated vendor accepts phoneme metadata, see `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md`. **O5c S1 + S2 + S3 all shipped** (Tavus adapter + AvatarEvalRun model; 30-script catalog + harness UI + run/runs API; decision rubric + live LiveAvatar triggers + Tavus phoneme verification). 4 SESSION_LOG files document each. **The 867-line `OliviaVideoAvatar` abstraction lift was scope-cut to a follow-up "Track O5c-Lift"** — it's a refactor of working production code, not weakness-closure. Track O is functionally closed. |
+| **Track O** (Weakness closure) | O3 + O4 + O5a + O5b + O5d + O5e + O5c-S1 + O5c-S2 + O5c-S3 + O5c-Lift C1–C5 | W-002 / W-003 / W-004 / W-005 closed. O5d closed REJECTED — vendor surface check showed no integrated vendor accepts phoneme metadata, see `docs/O5D_PHONEME_ALIGNMENT_RESEARCH.md`. **O5c S1 + S2 + S3 all shipped** (Tavus adapter + AvatarEvalRun model; 30-script catalog + harness UI + run/runs API; decision rubric + live LiveAvatar triggers + Tavus phoneme verification). 4 SESSION_LOG files document each. **O5c-Lift C1–C5 shipped (2026-05-10)** — `OliviaVideoAvatar` now dispatches lifecycle via `handleRef.current.{connect,disconnect,speak,interrupt,attachVideo}`. Track O fully closed. |
+| **Track B** (Studio engine port) | S7–S8c, S8b-routes, S8d, S8d-routes, S8d-routes-2 | LTM map port (S7); documents-engine atoms (S8); workspace-shell-atoms (S8b); documents-engine write-surface data layer + API routes (S8b-routes); 14 write-surface component ports (S8b-routes-components); documents data foundation + real fork logic (S8d); 5 documents app routes (S8d-routes); Studio v1 engine port 38 files ~12,800 LOC (S8c 1-3); heavy documents routes + 3 Prisma models (S8d-routes-2 `ebd1b65`). |
+| **Track Calendar** | C1–C6 | 14 calendar Prisma models + 15 enums (C1); engine + queries (C2); voice + Olivia models + engine (C3); 19/21 voice/email/call/sms/WhatsApp routes (C4); calendar UI + 18/24 routes (C5); app routes + smoke tests + docs (C6). |
+| **Track N** (Visual manifestation) | N1 + N2 + N3 + N4-foundations + N5 + timeline + comparison | Canvas shell + tool-dispatch (N1) + markdown + recharts manifestation (N3) `4c2ff02`; Gamma deck preview (N5) `0c4ef08`; timeline fence; **map manifestation `map` fence (N2) `6845239` 2026-05-23**; **generative UI `ui` fence (N4-foundations) `8feb31d` 2026-05-23**; **comparison fence `48edc40` 2026-05-23** (cluesxscore primitive — competitive-matrix Action 2). Track N fully closed at the foundation level. Full N4 (Vercel v0 + Spline + Cesium) deferred until concrete consumer surface lands. |
 
 ### 🟡 Partial tracks
 | Track | Status | Remaining |
 |---|---|---|
-| **Track N** (Visual manifestation) | 4/5 — N1+N3+N5+timeline | **N2** (Mapbox 3D enhancement); **N4** (generative UI / 3D scenes — multi-session) |
+| **Track H** (Agents consolidation, post-S21) | S21 done (12 handlers); S22–S23 blocked | 4 LTM handlers (G1-005 / G1-034 / G1-036 / G1-050) BLOCKED behind walled-garden direction — they need LTM-side v1 API extension (`districtScoreHistory`, time-windowed `organization` groupings, person-organization-role) or a bridge build-out. Park until founder reopens the LTM boundary. |
+
+### 🔲 Not started
+| Track | Sessions | Notes |
+|---|---|---|
+| **Track L** (cluesintelligence Unification — FLAGSHIP) | ~10 | Priority 2 per `00_PRODUCT_TRUTH.md`; "the company is built on this product." `04_CLUESINTELLIGENCE_UNIFICATION_PLAN.md` flags questionnaire / Bayesian / persona-schema details as subject-to-change while the team locks the new spec. **Founder has signalled (2026-05-23) to find work that is NOT cluesintelligence until the spec lock lands.** Phase 4 cascade injector port (Track G follow-up) is the leading candidate to surface during this track. |
+| **S30** Production deploy (2026-06-02 target) | 1 | Walk `docs/RUNBOOK.md` § 1 → § 5. Apply the 10 SQL migrations + set env vars. |
+
+### 📦 This batch (2026-05-23 — 5 commits since `40c215c`)
+
+| Commit | What landed |
+|---|---|
+| `6845239` | **Track N N2** — map manifestation. ```map``` fence renders interactive Mapbox view with markers, auto-fit bounds, fly-to animation. 3 intents (cities / pin / districts) one fence. Graceful degrade to list card when `NEXT_PUBLIC_MAPBOX_TOKEN` is missing. 21 new parser tests. |
+| `8feb31d` | **Track N N4-foundations** — generative UI primitives. ```ui``` fence renders card / stat / progress / button through a fixed-registry safe path (no JSX smuggling). Strict http(s)-only allowlist on button hrefs. 26 new parser tests. |
+| `48edc40` | **Comparison fence** (competitive-matrix Action 2). ```comparison``` fence — side-by-side 2-3 column with optional verdict + winner highlight. The cluesxscore primitive (powers all 23 mini-app verdicts, cluesintelligence top-3, Deal Protection offer-vs-offer, Quantara round-axis). 21 new parser tests. |
+| `1484c6b` | **AGENTS.md at repo root** (competitive-matrix Action 1). 307-line standing-rules synthesis pulled from `~/CLAUDE.md` + canonical docs + locked feedback memories. Every future coding agent reads it first. |
+| (this commit) | **HANDOFF.md reconciliation** — Track C + Track V + Track G + Track H S21 + Track B (8d-routes-2) + Track Calendar + Track O (full O5c-Lift) + Track N (full closure) all moved to the ✅ closed list to match git log. |
+
+**Reply-renderer fence count: 7** — chart / gamma / sources / timeline / map / ui / comparison. Adding a new fence is documented in `AGENTS.md § 4` (6 steps).
 
 ### This session (2026-05-09 follow-up — 9 commits since `de4fef7`)
 
