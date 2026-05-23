@@ -2,20 +2,13 @@
 // AGENTIC CALENDAR — Olivia Intelligence Engine
 // NLP parsing, prep task generation, proactive suggestions.
 //
-// LLM call discipline:
-//   - `callSonnet`            routes through `callLLM` (canonical wrapper)
-//                             — gets free cost/token tracking + retry +
-//                             graceful degrade + provider abstraction.
-//   - `callSonnetWithTools`   uses a raw fetch to Anthropic Messages
-//                             because `callLLM` does not yet support
-//                             arbitrary tool definitions (only the opt-in
-//                             `enableWebSearch` flag). When the founder
-//                             approves extending `callLLM` with a
-//                             `tools?: AnthropicTool[]` parameter +
-//                             iterative tool-loop helper, this function
-//                             converts via the same pattern. Tracked as
-//                             open architectural work in
-//                             `docs/HANDOFF.md § Recommended next pickup`.
+// LLM call discipline (both functions now Law-3-compliant):
+//   - `callSonnet`            routes through `callLLM` (text-only).
+//   - `callSonnetWithTools`   routes through `callLLMWithTools`
+//                             (iterative agentic tool-loop). Both
+//                             inherit cost/token tracking, retry,
+//                             graceful degrade, and provider abstraction
+//                             from the canonical wrapper layer.
 //
 // NOW WITH FULL TOOL ACCESS — Olivia can search programs, events, orgs, etc.
 // =============================================================================
@@ -24,7 +17,7 @@ import { buildNlpParsePrompt, buildPrepPlanPrompt, buildProactiveSuggestionPromp
 import { getCategoryConfig, isOliviaPrepEnabled } from "./event-categories";
 import { nlpParseResultSchema, prepPlanResultSchema, proactiveSuggestionsArraySchema, dailyBriefResultSchema, memoryExtractionResultSchema } from "./olivia-schemas";
 import { OLIVIA_TOOLS, executeOliviaTool } from "@/lib/olivia/tools";
-import { callLLM } from "@/lib/agents/llm";
+import { callLLM, callLLMWithTools, type LLMTool } from "@/lib/agents/llm";
 
 // ─── Types ───
 
@@ -119,117 +112,68 @@ async function callSonnet(systemPrompt: string, userPrompt: string): Promise<str
 }
 
 // ─── Agentic LLM Call with Tools ───
-// Calls Anthropic with full tool access for database queries
+// Routes through `callLLMWithTools` per Architecture Standards Law 3.
+// Inherits cost/token tracking, structured logging, retry, graceful
+// degrade, and the iterative tool-loop semantics from the canonical
+// wrapper. Tool execution delegates to the `OLIVIA_TOOLS` registry via
+// the same `executeOliviaTool` dispatcher as before — call sites stay
+// identical from the model's perspective.
 
-interface ToolUse {
-  type: "tool_use";
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-}
-
-interface TextBlock {
-  type: "text";
-  text: string;
-}
-
-type ContentBlock = ToolUse | TextBlock;
-
-interface AnthropicMessage {
-  role: "user" | "assistant";
-  content: string | ContentBlock[];
-}
+/* Translate the existing OpenAI-shaped OLIVIA_TOOLS array to the
+ * vendor-neutral LLMTool shape consumed by callLLMWithTools. This is
+ * a pure data-shape rename — name + description pass through; the
+ * OpenAI `parameters` JSON-Schema becomes our `inputSchema`. */
+const OLIVIA_TOOLS_LLM: readonly LLMTool[] = OLIVIA_TOOLS.map((tool) => {
+  const funcTool = tool as {
+    type: "function";
+    function: { name: string; description: string; parameters: object };
+  };
+  return {
+    name: funcTool.function.name,
+    description: funcTool.function.description,
+    inputSchema: funcTool.function.parameters as Record<string, unknown>,
+  };
+});
 
 async function callSonnetWithTools(
   systemPrompt: string,
   userPrompt: string,
-  userId?: string | null
+  userId?: string | null,
 ): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
-  }
-
-  // Convert OpenAI tool format to Anthropic tool format
-  // Type assertion needed because OpenAI's ChatCompletionTool is a union type
-  const anthropicTools = OLIVIA_TOOLS.map((tool) => {
-    const funcTool = tool as { type: "function"; function: { name: string; description: string; parameters: object } };
-    return {
-      name: funcTool.function.name,
-      description: funcTool.function.description,
-      input_schema: funcTool.function.parameters,
-    };
+  const result = await callLLMWithTools({
+    model: "claude-sonnet-4-6",
+    systemPrompt,
+    userPrompt,
+    temperature: 0.4,
+    maxTokens: 4096,
+    timeoutMs: 60_000,
+    tools: OLIVIA_TOOLS_LLM,
+    maxToolIterations: 5,
+    /* Bridge the wrapper's vendor-neutral `LLMToolUse` to the existing
+     * `executeOliviaTool` dispatcher. JSON-stringify the dispatcher's
+     * structured return so the model sees readable content (same shape
+     * as the prior raw-fetch code). On dispatcher throw, callLLMWithTools
+     * surfaces the error as is_error tool_result content; here we
+     * defensively also stringify any structured error payloads the
+     * dispatcher might return rather than throw. */
+    executeTool: async (toolUse) => {
+      const dispatcherResult = await executeOliviaTool(
+        toolUse.name,
+        toolUse.input,
+        userId,
+      );
+      return JSON.stringify(dispatcherResult, null, 2);
+    },
   });
 
-  const messages: AnthropicMessage[] = [{ role: "user", content: userPrompt }];
-  let iterations = 0;
-  const maxIterations = 5; // Prevent infinite loops
-
-  while (iterations < maxIterations) {
-    iterations++;
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4096,
-        temperature: 0.4,
-        system: systemPrompt,
-        messages,
-        tools: anthropicTools,
-      }),
-      signal: AbortSignal.timeout(60_000), // 60s timeout for Sonnet calls
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Anthropic API error ${response.status}: ${errText}`);
-    }
-
-    const data = await response.json();
-    const content: ContentBlock[] = data.content || [];
-
-    // Check if model wants to use tools
-    const toolUses = content.filter((block): block is ToolUse => block.type === "tool_use");
-
-    if (toolUses.length === 0 || data.stop_reason === "end_turn") {
-      // No tools requested, return the text response
-      const textBlocks = content.filter((block): block is TextBlock => block.type === "text");
-      return textBlocks.map((b) => b.text).join("\n");
-    }
-
-    // Execute tools and build tool results
-    const toolResults: { type: "tool_result"; tool_use_id: string; content: string }[] = [];
-
-    for (const toolUse of toolUses) {
-      try {
-        const result = await executeOliviaTool(toolUse.name, toolUse.input, userId);
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: toolUse.id,
-          content: JSON.stringify(result, null, 2),
-        });
-      } catch (err) {
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: toolUse.id,
-          content: JSON.stringify({ error: String(err) }),
-        });
-      }
-    }
-
-    // Add assistant message with tool use and user message with tool results
-    messages.push({ role: "assistant", content });
-    messages.push({ role: "user", content: toolResults as unknown as ContentBlock[] });
+  if (!result) {
+    /* callLLMWithTools returns null on every failure mode (missing key,
+     * non-2xx, exhausted iterations, empty final text). Preserve the
+     * prior user-visible fallback so the calendar UI shows a graceful
+     * message rather than crashing. */
+    return "I'm having trouble completing that request. Please try rephrasing.";
   }
-
-  // If we hit max iterations, return what we have
-  return "I'm having trouble completing that request. Please try rephrasing.";
+  return result.text;
 }
 
 /**

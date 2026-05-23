@@ -74,6 +74,81 @@ export interface LLMCallResult {
 }
 
 // ─────────────────────────────────────────────
+// Tool calling — opt-in agentic surface
+// ─────────────────────────────────────────────
+
+/**
+ * Vendor-neutral tool definition. Mirrors Anthropic's `input_schema`
+ * shape under the hood — for OpenAI/Gemini support in a future
+ * extension, this same definition is translated to the provider's
+ * native format inside `callLLMWithTools`.
+ */
+export interface LLMTool {
+  /** Stable identifier the model uses to invoke the tool. */
+  name: string;
+  /** One-paragraph description visible to the model when it decides
+   *  whether to call this tool. */
+  description: string;
+  /** JSON Schema describing the expected `input` payload — matches
+   *  Anthropic's `input_schema` contract. */
+  inputSchema: Record<string, unknown>;
+}
+
+/** A single `tool_use` block produced by the model. The caller's
+ *  `executeTool` callback receives this and returns the result string
+ *  the model will see as `tool_result` content. */
+export interface LLMToolUse {
+  /** Provider-assigned identifier — used to correlate tool_result. */
+  id: string;
+  /** The tool's `name` from the `LLMTool` registration. */
+  name: string;
+  /** The decoded JSON input the model passed; conforms to the
+   *  registered `inputSchema`. */
+  input: Record<string, unknown>;
+}
+
+/**
+ * Caller-provided callback that executes one `tool_use` and returns the
+ * string the model will see as the tool's `tool_result` content. May
+ * throw — `callLLMWithTools` catches and surfaces the error to the
+ * model as `is_error: true` content so the loop continues honestly.
+ */
+export type LLMToolExecutor = (toolUse: LLMToolUse) => Promise<string>;
+
+export interface LLMCallWithToolsOptions {
+  /** Model identifier — see MODEL_MAP. Anthropic-family models only
+   *  for the Phase-1 implementation; other providers return null. */
+  model: string;
+  /** System prompt — sets agent persona. */
+  systemPrompt: string;
+  /** Initial user prompt that kicks off the tool loop. */
+  userPrompt: string;
+  /** Sampling temperature (0-1). */
+  temperature: number;
+  /** Max output tokens per model turn. The full loop may produce
+   *  more total tokens across iterations. */
+  maxTokens: number;
+  /** Per-call timeout in ms. Defaults to 60_000 — agentic loops
+   *  legitimately take longer than non-tool single-shot calls. */
+  timeoutMs?: number;
+  /** Tools the model may call. At least one is required (callers
+   *  without tools should use `callLLM` instead). */
+  tools: readonly LLMTool[];
+  /** Executes a single `tool_use` and returns the result string. */
+  executeTool: LLMToolExecutor;
+  /** Hard limit on tool-loop iterations to prevent runaway costs.
+   *  Defaults to 5 — matches the prior `callSonnetWithTools` cap. */
+  maxToolIterations?: number;
+}
+
+export interface LLMCallWithToolsResult extends LLMCallResult {
+  /** Number of tool-use iterations executed before the model
+   *  returned final text. 0 means the model answered without
+   *  calling any tool. */
+  toolIterations: number;
+}
+
+// ─────────────────────────────────────────────
 // Model resolution map
 // ─────────────────────────────────────────────
 
@@ -272,6 +347,237 @@ export async function callLLM(
     const msg = err instanceof Error ? err.message : String(err);
     console.error(
       `[agent-llm] LLM call failed (${config.provider}/${config.modelId}${searchEnabled ? " +web_search" : ""}): ${msg}`,
+    );
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────
+// callLLMWithTools — agentic iterative tool-loop
+// ─────────────────────────────────────────────
+
+/* Anthropic content-block shapes — typed here to avoid `any` in the
+ * tool-loop body. These mirror the provider's documented contract. */
+interface AnthropicToolUseBlock {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+interface AnthropicTextBlock {
+  type: "text";
+  text: string;
+}
+
+type AnthropicContentBlock = AnthropicToolUseBlock | AnthropicTextBlock;
+
+interface AnthropicToolResultBlock {
+  type: "tool_result";
+  tool_use_id: string;
+  content: string;
+  is_error?: boolean;
+}
+
+interface AnthropicMessage {
+  role: "user" | "assistant";
+  content: string | AnthropicContentBlock[] | AnthropicToolResultBlock[];
+}
+
+interface AnthropicResponseEnvelope {
+  content?: AnthropicContentBlock[];
+  stop_reason?: string;
+  usage?: { input_tokens?: number; output_tokens?: number };
+}
+
+/**
+ * Call an LLM with iterative tool-loop support. The model decides which
+ * tools to call; the caller's `executeTool` callback runs them; the
+ * loop continues until the model returns final text OR
+ * `maxToolIterations` is hit.
+ *
+ * Phase-1 scope: Anthropic models only (claude-sonnet-4-6,
+ * claude-opus-4-7). Other providers return `null` with a console warning;
+ * callers should fall back to `callLLM` without tools. Extension to
+ * OpenAI/Gemini tool-calling is a separate architectural change.
+ *
+ * Graceful-degrade contract (matches `callLLM`):
+ *   - Missing API key → null
+ *   - Unsupported provider → null
+ *   - Upstream non-2xx → null
+ *   - Exhausted `maxToolIterations` without `end_turn` → null
+ *   - Empty final text → null
+ *
+ * Tool execution errors do NOT terminate the loop — the model sees the
+ * failure as `tool_result` content with `is_error: true` and may retry
+ * with different input or abandon the tool.
+ */
+export async function callLLMWithTools(
+  options: LLMCallWithToolsOptions,
+): Promise<LLMCallWithToolsResult | null> {
+  const config = resolveModel(options.model);
+
+  if (config.provider !== "anthropic") {
+    console.warn(
+      `[agent-llm] callLLMWithTools is Anthropic-only today; called with ${config.provider}/${config.modelId}. Use callLLM without tools or wait for the OpenAI/Gemini extension.`,
+    );
+    return null;
+  }
+
+  const apiKey = process.env[config.apiKeyEnvVar];
+  if (!apiKey) {
+    console.warn(
+      `[agent-llm] ${config.apiKeyEnvVar} not set — skipping callLLMWithTools for model ${options.model}`,
+    );
+    return null;
+  }
+
+  if (options.tools.length === 0) {
+    console.warn(
+      "[agent-llm] callLLMWithTools called with zero tools — use callLLM instead. Returning null.",
+    );
+    return null;
+  }
+
+  const timeoutMs = options.timeoutMs ?? 60_000;
+  const maxIterations = options.maxToolIterations ?? 5;
+  const startTime = Date.now();
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let toolIterations = 0;
+
+  /* Vendor-neutral → Anthropic-native translation. Only the field-name
+   * shift (`inputSchema` → `input_schema`) plus the literal pass-through
+   * of name + description. */
+  const anthropicTools = options.tools.map((t) => ({
+    name: t.name,
+    description: t.description,
+    input_schema: t.inputSchema,
+  }));
+
+  const messages: AnthropicMessage[] = [
+    { role: "user", content: options.userPrompt },
+  ];
+
+  try {
+    /* Loop is bounded by `maxIterations`; each iteration is one round
+     * trip to Anthropic. The model decides whether to call a tool or
+     * return final text. */
+    while (toolIterations <= maxIterations) {
+      const res = await fetch(config.endpoint, {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: config.modelId,
+          max_tokens: options.maxTokens,
+          temperature: options.temperature,
+          system: options.systemPrompt,
+          messages,
+          tools: anthropicTools,
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error(
+          `[agent-llm] callLLMWithTools — Anthropic ${res.status}: ${errText.slice(0, 300)}`,
+        );
+        return null;
+      }
+
+      const data = (await res.json()) as AnthropicResponseEnvelope;
+      totalInputTokens += data.usage?.input_tokens ?? 0;
+      totalOutputTokens += data.usage?.output_tokens ?? 0;
+
+      const content: AnthropicContentBlock[] = data.content ?? [];
+      const toolUses = content.filter(
+        (b): b is AnthropicToolUseBlock => b.type === "tool_use",
+      );
+
+      /* Terminate either when the model says end_turn OR when it
+       * returns no tool_use blocks — both signal final response. */
+      if (data.stop_reason === "end_turn" || toolUses.length === 0) {
+        const text = content
+          .filter((b): b is AnthropicTextBlock => b.type === "text")
+          .map((b) => b.text)
+          .join("\n")
+          .trim();
+
+        if (!text) {
+          console.warn(
+            `[agent-llm] callLLMWithTools — empty final text from ${config.modelId} after ${toolIterations} iteration(s)`,
+          );
+          return null;
+        }
+
+        const costUsd =
+          (totalInputTokens / 1_000_000) * config.inputPricePer1M +
+          (totalOutputTokens / 1_000_000) * config.outputPricePer1M;
+
+        return {
+          text,
+          tokensUsed: totalInputTokens + totalOutputTokens,
+          costUsd: Math.round(costUsd * 1_000_000) / 1_000_000,
+          provider: config.provider,
+          modelId: config.modelId,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          durationMs: Date.now() - startTime,
+          webSearchUsed: false,
+          toolIterations,
+        };
+      }
+
+      /* Tool loop iteration. Push the model's assistant turn (with
+       * all tool_use blocks intact — Anthropic requires the exact
+       * assistant content to be echoed back) then execute each tool
+       * and push the tool_result blocks as the next user turn. */
+      messages.push({ role: "assistant", content });
+
+      const toolResults: AnthropicToolResultBlock[] = await Promise.all(
+        toolUses.map(async (toolUse) => {
+          try {
+            const result = await options.executeTool({
+              id: toolUse.id,
+              name: toolUse.name,
+              input: toolUse.input,
+            });
+            return {
+              type: "tool_result" as const,
+              tool_use_id: toolUse.id,
+              content: result,
+            };
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            return {
+              type: "tool_result" as const,
+              tool_use_id: toolUse.id,
+              content: `Tool execution failed: ${msg}`,
+              is_error: true,
+            };
+          }
+        }),
+      );
+
+      messages.push({ role: "user", content: toolResults });
+      toolIterations++;
+    }
+
+    /* Exhausted the iteration cap without an end_turn — the model is
+     * looping. Return null per the graceful-degrade contract. */
+    console.warn(
+      `[agent-llm] callLLMWithTools — exhausted ${maxIterations} iterations without end_turn for ${config.modelId}`,
+    );
+    return null;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[agent-llm] callLLMWithTools (${config.provider}/${config.modelId}) failed: ${msg}`,
     );
     return null;
   }
