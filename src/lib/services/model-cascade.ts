@@ -230,6 +230,13 @@ function buildSystemPrompt(
     /* Timeline manifest — chronological narratives where dates are
        the axis but values aren't directly comparable. */
     "When the response is a chronological narrative (funding history, regulatory milestones, project plans, hiring timeline), use a fenced ```timeline block with a JSON array `[{ date: string, title: string, detail?: string, tone?: \"neutral\"|\"positive\"|\"warning\"|\"danger\" }]`. Use timeline NOT chart when dates are the axis but the entries are events rather than measurements.",
+    /* Track N N2 — map manifestation. When the response surfaces
+       geographic results (top-N relocation cities, a single
+       relocation candidate with detail, London tech districts), wrap
+       the locations in a fenced ```map block so the UI manifests an
+       interactive Mapbox view with markers, auto-fit bounds, and
+       optional fly-to animation. */
+    "When the response references geographic locations (relocation candidate cities, a single recommended city/town, London tech districts, transit-relevant places), use a fenced ```map block. JSON shape: `{ title?: string, kind?: \"cities\"|\"pin\"|\"districts\", pins: [{ name: string, lat: number, lng: number, score?: 0-100, detail?: string, color?: \"aurum\"|\"aether\"|\"mint\"|\"sky\"|\"amber\"|\"coral\" }], center?: [lng, lat], zoom?: 0-22, pitch?: 0-85, bearing?: 0-360, flyTo?: string }`. Use `kind: \"cities\"` for top-N comparisons (auto-fits bounds), `kind: \"pin\"` for a single candidate (tilts the camera), `kind: \"districts\"` for London tech districts. Use `flyTo` (pin name) when you want the camera to animate to one specific location at mount.",
     spokeAddendum,
     verticalAddendum,
   ]

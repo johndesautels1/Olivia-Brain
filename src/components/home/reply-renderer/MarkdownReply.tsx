@@ -28,6 +28,8 @@ import { parseChartSpec } from "./chart-spec";
 import { GammaCard, parseGammaSpec } from "./GammaCard";
 import { CitationStrip, parseCitations } from "./CitationStrip";
 import { TimelineFromSpec, parseTimelineSpec } from "./TimelineFromSpec";
+import { MapManifest } from "./MapManifest";
+import { parseMapSpec } from "./map-spec";
 
 export interface MarkdownReplyProps {
   text: string;
@@ -134,6 +136,19 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
             }
             return (
               <CodeBlock raw={raw} lang={lang} note={`Invalid timeline spec: ${parsed.error}`} />
+            );
+          }
+
+          /* Map manifest (Track N N2) — top-N cities / single pin /
+           * district pins. Gracefully degrades to a list card when
+           * NEXT_PUBLIC_MAPBOX_TOKEN is missing. */
+          if (lang === "map") {
+            const parsed = parseMapSpec(raw);
+            if (parsed.ok) {
+              return <MapManifest spec={parsed.spec} maxWidth={maxChartWidth} />;
+            }
+            return (
+              <CodeBlock raw={raw} lang={lang} note={`Invalid map spec: ${parsed.error}`} />
             );
           }
 

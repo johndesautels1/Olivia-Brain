@@ -43,3 +43,18 @@ export {
   type TimelineEntry,
   type TimelineParseResult,
 } from "./TimelineFromSpec";
+export {
+  MapManifest,
+  type MapManifestProps,
+} from "./MapManifest";
+export {
+  parseMapSpec,
+  resolvePinColor,
+  defaultPitchForKind,
+  defaultZoomForKind,
+  type MapSpec,
+  type MapPin,
+  type MapKind,
+  type MapColorToken,
+  type MapParseResult,
+} from "./map-spec";
