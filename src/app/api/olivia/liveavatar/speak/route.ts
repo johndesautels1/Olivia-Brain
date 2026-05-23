@@ -2,6 +2,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
+
+import {
+  LiveAvatarPersonaIdSchema,
+  resolveLiveAvatarPersona,
+  type LiveAvatarPersonaId,
+} from "@/lib/avatar/personas";
 import { rateLimit, requireAuth } from "@/lib/rate-limit";
 
 /**
@@ -14,8 +20,9 @@ import { rateLimit, requireAuth } from "@/lib/rate-limit";
  * but collects all chunks server-side so the client receives one
  * complete audio payload for LiveAvatar's agent.speak command.
  *
- * Request:  { text: string }
- * Response: { audio: string } (base64 PCM), or { fallback: true }
+ * Request:  { text: string; personaId?: "olivia" | "cristiano" }
+ *           // personaId defaults to "olivia" for backwards compat.
+ * Response: { audio: string } (base64 PCM), or { fallback: true, reason }
  *
  * Closes W-015: uses Clerk-integrated auth via requireAuth().
  */
@@ -30,23 +37,64 @@ export async function POST(request: NextRequest) {
   const authReject = await requireAuth();
   if (authReject) return authReject;
 
+  // Parse JSON outside the upstream try/catch so a malformed body
+  // returns a clean 400 — same pattern as the consent route fix.
+  let rawBody: unknown;
   try {
-    const body = await request.json();
-    const text = typeof body.text === "string" ? body.text.trim() : "";
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
-    if (!text) {
-      return NextResponse.json({ error: "Text is required" }, { status: 400 });
-    }
-    if (text.length > 5000) {
-      return NextResponse.json({ error: "Text too long (max 5000 chars)" }, { status: 400 });
-    }
+  const text =
+    rawBody && typeof rawBody === "object" && "text" in rawBody && typeof (rawBody as { text?: unknown }).text === "string"
+      ? ((rawBody as { text: string }).text).trim()
+      : "";
 
+  if (!text) {
+    return NextResponse.json({ error: "Text is required" }, { status: 400 });
+  }
+  if (text.length > 5000) {
+    return NextResponse.json({ error: "Text too long (max 5000 chars)" }, { status: 400 });
+  }
+
+  // Persona resolution — defaults to Olivia when the field is absent
+  // (backwards compat with legacy OliviaVideoAvatar fetches that don't
+  // include personaId yet).
+  let personaId: LiveAvatarPersonaId = "olivia";
+  if (rawBody && typeof rawBody === "object" && "personaId" in rawBody) {
+    const candidate = (rawBody as Record<string, unknown>).personaId;
+    if (candidate !== undefined && candidate !== null) {
+      const parsed = LiveAvatarPersonaIdSchema.safeParse(candidate);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Invalid persona", details: parsed.error.issues },
+          { status: 400 },
+        );
+      }
+      personaId = parsed.data;
+    }
+  }
+
+  try {
     const apiKey = process.env.ELEVENLABS_API_KEY;
-    const voiceId = process.env.ELEVENLABS_OLIVIA_VOICE_ID;
-
-    if (!apiKey || !voiceId) {
-      return NextResponse.json({ fallback: true, text, reason: "ElevenLabs not configured" });
+    if (!apiKey) {
+      return NextResponse.json({
+        fallback: true,
+        text,
+        reason: "ELEVENLABS_API_KEY not configured",
+      });
     }
+
+    const personaResolution = resolveLiveAvatarPersona(personaId);
+    if (!personaResolution.ok) {
+      return NextResponse.json({
+        fallback: true,
+        text,
+        reason: `${personaResolution.missingVar} not configured`,
+      });
+    }
+    const { voiceId } = personaResolution;
 
     // ElevenLabs STREAMING endpoint — output_format MUST be a query parameter
     const response = await fetch(
@@ -77,7 +125,9 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
-      console.error("[liveavatar/speak] ElevenLabs error:", response.status, errorText);
+      console.error(
+        `[liveavatar/speak] ElevenLabs error — persona: ${personaId}, status: ${response.status}, body: ${errorText.slice(0, 300)}`,
+      );
       return NextResponse.json({ fallback: true, text, reason: `ElevenLabs ${response.status}` });
     }
 
@@ -109,7 +159,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ audio: base64Audio }, { status: 200 });
   } catch (err) {
     const raw = err instanceof Error ? err.message : String(err);
-    console.error("[liveavatar/speak] Error:", raw);
+    console.error(`[liveavatar/speak] Error — persona: ${personaId}:`, raw);
     return NextResponse.json({ fallback: true, text: "", reason: "Internal error" });
   }
 }

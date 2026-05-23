@@ -233,9 +233,15 @@ export function createLiveAvatarLiveHandle(
     connectInFlight = (async () => {
       setState("connecting");
       try {
+        // Persona-aware: forward the requested persona id on the session
+        // POST so the server can resolve the right LiveAvatar avatar id.
+        // Defaults to "olivia" so legacy zero-arg consumers keep
+        // identical wire behavior.
+        const personaId = opts.personaId ?? "olivia";
         const sessionRes = await fetch("/api/olivia/liveavatar", {
           method: "POST",
           headers: authHeaders(),
+          body: JSON.stringify({ personaId }),
         });
         const sessionData = (await sessionRes.json()) as {
           livekitUrl?: string;
@@ -364,17 +370,21 @@ export function createLiveAvatarLiveHandle(
 
     markPerf("olivia-speak-start");
 
+    const personaId = opts.personaId ?? "olivia";
     let res: Response;
     try {
       res = await fetch(LIVEAVATAR_SPEAK_STREAM_PATH, {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ text: text.slice(0, 5000) }),
+        body: JSON.stringify({ text: text.slice(0, 5000), personaId }),
         signal,
       });
     } catch (err) {
       if (signal.aborted) return false;
-      console.warn("[liveavatar-handle] speak-stream fetch failed:", err);
+      console.warn(
+        `[liveavatar-handle] speak-stream fetch failed — persona: ${personaId}:`,
+        err,
+      );
       return false;
     }
 
@@ -457,11 +467,12 @@ export function createLiveAvatarLiveHandle(
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
     if (signal.aborted) return false;
 
+    const personaId = opts.personaId ?? "olivia";
     try {
       const res = await fetch("/api/olivia/liveavatar/speak", {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ text: text.slice(0, 5000) }),
+        body: JSON.stringify({ text: text.slice(0, 5000), personaId }),
         signal,
       });
       const data = (await res.json()) as { audio?: string; fallback?: boolean };
@@ -474,7 +485,10 @@ export function createLiveAvatarLiveHandle(
       return true;
     } catch (err) {
       if (signal.aborted) return false;
-      console.error("[liveavatar-handle] speak fallback error:", err);
+      console.error(
+        `[liveavatar-handle] speak fallback error — persona: ${personaId}:`,
+        err,
+      );
       return false;
     }
   }

@@ -175,6 +175,21 @@ export interface CreateLiveAvatarHandleOptions {
    * `adminKey` prop.
    */
   adminKey?: string;
+
+  /**
+   * Which persona's avatar to provision and speak as. Defaults to
+   * "olivia" so legacy zero-arg callers (the historical Olivia-only
+   * surface) keep their behavior. Set to "cristiano" for the Judge
+   * verdict surfaces (`CristianoReEvaluation`, WarRoom, etc.).
+   *
+   * The value is forwarded as `{ personaId }` on the session-create
+   * and speak POST bodies. The server resolves the persona to its
+   * LiveAvatar avatar id and ElevenLabs voice id via
+   * `src/lib/avatar/personas.ts`. Adding a new LiveAvatar-eligible
+   * persona requires changes in three places per the comment in
+   * `src/lib/avatar/personas.ts` — TypeScript will flag every miss.
+   */
+  personaId?: "olivia" | "cristiano";
 }
 
 /**

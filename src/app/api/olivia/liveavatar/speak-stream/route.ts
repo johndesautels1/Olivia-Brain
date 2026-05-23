@@ -2,6 +2,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 import { NextRequest, NextResponse } from "next/server";
+
+import {
+  LiveAvatarPersonaIdSchema,
+  resolveLiveAvatarPersona,
+  type LiveAvatarPersonaId,
+} from "@/lib/avatar/personas";
 import { rateLimit, requireAuth } from "@/lib/rate-limit";
 
 /**
@@ -53,13 +59,17 @@ export async function POST(request: NextRequest) {
   const authReject = await requireAuth();
   if (authReject) return authReject;
 
-  let text: string;
+  let rawBody: unknown;
   try {
-    const body = await request.json();
-    text = typeof body.text === "string" ? body.text.trim() : "";
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+
+  const text =
+    rawBody && typeof rawBody === "object" && "text" in rawBody && typeof (rawBody as { text?: unknown }).text === "string"
+      ? ((rawBody as { text: string }).text).trim()
+      : "";
 
   if (!text) {
     return NextResponse.json({ error: "Text is required" }, { status: 400 });
@@ -68,15 +78,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Text too long (max 5000 chars)" }, { status: 400 });
   }
 
-  const apiKey = process.env.ELEVENLABS_API_KEY;
-  const voiceId = process.env.ELEVENLABS_OLIVIA_VOICE_ID;
+  // Persona resolution — defaults to "olivia" when the field is absent
+  // (backwards compat with legacy fetches from OliviaVideoAvatar that
+  // pre-date the persona-aware refactor).
+  let personaId: LiveAvatarPersonaId = "olivia";
+  if (rawBody && typeof rawBody === "object" && "personaId" in rawBody) {
+    const candidate = (rawBody as Record<string, unknown>).personaId;
+    if (candidate !== undefined && candidate !== null) {
+      const parsed = LiveAvatarPersonaIdSchema.safeParse(candidate);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Invalid persona", details: parsed.error.issues },
+          { status: 400 },
+        );
+      }
+      personaId = parsed.data;
+    }
+  }
 
-  if (!apiKey || !voiceId) {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) {
     return NextResponse.json(
-      { fallback: true, reason: "ElevenLabs not configured" },
+      { fallback: true, reason: "ELEVENLABS_API_KEY not configured" },
       { status: 200 },
     );
   }
+
+  const personaResolution = resolveLiveAvatarPersona(personaId);
+  if (!personaResolution.ok) {
+    return NextResponse.json(
+      {
+        fallback: true,
+        reason: `${personaResolution.missingVar} not configured`,
+      },
+      { status: 200 },
+    );
+  }
+  const { voiceId } = personaResolution;
 
   // Open ElevenLabs streaming endpoint. Model + voice settings tuned for
   // Olivia's persona (warm, professional). Turbo halves TTFB vs multilingual.
@@ -104,7 +142,10 @@ export async function POST(request: NextRequest) {
   if (!upstream.ok) {
     const reason = `ElevenLabs ${upstream.status}`;
     const detail = await upstream.text().catch(() => "");
-    console.error(`[liveavatar/speak-stream] ${reason}:`, detail);
+    console.error(
+      `[liveavatar/speak-stream] persona: ${personaId}, ${reason}:`,
+      detail.slice(0, 300),
+    );
     return NextResponse.json({ fallback: true, reason }, { status: 200 });
   }
 
