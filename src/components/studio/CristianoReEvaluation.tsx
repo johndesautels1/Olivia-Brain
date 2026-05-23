@@ -20,7 +20,12 @@
  * - Narrative box: italic serif-feel text, gold accent border
  */
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+
+import {
+  OliviaVideoAvatar,
+  type OliviaVideoAvatarRef,
+} from "@/components/olivia/OliviaVideoAvatar";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -119,6 +124,15 @@ export function CristianoReEvaluation({
   const [narrative, setNarrative] = useState("");
   const [showResults, setShowResults] = useState(false);
 
+  // Cinematic LiveAvatar mount — Cristiano renders through the same
+  // LiveAvatar LITE pipeline as Olivia (one wire, two personas; see
+  // src/lib/avatar/personas.ts). Pre-connect during the analysis
+  // animation so by the time the narrative is set at phase 5 the
+  // avatar is ready and the verdict speaks immediately rather than
+  // making the user watch a 2-5s session-create after the entity cards
+  // have already settled.
+  const avatarRef = useRef<OliviaVideoAvatarRef | null>(null);
+
   // ── Analysis sequence ───────────────────────────────────────────────
 
   useEffect(() => {
@@ -158,6 +172,26 @@ export function CristianoReEvaluation({
 
     return () => timers.forEach(clearTimeout);
   }, [isOpen, documentType]);
+
+  // ── Pre-connect Cristiano LiveAvatar during analysis ───────────────
+  // Fired once when the dialog opens. The avatar handle's `connect()`
+  // is idempotent (returns the in-flight promise on a second call) so
+  // calling here is safe even if the user toggles the dialog quickly.
+  // Errors surface inside the avatar component's own overlay (visible
+  // when `hideOverlays={false}`, which is the default below).
+  useEffect(() => {
+    if (!isOpen) return;
+    void avatarRef.current?.connect();
+  }, [isOpen]);
+
+  // Disconnect the avatar when the dialog closes so credits don't keep
+  // draining on a hidden session. LiveAvatar's idle timeout would catch
+  // this in ~5 minutes anyway but explicit disconnect is the better
+  // citizen behavior (see HEYGEN_LTM_CONFIG.md §12, item 7).
+  useEffect(() => {
+    if (isOpen) return;
+    avatarRef.current?.disconnect();
+  }, [isOpen]);
 
   // ── Score delta display ─────────────────────────────────────────────
 
@@ -368,7 +402,41 @@ export function CristianoReEvaluation({
         {/* ── Results Section ──────────────────────────────────────── */}
         {showResults && (
           <>
-            {/* Cristiano's narrative */}
+            {/* Cinematic verdict — Cristiano speaks the narrative live.
+                The OliviaVideoAvatar `lastReply` effect picks up the
+                narrative string and dispatches it through the
+                LiveAvatar LITE pipeline (server resolves Cristiano's
+                avatar id + voice id via personaId="cristiano").
+                Below the video, the narrative text remains rendered as
+                an accessibility fallback for users with audio muted or
+                voice unavailable (see HEYGEN_LTM_CONFIG.md §11 on the
+                ElevenLabs fallback path — text-only is the safety net). */}
+            <div
+              className="rounded-xl overflow-hidden mb-4"
+              style={{
+                border: "1px solid rgba(196, 169, 106, 0.18)",
+                animation: "studio-narrative-fade 600ms ease-out forwards",
+              }}
+            >
+              <OliviaVideoAvatar
+                ref={avatarRef}
+                personaId="cristiano"
+                lastReply={narrative}
+                onSpeakError={(reason) => {
+                  // stream_aborted is benign (newer reply pre-empted
+                  // an older one); the other two indicate the user is
+                  // seeing the avatar without audio — log + leave the
+                  // narrative text below as the readable fallback.
+                  if (reason !== "stream_aborted") {
+                    console.warn(
+                      `[CristianoReEvaluation] avatar speak unavailable: ${reason}`,
+                    );
+                  }
+                }}
+              />
+            </div>
+
+            {/* Cristiano's narrative — text fallback + accessibility */}
             <div
               className="rounded-xl px-5 py-4 mb-6"
               style={{
@@ -376,6 +444,8 @@ export function CristianoReEvaluation({
                 borderLeft: "3px solid rgba(196, 169, 106, 0.3)",
                 animation: "studio-narrative-fade 600ms ease-out forwards",
               }}
+              role="region"
+              aria-label="Cristiano's verdict"
             >
               <p
                 style={{
