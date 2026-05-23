@@ -386,7 +386,7 @@ function FloatingCard({
               background: challengeCopied ? 'rgba(34,197,94,0.1)' : 'none',
               border: `1px solid ${challengeCopied ? 'rgba(34,197,94,0.3)' : 'rgba(248,113,113,0.2)'}`,
               cursor: 'pointer',
-              transition: 'all 200ms ease',
+              transition: 'color 200ms ease, background-color 200ms ease, border-color 200ms ease',
             }}
           >
             {challengeCopied ? (

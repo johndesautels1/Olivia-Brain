@@ -1586,7 +1586,7 @@ export function ValuationWorkbench({ subjectId: propSubjectId, latestRunId: prop
                       boxShadow: isActive
                         ? '0 -2px 8px rgba(196,169,106,0.08), 0 -1px 3px rgba(196,169,106,0.06), inset 0 1px 0 rgba(255,255,255,0.07), 0 2px 6px rgba(0,0,0,0.3)'
                         : 'inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 2px rgba(0,0,0,0.15)',
-                      transition: 'all 0.2s ease-out',
+                      transition: 'border-color 0.2s ease-out, box-shadow 0.2s ease-out',
                     }}
                   >
                     {/* WCAG focus ring — 2px solid, clearly visible */}

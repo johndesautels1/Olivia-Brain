@@ -383,7 +383,7 @@ export function OliviaDisplayScreen({ lastReply, onVoiceTranscript }: Props) {
                 boxShadow: isSpeaking
                   ? "0 0 6px rgba(196, 169, 106, 0.5)"
                   : "none",
-                transition: "all 0.3s ease",
+                transition: "background-color 0.3s ease, box-shadow 0.3s ease",
               }}
             />
             <span

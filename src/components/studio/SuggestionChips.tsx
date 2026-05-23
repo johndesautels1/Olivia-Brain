@@ -434,7 +434,7 @@ function SuggestionChip({
             ? "0 0 12px rgba(196, 169, 106, 0.08)"
             : "none",
         opacity: state === "rejected" ? 0.3 : 1,
-        transition: "all 200ms ease",
+        transition: "box-shadow 200ms ease, opacity 200ms ease, background-color 200ms ease",
       }}
     >
       {/* Confidence dot */}

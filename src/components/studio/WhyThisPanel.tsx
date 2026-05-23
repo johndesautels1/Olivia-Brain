@@ -237,7 +237,7 @@ export function WhyThisPanel({
       style={{
         background: "rgba(255, 255, 255, 0.02)",
         border: "1px solid rgba(255, 255, 255, 0.04)",
-        transition: "all 200ms ease",
+        transition: "background-color 200ms ease, border-color 200ms ease, max-height 200ms ease, opacity 200ms ease",
       }}
     >
       {/* Toggle header */}

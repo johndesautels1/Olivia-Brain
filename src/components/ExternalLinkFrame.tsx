@@ -208,7 +208,7 @@ export function ExternalOverlayProvider({ children }: { children: React.ReactNod
                   border: "1px solid rgba(255,255,255,0.1)",
                   borderRadius: 4,
                   cursor: "pointer",
-                  transition: "all 0.15s ease",
+                  transition: "color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease",
                   whiteSpace: "nowrap",
                 }}
                 onMouseEnter={(e) => {

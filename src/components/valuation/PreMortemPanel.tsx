@@ -77,6 +77,7 @@ export default function PreMortemPanel({ preMortem }: PreMortemPanelProps) {
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCollapsed(!collapsed); } }}
         aria-expanded={!collapsed}
+        aria-label={collapsed ? "Expand pre-mortem panel" : "Collapse pre-mortem panel"}
       >
         <div className="flex items-center gap-2">
           <svg

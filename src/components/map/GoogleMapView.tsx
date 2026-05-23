@@ -457,7 +457,7 @@ export function GoogleMapView({ apiKey, mapboxToken }: GoogleMapViewProps) {
             border-radius: 8px;
             padding: 4px 10px 4px 6px;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
             box-shadow: 0 2px 12px rgba(0,0,0,0.4);
           ">
             <div style="
@@ -482,7 +482,7 @@ export function GoogleMapView({ apiKey, mapboxToken }: GoogleMapViewProps) {
             border: 2px solid rgba(255,255,255,0.3);
             box-shadow: 0 0 10px ${dotColor}66;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
           " title="${esc(name)}"></div>
         `;
       }

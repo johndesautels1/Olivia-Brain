@@ -684,7 +684,7 @@ function ActionButton({
         fontWeight: 600,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled && !loading ? 0.45 : 1,
-        transition: "all var(--duration-micro) var(--ease-out-quart)",
+        transition: "opacity var(--duration-micro) var(--ease-out-quart), background-color var(--duration-micro) var(--ease-out-quart)",
       }}
     >
       {loading ? "…" : label}
