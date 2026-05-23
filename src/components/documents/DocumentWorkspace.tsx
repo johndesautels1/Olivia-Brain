@@ -550,10 +550,11 @@ export default function DocumentWorkspace({
               const statusStyle = STATUS_COLORS[block.status];
 
               return (
-                <div
+                <button
                   key={block.index}
+                  type="button"
                   id={`block-${block.index}`}
-                  className="rounded-xl overflow-hidden transition-all"
+                  className="rounded-xl overflow-hidden text-left w-full block p-0 cursor-pointer transition-all"
                   style={{
                     background: "rgba(15, 18, 25, 0.6)",
                     border: `1px solid ${
@@ -565,16 +566,11 @@ export default function DocumentWorkspace({
                       activeBlockIndex === block.index
                         ? "0 0 12px rgba(196, 169, 106, 0.08)"
                         : "none",
+                    appearance: "none",
+                    font: "inherit",
+                    color: "inherit",
                   }}
                   onClick={() => setActiveBlockIndex(block.index)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setActiveBlockIndex(block.index);
-                    }
-                  }}
                   aria-label={`Edit ${BLOCK_TYPE_LABELS[block.type] || block.type} block`}
                   aria-expanded={activeBlockIndex === block.index}
                 >
@@ -628,7 +624,7 @@ export default function DocumentWorkspace({
                       />
                     </div>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>

@@ -137,7 +137,7 @@ describe("DocumentWorkspace · workspace-shell-atoms smoke", () => {
     );
 
     const paragraphTrigger = container.querySelector(
-      'div[role="button"][aria-label="Edit Paragraph block"]'
+      'button[aria-label="Edit Paragraph block"]'
     ) as HTMLElement | null;
     expect(paragraphTrigger).not.toBeNull();
     expect(paragraphTrigger?.getAttribute("aria-expanded")).toBe("false");

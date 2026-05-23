@@ -70,12 +70,11 @@ export default function PreMortemPanel({ preMortem }: PreMortemPanelProps) {
 
   return (
     <div className={`glass-card ${collapsed ? 'p-0' : 'p-6'}`}>
-      <div
-        className={`flex items-center justify-between gap-2 ${collapsed ? 'p-4 cursor-pointer hover:bg-white/[0.03] transition-colors rounded-xl' : 'mb-4'}`}
+      <button
+        type="button"
+        className={`flex items-center justify-between gap-2 w-full text-left appearance-none bg-transparent border-0 ${collapsed ? 'p-4 cursor-pointer hover:bg-white/[0.03] transition-colors rounded-xl' : 'mb-4 p-0 cursor-pointer'}`}
+        style={{ font: 'inherit', color: 'inherit' }}
         onClick={() => setCollapsed(!collapsed)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCollapsed(!collapsed); } }}
         aria-expanded={!collapsed}
         aria-label={collapsed ? "Expand pre-mortem panel" : "Collapse pre-mortem panel"}
       >
@@ -113,7 +112,7 @@ export default function PreMortemPanel({ preMortem }: PreMortemPanelProps) {
             New Data Available
           </span>
         )}
-      </div>
+      </button>
 
       {!collapsed && (
         <div className="space-y-4">
