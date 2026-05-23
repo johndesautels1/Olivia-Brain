@@ -447,7 +447,6 @@ export function PitchCoachTab({
             color: "var(--fg-primary)",
             fontFamily: "var(--font-sans)",
             fontSize: "var(--text-sm)",
-            outline: "none",
           }}
         />
         <button
@@ -568,7 +567,6 @@ function ConfigInput({
           color: "var(--fg-primary)",
           fontFamily: "var(--font-sans)",
           fontSize: "var(--text-sm)",
-          outline: "none",
         }}
       />
     </label>
@@ -610,7 +608,6 @@ function ConfigSelect({
           color: "var(--fg-primary)",
           fontFamily: "var(--font-sans)",
           fontSize: "var(--text-sm)",
-          outline: "none",
         }}
       >
         {options.map((o) => (

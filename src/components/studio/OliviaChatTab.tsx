@@ -235,7 +235,6 @@ export function OliviaChatTab({ onAuditEntry }: OliviaChatTabProps) {
             color: "var(--fg-primary)",
             fontFamily: "var(--font-sans)",
             fontSize: "var(--text-sm)",
-            outline: "none",
           }}
         />
         <button

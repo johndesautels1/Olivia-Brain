@@ -132,7 +132,6 @@ export function LibraryTab({
           color: "var(--fg-primary)",
           fontFamily: "var(--font-sans)",
           fontSize: "var(--text-base)",
-          outline: "none",
         }}
       />
 
