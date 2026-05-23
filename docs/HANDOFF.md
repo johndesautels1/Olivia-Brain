@@ -1,52 +1,71 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-23 — **Track N fully closed + AGENTS.md drop + WCAG audit.** 7 new commits + this handoff commit since `40c215c`. Track N now ships 7 manifest fences (chart / gamma / sources / timeline / map / ui / comparison). Action 1 + Action 2 + Action 4 from `docs/02_COMPETITIVE_FEATURE_MATRIX.md § 3` all closed.
-> **Working tree:** clean on `main`. `npx tsc --noEmit --incremental` clean on touched files; full sweep deferred to Vercel deploy. **134 vitest cases green** (110 reply-renderer + 24 evaluation + many more on adjacent surfaces).
-> **Latest HEAD:** `b3192c8` before this handoff commit; will move forward when this push lands.
-> **Status:** Track N foundation fully shipped. Founder direction 2026-05-23: **work on anything EXCEPT Track L cluesintelligence** until the questionnaire / Bayesian / persona spec is locked by the team. Highest-impact next pickup = Phase 1 of the new WCAG audit (Quantara intake cluster — 7 HIGH-severity `outline: "none"` violations on the 56-field founder questionnaire).
+> **Last updated:** 2026-05-23 (end-of-day) — **Mega-batch: Track N closed + AGENTS.md + WCAG audit + Phases 1+2+3 fully remediated + regression guard + design-system spec.** **15 commits + this handoff commit since `40c215c` (Track G S20 close).** Every action in `docs/02_COMPETITIVE_FEATURE_MATRIX.md § 3` queue (Actions 1 + 2 + 3 + 4) is **CLOSED**.
+> **Working tree:** clean on `main`. `npx tsc --noEmit --incremental` clean on touched files; full sweep deferred to Vercel deploy. **>240 vitest cases green** (110 reply-renderer + 58 quantara + 35 studio + 33 valuation + 4 a11y guard + golden cases + many adjacent suites).
+> **Latest HEAD:** `ded8893` before this handoff commit; will move forward when this push lands.
+> **Status:** WCAG audit fully closed end-to-end (30 of 30 findings remediated + regression guard installed at `src/lib/evaluation/a11y-source-guard.test.ts`). Track N fully closed (7 fences). All four competitive-matrix actions done. Founder direction 2026-05-23 (locked): **work on anything EXCEPT Track L cluesintelligence AND anything that touches another app (no LTM integration, no white-label tenant work, no cross-app brain enrichment).** Strictly OB-internal work until further notice.
 >
 > **🤝 NEXT AGENT — READ THE INLINE HANDOFF IN CHAT BEFORE ANYTHING ELSE.** The chat-pasted version of this handoff carries the full mandatory-reading-order + 2026 Apple/IBM/Google/Microsoft attestation + Stop-Means-Stop override + § 0 verify commands. The file version below has the cumulative cross-batch detail.
 >
 > **Prior batches (2026-05-17 + 2026-05-11) summary preserved below.**
 
-### Today's batch (2026-05-23 — 7 commits since `40c215c`)
+### Today's mega-batch (2026-05-23 — 15 commits since `40c215c`)
 
-| Commit | Lines | What |
-|---|---|---|
-| `6845239` | +1,007 | **Track N N2** — `map` fence. Mapbox manifestation, 3 intents (cities / pin / districts), auto-fit bounds OR fly-to, graceful degrade to list card when `NEXT_PUBLIC_MAPBOX_TOKEN` missing. 21 new parser tests. |
-| `8feb31d` | +950 | **Track N N4-foundations** — `ui` fence. Safe registry rendering of card / stat / progress / button primitives. Strict http(s)-only allowlist on button hrefs (parser-enforced — `javascript:` + `data:` + scheme-relative rejected). 26 new parser tests. |
-| `48edc40` | +798 | **Comparison fence** (competitive-matrix Action 2). 2-3 column side-by-side with optional verdict + winner highlight. The cluesxscore primitive — powers all 23 mini-app verdicts, cluesintelligence top-3, Deal Protection offer-vs-offer, Quantara round-axis. 21 new parser tests. |
-| `1484c6b` | +307 | **`AGENTS.md` at repo root** (competitive-matrix Action 1). 307-line standing-rules synthesis pulled from `~/CLAUDE.md` + canonical docs + locked feedback memories. Every future coding agent reads it first. |
-| `d0616b9` | +29 −2 | **HANDOFF.md § 2 reconciliation** — added Track C (S14-S19) + Track V (V1-V9) + Track G (S19-S20) + Track H S21 + Track B 8d-routes-2 + Track Calendar + full Track O O5c-Lift to the closed list. Caught by archaeology — the doc had been stale for 16 days. |
-| `ae4fe57` | +66 −1 | **Golden eval cases for the 3 new fences.** Extended `ManifestFence` type (4 → 7 values); 3 new GOLDEN_CASES entries; 3 new FENCE_PATTERNS in golden-runner. Closes the eval validation loop for the system-prompt teaching landed in commits 1-3. |
-| `b3192c8` | +351 | **`docs/04_ACCESSIBILITY_AUDIT_2026-05-23.md`** (competitive-matrix Action 4). 30 findings across 15 files: 18 HIGH (`outline: "none"` overrides) + 10 MEDIUM (9× `transition: all` + 1 div-as-button missing aria-label) + 2 LOW. Phased remediation plan in § 8 of the audit. |
-| (this commit) | — | **HANDOFF.md update** — this very entry + § 6 resume options updated to point at audit Phase 1 (Quantara cluster) as recommended next pickup. |
+| # | Commit | Lines | What |
+|---|---|---|---|
+| 1 | `6845239` | +1,007 | **Track N N2** — `map` fence. Mapbox manifestation, 3 intents (cities / pin / districts), auto-fit bounds OR fly-to, graceful degrade to list card when `NEXT_PUBLIC_MAPBOX_TOKEN` missing. 21 new parser tests. |
+| 2 | `8feb31d` | +950 | **Track N N4-foundations** — `ui` fence. Safe registry rendering of card / stat / progress / button primitives. Strict http(s)-only allowlist on button hrefs (parser-enforced — `javascript:` + `data:` + scheme-relative rejected). 26 new parser tests. |
+| 3 | `48edc40` | +798 | **Comparison fence** (competitive-matrix Action 2). 2-3 column side-by-side with optional verdict + winner highlight. The cluesxscore primitive — powers all 23 mini-app verdicts, cluesintelligence top-3, Deal Protection offer-vs-offer, Quantara round-axis. 21 new parser tests. |
+| 4 | `1484c6b` | +307 | **`AGENTS.md` at repo root** (competitive-matrix Action 1). 307-line standing-rules synthesis pulled from `~/CLAUDE.md` + canonical docs + locked feedback memories. Every future coding agent reads it first. |
+| 5 | `d0616b9` | +29 −2 | **HANDOFF.md § 2 reconciliation #1** — added Track C (S14-S19) + Track V (V1-V9) + Track G (S19-S20) + Track H S21 + Track B 8d-routes-2 + Track Calendar + full Track O O5c-Lift to the closed list. Caught by archaeology — the doc had been stale for 16 days. |
+| 6 | `ae4fe57` | +66 −1 | **Golden eval cases for the 3 new fences.** Extended `ManifestFence` type (4 → 7 values); 3 new GOLDEN_CASES entries; 3 new FENCE_PATTERNS in golden-runner. Closes the eval validation loop for the system-prompt teaching landed in commits 1-3. |
+| 7 | `b3192c8` | +351 | **`docs/04_ACCESSIBILITY_AUDIT_2026-05-23.md`** (competitive-matrix Action 4 — audit deliverable). 30 findings across 15 files: 18 HIGH (`outline: "none"` overrides) + 10 MEDIUM (9× `transition: all` + 1 div-as-button missing aria-label) + 2 LOW. Phased remediation plan in § 8 of the audit. |
+| 8 | `729d193` | +48 −5 | **HANDOFF.md mid-batch handoff** (later mid-batch — superseded by THIS commit). |
+| 9 | `397835a` | −7 | **WCAG Phase 1 — Quantara cluster.** 7 HIGH-severity `outline: "none"` removals across `IntakeField.tsx` + `IntakeForm.tsx` + `IntakeSupplementaryField.tsx`. The 56-field founder questionnaire now shows the canonical Aurum focus ring under keyboard navigation. 58/58 quantara tests green. |
+| 10 | `f803521` | −5 | **WCAG Phase 1 — Studio cluster.** 5 `outline: "none"` removals across `OliviaChatTab.tsx` + `LibraryTab.tsx` + `PitchCoachTab.tsx`. 35/35 studio tests green. |
+| 11 | `11f6a26` | −5 | **WCAG Phase 1 — Home + Calendar + Valuation clusters.** Final 5 `outline: "none"` removals — `HomeComposer.tsx`, `CommandPalette.tsx`, `EventStatusWidget.tsx`, `CalendarPageClient.tsx`, `ValuationWorkbench.tsx`. All 17 HIGH-severity violations cleared. 149/149 affected tests green. |
+| 12 | `8995c41` | +10 −9 | **WCAG Phase 2 — `transition: all` enumerations + PreMortemPanel aria-label.** 9 sites (ExternalLinkFrame, ValuationWorkbench, GlossaryTooltip, WhyThisPanel, SuggestionChips, PitchCoachTab, OliviaDisplayScreen, GoogleMapView × 2) — each enumerates the actual transition properties read from the surrounding state machine. PreMortemPanel:76 gains the missing aria-label. 178/178 affected tests green. |
+| 13 | `566753e` | +13 −18 | **WCAG Phase 3 — `<div role="button">` → native `<button>`.** 2 sites (DocumentWorkspace + PreMortemPanel) converted to native button with explicit reset of browser defaults (text-left, appearance:none, font:inherit, color:inherit). Test selector updated. 57/57 affected tests green. **All 30 of 30 audit findings remediated.** |
+| 14 | `7ec186e` | +249 | **a11y source-scan regression guard.** `src/lib/evaluation/a11y-source-guard.test.ts` — vitest scan that fails CI if any new `outline: "none"` / `transition: all` / `role="button"` on non-button slips in. Allowlist-sanity check ensures stale allowlist entries fail too. Structured error output cross-references the audit's fix pattern. |
+| 15 | `ded8893` | +329 | **`docs/05_DESIGN_SYSTEM_PACKAGE_SPEC.md`** (competitive-matrix Action 3). The extraction-path spec for `@olivia/design-system` — file structure + token contracts + primitive APIs + theme generator + distribution + 6-consumer migration order + 5 open questions for founder. Pure spec, no code yet. **Closes the final competitive-matrix queue item.** |
+| 16 | (this commit) | — | **HANDOFF.md update** — this very entry. Front-matter refreshed; full 15-commit table; recommended-next-pickup rewritten because the audit-Phase-1 recommendation in the prior version is now stale (those clusters are all closed). |
 
-### What this batch did NOT touch
+### What this mega-batch did NOT touch
 
-- LTM repo (`D:\London-Tech-Map`) — walled-garden boundary preserved. Zero LTM reads or writes in this batch.
-- Prisma schema — no schema changes. Operator migrations from prior batches still owed (§ 4).
-- Cascade orchestrator (Track G S20 surface) — untouched.
-- Agent registry / handlers — untouched.
-- 23 protected paths under `UserCompanyDeadline` — untouched.
-- Track L cluesintelligence — EXCLUDED per founder direction 2026-05-23 until spec lock.
+- **LTM repo** (`D:\London-Tech-Map`) — walled-garden boundary preserved. Zero LTM reads or writes in this batch.
+- **Prisma schema** — no schema changes. Operator migrations from prior batches still owed (§ 4 below).
+- **Cascade orchestrator** (Track G S20 surface) — untouched.
+- **Agent registry / handlers** — untouched.
+- **23 protected paths** under `UserCompanyDeadline` — untouched.
+- **Track L cluesintelligence** — EXCLUDED per founder direction 2026-05-23 until spec lock.
+- **Cross-app integration code** — EXCLUDED per founder direction 2026-05-23 (end-of-day). No white-label tenant work, no LTM-OB sync, no brain-enrichment-engine cross-spoke wiring.
+- **Production code in the design-system package** — Action 3 ships the SPEC only. Code extraction lands in a future session once founder confirms the 5 open questions in `05_DESIGN_SYSTEM_PACKAGE_SPEC.md § 9`.
 
 ### Architectural facts captured this batch
 
 - **`AGENTS.md` at the repo root** is now the canonical first-read for every coding agent. It mirrors and curates `~/CLAUDE.md` + `00_PRODUCT_TRUTH.md` + `01_UI_DESIGN_SYSTEM.md` + the L1-L13 Vercel WIG rules + the locked feedback memories. Future founder rule additions to `~/CLAUDE.md` should mirror here.
 - **The reply-renderer fence count is now 7** — chart / gamma / sources / timeline / map / ui / comparison. The recipe for adding an 8th is documented in `AGENTS.md § 4` (6 steps: parser → renderer → tests → MarkdownReply wire → barrel → system-prompt entry).
-- **WCAG 2.2 AA + APCA foundation is excellent in `src/styles/base.css`.** 10/10 Vercel Web Interface Guidelines primitives correctly implemented. All audit findings are LOCAL component overrides that bypass the foundation — not gaps in the foundation itself.
+- **WCAG 2.2 AA + APCA foundation is excellent in `src/styles/base.css`.** 10/10 Vercel Web Interface Guidelines primitives correctly implemented. All audit findings were LOCAL component overrides that bypassed the foundation — not gaps in the foundation itself. **Phases 1+2+3 fully remediated** (commits 9-13 above).
 - **The 2026 standard is now Apple / IBM / Google / Microsoft** (founder direction 2026-05-23 — IBM added to the prior Apple/Microsoft/Google list). IBM signals expectations around enterprise-grade backend discipline, supply-chain security, and accessibility leadership. The verbatim attestation in every commit + every end-of-turn summary stays the same: *"100% no breaking changes (every public API signature and behavior preserved) and 100% no partial coding (every shipped function fully implemented, tested, and operational end-to-end)."*
+- **The a11y source-scan regression guard** at `src/lib/evaluation/a11y-source-guard.test.ts` (commit `7ec186e`) is the canonical mechanism for preventing the audit findings from sneaking back in. Any new violation fails CI on push with a structured error pointing at the canonical fix pattern. Allowlist entries require both a file-exists check and a pattern-still-present check — stale allowlist entries fail the test.
+- **The `@olivia/design-system` package spec** (`docs/05_DESIGN_SYSTEM_PACKAGE_SPEC.md`) lays out the extraction path for every spoke app to consume the design system from a single source of truth. **Pending founder confirmation on 5 open questions in § 9** before code extraction begins.
+- **The full competitive-matrix § 3 action queue is CLOSED.** Action 1 (AGENTS.md), Action 2 (comparison fence), Action 3 (design-system spec), Action 4 (WCAG audit + remediation) — all done this batch.
 
 ### Recommended next pickup (in priority order)
 
-1. **WCAG audit Phase 1 — Quantara intake cluster** (highest impact). 7 HIGH-severity `outline: "none"` violations on the 56-field founder questionnaire. Sites: `IntakeField.tsx:715,788,933,976`, `IntakeForm.tsx:1017,1056`, `IntakeSupplementaryField.tsx:75`. Fix pattern in audit § 3. ~30 min, one PR.
-2. **WCAG audit Phase 1 — Studio cluster.** 5 sites in `OliviaChatTab.tsx`, `LibraryTab.tsx`, `PitchCoachTab.tsx`. ~25 min, one PR.
-3. **WCAG audit Phase 1 — Home + Calendar cluster + Valuation cluster.** ~30 min total, 2 PRs.
-4. **ESLint custom rules** to prevent regression on `outline: "none"` + `transition: all` inline. ~30 min total.
-5. **Competitive-matrix Action 3** — `@olivia/design-system` package spec. 1 session, doc deliverable.
+Founder direction 2026-05-23 end-of-day: **strictly OB-internal work, no cross-app integration, no Track L cluesintelligence.** With that constraint:
 
-Do NOT start Track L cluesintelligence without explicit founder authorisation — the questionnaire / Bayesian / persona schema is actively being revised by the team. Starting now risks rework.
+1. **TD-1 cleanup** — `src/lib/agents/impl/g2-225-video-enrichment.ts` bypasses `callLLM` with a raw `fetch("https://api.anthropic.com/v1/messages")`. Per `~/CLAUDE.md` § Architecture Standards Law 3, every LLM call goes through `callLLM`. This is the current critical tech-debt drain item per the canonical doc. **~1 session, single-file refactor, OB-internal.**
+2. **Renderer-level tests for the 7 reply-renderer fences** — today the parsers are tested (110 cases green) but the visual renderers (ChartFromSpec, GammaCard, CitationStrip, TimelineFromSpec, MapManifest, UIManifest, ComparisonView) don't have jsdom-mount tests. Adding mount + ARIA assertions catches UI regressions cheaply. **~1 session, additive test work.**
+3. **Operator-action prep for S30 production deploy** — walk `docs/RUNBOOK.md`, write a precise pre-deploy checklist for the founder covering the 11 owed SQL migrations + Vercel env vars + smoke-test plan. The actual deploy is operator action, not Claude work, but Claude can prep. **~1 session, doc deliverable.**
+4. **Bundle-size audit** — Next.js + recharts + mapbox-gl + framer-motion + @radix-ui — total client bundle should be analysed; lazy-load opportunities surfaced. Performance is part of the 2026 standard (Google INP < 200ms target). **~1 session, OB-internal analysis + remediation.**
+5. **More golden eval cases** — beyond the 3 new ones added in commit `ae4fe57`, the spoke router + vertical adapters + the 7 fences have additional edge cases worth covering. **~1 session, additive eval coverage.**
+
+What's BLOCKED / EXCLUDED:
+- **Track L cluesintelligence** (~10 sessions, FLAGSHIP) — EXCLUDED until founder signals the questionnaire / Bayesian / persona spec is locked.
+- **Track H S22–S23** (4 remaining LTM handlers — G1-005 / G1-034 / G1-036 / G1-050) — BLOCKED by walled-garden direction. Needs LTM-side v1 API extension OR bridge build-out.
+- **`@olivia/design-system` code extraction** — pending founder confirmation on the 5 open questions in `05_DESIGN_SYSTEM_PACKAGE_SPEC.md § 9` (monorepo vs separate repo, private vs public registry, etc.).
+- **Phase 4 cascade injector** (Track G follow-up) — DEFERRED until consumer surface lands; Track L was the leading candidate before exclusion.
 
 ---
 
