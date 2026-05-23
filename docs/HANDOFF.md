@@ -1,13 +1,63 @@
 # Olivia Brain — Handoff to next agent
 
-> **Last updated:** 2026-05-23 (end-of-day) — **Mega-batch: Track N closed + AGENTS.md + WCAG audit + Phases 1+2+3 fully remediated + regression guard + design-system spec.** **15 commits + this handoff commit since `40c215c` (Track G S20 close).** Every action in `docs/02_COMPETITIVE_FEATURE_MATRIX.md § 3` queue (Actions 1 + 2 + 3 + 4) is **CLOSED**.
-> **Working tree:** clean on `main`. `npx tsc --noEmit --incremental` clean on touched files; full sweep deferred to Vercel deploy. **>240 vitest cases green** (110 reply-renderer + 58 quantara + 35 studio + 33 valuation + 4 a11y guard + golden cases + many adjacent suites).
-> **Latest HEAD:** `ded8893` before this handoff commit; will move forward when this push lands.
-> **Status:** WCAG audit fully closed end-to-end (30 of 30 findings remediated + regression guard installed at `src/lib/evaluation/a11y-source-guard.test.ts`). Track N fully closed (7 fences). All four competitive-matrix actions done. Founder direction 2026-05-23 (locked): **work on anything EXCEPT Track L cluesintelligence AND anything that touches another app (no LTM integration, no white-label tenant work, no cross-app brain enrichment).** Strictly OB-internal work until further notice.
+> **Last updated:** 2026-05-23 (mega-batch close, 25 commits) — **Track N closed + AGENTS.md drop + WCAG audit Phases 1+2+3 + regression guard + design-system spec + Architecture Standards Law 3 fully closed (5/5 raw-fetch sites + new `callLLMWithTools` API) + reply-renderer testing triangle complete (parser + mount + integration for 7/7 fences) + streaming chat route + intent classifier + cascade orchestrator branch coverage all tested.**
 >
-> **🤝 NEXT AGENT — READ THE INLINE HANDOFF IN CHAT BEFORE ANYTHING ELSE.** The chat-pasted version of this handoff carries the full mandatory-reading-order + 2026 Apple/IBM/Google/Microsoft attestation + Stop-Means-Stop override + § 0 verify commands. The file version below has the cumulative cross-batch detail.
+> **🤝 GITHUB REPO:** **https://github.com/johndesautels1/Olivia-Brain** — clone via `git clone https://github.com/johndesautels1/Olivia-Brain.git "D:\Olivia Brain"`. Branch: `main`. Vercel auto-deploys from main in ~90s with no staging gate.
+>
+> **Working tree:** clean on `main`. `npx tsc --noEmit --incremental` clean on touched files; full sweep deferred to Vercel deploy. **>490 vitest cases green** across reply-renderer triangle (159) + orchestration (106) + agents + LLM + callLLMWithTools (33) + olivia/chat (sync + stream = 30) + valuation routes (11) + a11y source-scan guard (4) + a stack of pre-existing suites.
+>
+> **Latest HEAD:** `c408e20` before this handoff commit (cascade orchestrator gap tests); will move forward when this push lands.
+>
+> **Status:** Every action in `docs/02_COMPETITIVE_FEATURE_MATRIX.md § 3` queue (Actions 1 + 2 + 3 + 4) CLOSED. All 30 WCAG audit findings remediated + regression guard installed at `src/lib/evaluation/a11y-source-guard.test.ts`. All 5 Architecture Standards Law 3 raw-fetch violations closed (`callLLM` covers text-only, new `callLLMWithTools` covers agentic Anthropic tool-loop). Reply-renderer testing triangle complete. Critical streaming chat route + intent classifier + cascade orchestrator branches all have explicit test coverage.
+>
+> **🤝 NEXT AGENT — READ THE INLINE HANDOFF IN CHAT BEFORE ANYTHING ELSE.** The chat-pasted version of this handoff carries the full mandatory-reading-order (with line counts), the verbatim Google/IBM/Apple/Microsoft 2026 standards table, the Stop-Means-Stop override, the § 0 verify commands, the 11 owed SQL migrations, and the explicit EXCLUDED/BLOCKED list. The file version below has the cumulative cross-batch detail.
+>
+> **Founder direction (locked 2026-05-23 end-of-day, verbatim):** "stay out of ltm" + "we are not doing anything that touches another app" + "must meet apple microsoft google ibm 2026 leading coding standards" + "no breaking changes" + "test end to end" + "read every line." Strictly OB-internal work; no cross-app integration; no Track L cluesintelligence until founder unlocks.
 >
 > **Prior batches (2026-05-17 + 2026-05-11) summary preserved below.**
+
+### Today's mega-batch (2026-05-23 — 25 commits + this handoff since `40c215c`)
+
+Full 25-commit table preserved below from the prior in-batch refresh — see "Today's mega-batch (2026-05-23 — 15 commits since `40c215c`)" further down. The post-15-commit tail added 10 more commits in this order:
+
+| # | Commit | Concern |
+|---|---|---|
+| 16 | `bc562d8` | HANDOFF.md refresh #2 (the 15-commit reconciliation) |
+| 17 | `b52f3a1` | refactor(valuation): score-rubric → `callLLM` — Law 3 cleanup 1/5 |
+| 18 | `b24a326` | refactor(calendar): 3 raw-fetch sites → `callLLM` — Law 3 cleanup 2-4/5 |
+| 19 | `bcd5692` | feat(agents/llm): **`callLLMWithTools`** new API + Law 3 closure 5/5 |
+| 20 | `e90f517` | test(reply-renderer): mount tests for 6 of 7 fences |
+| 21 | `b809bbd` | test(reply-renderer): ChartFromSpec mount tests + ResizeObserver shim — 7/7 fences |
+| 22 | `98d987d` | test(reply-renderer): MarkdownReply integration tests — triangle complete |
+| 23 | `b702fa8` | test(api/olivia): streaming chat route tests — zero-coverage gap closed |
+| 24 | `e35ed77` | test(orchestration): inferIntent classifier tests — zero-coverage gap closed |
+| 25 | `c408e20` | test(cascade): orchestrator gap tests (Tavily / Companies House / mixed Phase 1 / readyForInjection / lastCollectionDate) |
+| 26 | (this commit) | **HANDOFF.md final refresh** — this very entry |
+
+### Architecturally closed this mega-batch — full summary
+
+  - ✅ All 4 competitive-matrix actions (1+2+3+4 from `docs/02_COMPETITIVE_FEATURE_MATRIX.md § 3`)
+  - ✅ All 30 WCAG audit findings (17 HIGH `outline:"none"` + 10 MEDIUM 9× `transition:all` + 1× missing aria-label + 2 LOW `<div role="button">` → native `<button>`)
+  - ✅ A11y source-scan regression guard at `src/lib/evaluation/a11y-source-guard.test.ts`
+  - ✅ Architecture Standards Law 3 — all 5 raw-fetch-to-LLM violations across `src/app/api/valuation/...` + `src/lib/calendar/...` closed; new `callLLMWithTools` API added in `src/lib/agents/llm.ts` for agentic tool-loop calls
+  - ✅ Reply-renderer testing triangle — parser tests (110) + mount tests (29) + integration tests (20) for all 7 fence languages (chart / gamma / sources / timeline / map / ui / comparison)
+  - ✅ Critical zero-coverage paths now covered: streaming chat route, intent classifier, cascade orchestrator branches (Tavily / Companies House / mixed Phase 1 / readyForInjection invariant / lastCollectionDate threading)
+
+### Recommended next pickups (founder direction: strictly OB-internal, no LTM, no cross-app, no Track L)
+
+  1. **More olivia/* route tests** — 22 routes still untested (calendar entries / prep-tasks / attendees / analytics / sync / voice sub-routes / call sub-routes / presentation). ~3-4 tests per route, single-session per route.
+  2. **Architecture Standards Law audits** — Law 5 (`dataSources` metadata on agents), Law 6 (regulatory constants in `src/lib/regulatory-config/` with `validUntil`), Law 8 (schema-first at every boundary). Surface findings + remediate per founder approval.
+  3. **S30 deploy prep doc** — walk `docs/RUNBOOK.md`, write a precise pre-deploy checklist (11 owed SQL migrations + Vercel env vars + smoke-test plan).
+  4. **`callLLMWithTools` provider expansion** — currently Anthropic-only. OpenAI + Gemini tool-calling extension when a consumer surface needs it.
+
+### EXCLUDED / BLOCKED
+
+  - **Track L cluesintelligence** (~10 sessions, FLAGSHIP) — EXCLUDED until founder unlocks
+  - **Track H S22-S23** (4 remaining LTM handlers) — BLOCKED by walled-garden
+  - **`@olivia/design-system` code extraction** — pending founder confirmation on 5 open questions in `05_DESIGN_SYSTEM_PACKAGE_SPEC.md § 9`
+  - **Phase 4 cascade injector** — DEFERRED until consumer surface lands
+
+---
 
 ### Today's mega-batch (2026-05-23 — 15 commits since `40c215c`)
 
