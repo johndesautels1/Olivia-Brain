@@ -32,6 +32,8 @@ import { MapManifest } from "./MapManifest";
 import { parseMapSpec } from "./map-spec";
 import { UIManifest } from "./UIManifest";
 import { parseUISpec } from "./ui-spec";
+import { ComparisonView } from "./ComparisonView";
+import { parseComparisonSpec } from "./comparison-spec";
 
 export interface MarkdownReplyProps {
   text: string;
@@ -165,6 +167,26 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
             }
             return (
               <CodeBlock raw={raw} lang={lang} note={`Invalid ui spec: ${parsed.error}`} />
+            );
+          }
+
+          /* Comparison manifest — side-by-side 2-3 column comparison
+           * with optional verdict + winner highlight. Powers all 23
+           * cluesxscore mini-app verdicts, cluesintelligence top-3
+           * city renders, Deal Protection offer-vs-offer, Quantara
+           * round-axis trajectory comparisons. */
+          if (lang === "comparison") {
+            const parsed = parseComparisonSpec(raw);
+            if (parsed.ok) {
+              return (
+                <ComparisonView
+                  spec={parsed.spec}
+                  maxWidth={Math.max(maxChartWidth, 640)}
+                />
+              );
+            }
+            return (
+              <CodeBlock raw={raw} lang={lang} note={`Invalid comparison spec: ${parsed.error}`} />
             );
           }
 

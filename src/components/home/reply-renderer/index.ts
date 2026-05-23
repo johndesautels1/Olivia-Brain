@@ -78,3 +78,17 @@ export {
   type UITone,
   type UIParseResult,
 } from "./ui-spec";
+export {
+  ComparisonView,
+  type ComparisonViewProps,
+} from "./ComparisonView";
+export {
+  parseComparisonSpec,
+  resolveColumnAccent,
+  MIN_COLUMNS,
+  MAX_COLUMNS,
+  type ComparisonSpec,
+  type ComparisonColumn,
+  type ComparisonColorToken,
+  type ComparisonParseResult,
+} from "./comparison-spec";

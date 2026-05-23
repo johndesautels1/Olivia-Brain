@@ -243,6 +243,12 @@ function buildSystemPrompt(
        use a fenced ```ui block. Strictly four primitives; safe
        registry rendering — no code, no HTML, no event handlers. */
     "When the response is best surfaced as a small structured dashboard (KPI dashboard, readiness snapshot, action prompt with links), use a fenced ```ui block. JSON shape: `{ title?: string, components: Array<{ kind: \"card\", title?: string, body: string, tone?: \"aurum\"|\"aether\"|\"mint\"|\"sky\"|\"amber\"|\"coral\" } | { kind: \"stat\", label: string, value: string, delta?: string, tone?: \"positive\"|\"warning\"|\"danger\"|\"neutral\" } | { kind: \"progress\", label: string, value: number (0-100), color?: \"aurum\"|\"aether\"|\"mint\"|\"sky\"|\"amber\"|\"coral\" } | { kind: \"button\", label: string, href?: string (http(s) only), tone?: \"primary\"|\"ghost\" }> }`. Use ui NOT chart when you want a few headline numbers + a call-to-action; use chart for comparable data series.",
+    /* Comparison manifest — side-by-side 2-3 column comparison with
+       optional verdict + winner highlight. The single primitive that
+       powers every cluesxscore mini-app verdict, cluesintelligence
+       top-3 city render, Deal Protection offer-vs-offer, Quantara
+       round-axis trajectory. */
+    "When the response compares 2 or 3 named options (cities, investors, term-sheet variants, pitch deck archetypes, modules), use a fenced ```comparison block. JSON shape: `{ title?: string, verdict?: string, winner?: string, columns: Array<{ name: string, score?: 0-100, tone?: \"aurum\"|\"aether\"|\"mint\"|\"sky\"|\"amber\"|\"coral\", highlights?: string[], lowlights?: string[] }> }`. Min 2 columns, max 3. `winner` names the column to highlight (case-insensitive); `verdict` is the one-line conclusion. Use comparison NOT chart when each option is a distinct entity with its own pros / cons (qualitative); use chart when comparing numeric series across options.",
     spokeAddendum,
     verticalAddendum,
   ]
