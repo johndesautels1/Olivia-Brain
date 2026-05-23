@@ -20,12 +20,30 @@
  *   build time; in vitest's node environment that boundary doesn't
  *   apply, and the default export of `server-only/index.js` throws
  *   unconditionally on load.
+ *
+ * - Provides a no-op `ResizeObserver` shim because jsdom does not
+ *   implement it. Recharts (and any library that resizes responsively)
+ *   throws `ReferenceError: ResizeObserver is not defined` on mount
+ *   without this. The shim is intentionally inert — render-time chart
+ *   sizing isn't exercised in tests; we test dispatch + accessibility,
+ *   not pixel layout.
  */
 
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 
 vi.mock("server-only", () => ({}));
+
+class NoopResizeObserver {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+
+if (typeof globalThis !== "undefined" && !("ResizeObserver" in globalThis)) {
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  (globalThis as any).ResizeObserver = NoopResizeObserver;
+}
 
 afterEach(() => {
   cleanup();
