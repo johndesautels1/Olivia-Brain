@@ -25,7 +25,51 @@
 
 import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { createLiveAvatarHandle } from "@/lib/avatar";
+import type { LiveAvatarPersonaId } from "@/lib/avatar/personas";
 import type { AvatarState, LiveAvatarHandle, LiveAvatarProvider } from "@/lib/avatar/types";
+
+/**
+ * Per-persona display label set. The component is persona-aware as of
+ * the 2026-05-24 LiveAvatar persona refactor — Cristiano mounts the
+ * same component as Olivia with `personaId="cristiano"`. All visible
+ * strings flow through this table so adding a third persona is a
+ * one-row diff (and TypeScript's `Record<LiveAvatarPersonaId, ...>`
+ * makes the build fail if you forget). i18n upgrade later — for now
+ * all strings English per the product surface.
+ */
+interface PersonaLabels {
+  /** Display name used in the speaking indicator. */
+  name: string;
+  /** Connect button copy. */
+  connectButton: string;
+  /** Connecting spinner copy. */
+  connectingText: string;
+  /** Help text under the connect button. */
+  helpText: string;
+  /** Speaking indicator copy. */
+  speakingText: string;
+  /** Recording filename prefix (used for the downloaded .webm). */
+  recordingFilenamePrefix: string;
+}
+
+const PERSONA_LABELS: Record<LiveAvatarPersonaId, PersonaLabels> = {
+  olivia: {
+    name: "Olivia",
+    connectButton: "Start Live Avatar",
+    connectingText: "Connecting to Olivia’s avatar…",
+    helpText: "Connect to see Olivia respond in real-time",
+    speakingText: "Olivia is speaking",
+    recordingFilenamePrefix: "olivia-session",
+  },
+  cristiano: {
+    name: "Cristiano",
+    connectButton: "Summon the Judge",
+    connectingText: "The Judge is taking the bench…",
+    helpText: "Connect to hear Cristiano’s verdict",
+    speakingText: "Cristiano delivers the verdict",
+    recordingFilenamePrefix: "cristiano-session",
+  },
+};
 
 // Type for HTML elements with captureStream - use local assertions instead of global declarations
 interface HTMLElementWithCaptureStream {
@@ -79,6 +123,17 @@ interface Props {
    * land in a follow-up session.
    */
   provider?: LiveAvatarProvider;
+  /**
+   * Persona to provision the LiveAvatar session for. Defaults to
+   * "olivia" so existing call sites keep their behavior unchanged.
+   * Set to "cristiano" for the Judge verdict surfaces — same wire
+   * pipeline, different LiveAvatar avatar id + ElevenLabs voice id
+   * (resolved server-side by `src/lib/avatar/personas.ts`).
+   *
+   * Visual strings (connect button, status indicators, recording
+   * filename) swap to the persona's label set automatically.
+   */
+  personaId?: LiveAvatarPersonaId;
 }
 
 /** Recording state machine */
@@ -164,15 +219,18 @@ function getSupportedMimeType(): string | null {
 }
 
 /**
- * Generate a timestamped filename for the recording
+ * Generate a timestamped filename for the recording. Prefix varies
+ * per persona ("olivia-session-…webm" / "cristiano-session-…webm")
+ * so downloads from a multi-persona session don't collide and the
+ * filename tells you which avatar you captured.
  */
-function generateRecordingFilename(): string {
+function generateRecordingFilename(prefix: string): string {
   const now = new Date();
   const timestamp = now.toISOString()
     .replace(/[:.]/g, "-")
     .replace("T", "_")
     .slice(0, 19);
-  return `olivia-session-${timestamp}.webm`;
+  return `${prefix}-${timestamp}.webm`;
 }
 
 export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(function OliviaVideoAvatar({
@@ -186,7 +244,9 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
   adminKey,
   onSpeakError,
   provider = "liveavatar",
+  personaId = "olivia",
 }, ref) {
+  const labels = PERSONA_LABELS[personaId];
   // ── Avatar state ──
   const [state, setStateInternal] = useState<AvatarState>("disconnected");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -287,7 +347,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
   // parent re-rendering with new closures doesn't tear down the
   // subscription.
   useEffect(() => {
-    const handle = createLiveAvatarHandle({ provider, adminKey });
+    const handle = createLiveAvatarHandle({ provider, adminKey, personaId });
     handleRef.current = handle;
 
     const unsubState = handle.on("stateChange", (next) => {
@@ -326,7 +386,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
       handle.disconnect();
       handleRef.current = null;
     };
-  }, [provider, adminKey]);
+  }, [provider, adminKey, personaId]);
 
   const disconnectSession = useCallback(() => {
     // Recording state machine cleanup mirrors the pre-lift behavior:
@@ -603,7 +663,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
     }
 
     try {
-      const filename = generateRecordingFilename();
+      const filename = generateRecordingFilename(labels.recordingFilenamePrefix);
       const link = document.createElement("a");
       link.href = recordingUrlRef.current;
       link.download = filename;
@@ -619,7 +679,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
       console.error("[Recording] Failed to trigger download:", err);
       return false;
     }
-  }, [recordingState]);
+  }, [recordingState, labels.recordingFilenamePrefix]);
 
   // Expose control methods via ref
   useImperativeHandle(ref, () => ({
@@ -737,14 +797,14 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
                     cursor: "pointer",
                   }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                     <polygon points="23 7 16 12 23 17 23 7" />
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                   </svg>
-                  Start Live Avatar
+                  {labels.connectButton}
                 </button>
                 <p className="text-xs text-center px-4" style={{ fontSize: "0.75rem", textAlign: "center", padding: "0 16px", color: "var(--muted)" }}>
-                  Connect to see Olivia respond in real-time
+                  {labels.helpText}
                 </p>
               </>
             )}
@@ -763,7 +823,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
                   }}
                 />
                 <p className="text-xs" style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
-                  Connecting to Olivia&apos;s avatar...
+                  {labels.connectingText}
                 </p>
               </>
             )}
@@ -819,7 +879,7 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
               style={{ height: 8, width: 8, borderRadius: "50%", background: "#C4A96A", animation: "olivia-pulse 1.5s ease-in-out infinite" }}
             />
             <span className="text-[10px] font-medium" style={{ fontSize: 10, fontWeight: 500, color: "#C4A96A" }}>
-              Olivia is speaking
+              {labels.speakingText}
             </span>
           </div>
         )}
