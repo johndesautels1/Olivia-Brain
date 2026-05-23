@@ -237,6 +237,12 @@ function buildSystemPrompt(
        interactive Mapbox view with markers, auto-fit bounds, and
        optional fly-to animation. */
     "When the response references geographic locations (relocation candidate cities, a single recommended city/town, London tech districts, transit-relevant places), use a fenced ```map block. JSON shape: `{ title?: string, kind?: \"cities\"|\"pin\"|\"districts\", pins: [{ name: string, lat: number, lng: number, score?: 0-100, detail?: string, color?: \"aurum\"|\"aether\"|\"mint\"|\"sky\"|\"amber\"|\"coral\" }], center?: [lng, lat], zoom?: 0-22, pitch?: 0-85, bearing?: 0-360, flyTo?: string }`. Use `kind: \"cities\"` for top-N comparisons (auto-fits bounds), `kind: \"pin\"` for a single candidate (tilts the camera), `kind: \"districts\"` for London tech districts. Use `flyTo` (pin name) when you want the camera to animate to one specific location at mount.",
+    /* Track N N4-foundations — generative UI. When the response
+       benefits from a structured card / stat / progress / button
+       layout (readiness dashboards, KPI summaries, action prompts),
+       use a fenced ```ui block. Strictly four primitives; safe
+       registry rendering — no code, no HTML, no event handlers. */
+    "When the response is best surfaced as a small structured dashboard (KPI dashboard, readiness snapshot, action prompt with links), use a fenced ```ui block. JSON shape: `{ title?: string, components: Array<{ kind: \"card\", title?: string, body: string, tone?: \"aurum\"|\"aether\"|\"mint\"|\"sky\"|\"amber\"|\"coral\" } | { kind: \"stat\", label: string, value: string, delta?: string, tone?: \"positive\"|\"warning\"|\"danger\"|\"neutral\" } | { kind: \"progress\", label: string, value: number (0-100), color?: \"aurum\"|\"aether\"|\"mint\"|\"sky\"|\"amber\"|\"coral\" } | { kind: \"button\", label: string, href?: string (http(s) only), tone?: \"primary\"|\"ghost\" }> }`. Use ui NOT chart when you want a few headline numbers + a call-to-action; use chart for comparable data series.",
     spokeAddendum,
     verticalAddendum,
   ]

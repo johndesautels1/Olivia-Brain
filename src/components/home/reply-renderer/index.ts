@@ -58,3 +58,23 @@ export {
   type MapColorToken,
   type MapParseResult,
 } from "./map-spec";
+export {
+  UIManifest,
+  type UIManifestProps,
+} from "./UIManifest";
+export {
+  parseUISpec,
+  clampProgress,
+  resolveTokenColor,
+  resolveTokenMute,
+  resolveTone,
+  type UISpec,
+  type UIComponent,
+  type UICard,
+  type UIStat,
+  type UIProgress,
+  type UIButton,
+  type UIColorToken,
+  type UITone,
+  type UIParseResult,
+} from "./ui-spec";

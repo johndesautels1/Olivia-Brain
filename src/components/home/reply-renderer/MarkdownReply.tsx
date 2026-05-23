@@ -30,6 +30,8 @@ import { CitationStrip, parseCitations } from "./CitationStrip";
 import { TimelineFromSpec, parseTimelineSpec } from "./TimelineFromSpec";
 import { MapManifest } from "./MapManifest";
 import { parseMapSpec } from "./map-spec";
+import { UIManifest } from "./UIManifest";
+import { parseUISpec } from "./ui-spec";
 
 export interface MarkdownReplyProps {
   text: string;
@@ -149,6 +151,20 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
             }
             return (
               <CodeBlock raw={raw} lang={lang} note={`Invalid map spec: ${parsed.error}`} />
+            );
+          }
+
+          /* Generative UI manifest (Track N N4-foundations) — card /
+           * stat / progress / button primitives rendered through a
+           * fixed registry. No code execution; the LLM emits a JSON
+           * description of components and props only. */
+          if (lang === "ui") {
+            const parsed = parseUISpec(raw);
+            if (parsed.ok) {
+              return <UIManifest spec={parsed.spec} maxWidth={maxChartWidth} />;
+            }
+            return (
+              <CodeBlock raw={raw} lang={lang} note={`Invalid ui spec: ${parsed.error}`} />
             );
           }
 
