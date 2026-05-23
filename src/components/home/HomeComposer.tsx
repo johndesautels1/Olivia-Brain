@@ -299,7 +299,6 @@ export function HomeComposer({
         style={{
           background: "transparent",
           border: "none",
-          outline: "none",
           color: "var(--fg-primary)",
           fontFamily: "var(--font-sans)",
           fontSize: "var(--text-md)",

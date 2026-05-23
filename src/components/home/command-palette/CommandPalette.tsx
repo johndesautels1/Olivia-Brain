@@ -186,7 +186,6 @@ export function CommandPalette({ open, onClose, commands }: CommandPaletteProps)
               flex: 1,
               background: "transparent",
               border: "none",
-              outline: "none",
               color: "var(--fg-primary)",
               fontFamily: "var(--font-sans)",
               fontSize: "var(--text-md)",

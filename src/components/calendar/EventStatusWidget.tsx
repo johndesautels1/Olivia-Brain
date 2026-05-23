@@ -392,7 +392,6 @@ export function EventStatusWidget({
                   background: "rgba(0,0,0,0.3)",
                   color: "#ffffff",
                   fontSize: "0.75rem",
-                  outline: "none",
                 }}
               />
 

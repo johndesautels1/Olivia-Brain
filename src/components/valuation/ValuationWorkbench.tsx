@@ -1567,7 +1567,6 @@ export function ValuationWorkbench({ subjectId: propSubjectId, latestRunId: prop
                   style={{
                     padding: '0',
                     margin: isActive ? '0' : '0',
-                    outline: 'none',
                   }}
                 >
                   {/* The tab face — this is the raised 3D surface */}

@@ -1154,7 +1154,6 @@ export function CalendarPageClient() {
                 background: "rgba(255,255,255,0.05)",
                 border: emailError ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(196,169,106,0.25)",
                 color: "white",
-                outline: "none",
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && emailAddress.trim()) handleEmailTranscript();
