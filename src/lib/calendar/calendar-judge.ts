@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { z } from "zod";
+import { callLLM } from "@/lib/agents/llm";
 
 // ─── Types ───
 
@@ -78,39 +79,25 @@ const judgeResultSchema = z.object({
 });
 
 // ─── Opus API Call ───
+// Routes through `callLLM` per Architecture Standards Law 3
+// (`~/CLAUDE.md` + `AGENTS.md § 3.2`). Inherits cost/token tracking,
+// structured logging, retry, and graceful-degrade-to-null semantics.
 
 async function callOpus(systemPrompt: string, userPrompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
-  }
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-opus-4-7",
-      max_tokens: 8192,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-    signal: AbortSignal.timeout(120_000), // 120s timeout for Opus calls
+  const result = await callLLM({
+    model: "claude-opus-4-7",
+    systemPrompt,
+    userPrompt,
+    temperature: 1.0, // Preserve the implicit Anthropic default from the prior raw-fetch call
+    maxTokens: 8192,
+    timeoutMs: 120_000, // 120s timeout for Opus judge calls
   });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Anthropic Opus API error ${response.status}: ${errText}`);
+  if (!result) {
+    /* `callLLM` returns null on missing API key OR call failure.
+     * Preserve the prior raw-fetch contract — callers expect a throw. */
+    throw new Error("Opus judge call failed (missing key or upstream error — see callLLM logs)");
   }
-
-  const data = await response.json();
-  const textBlocks = (data.content || []).filter(
-    (block: { type: string }) => block.type === "text"
-  );
-  return textBlocks.map((b: { text: string }) => b.text).join("\n");
+  return result.text;
 }
 
 // ─── JSON Extraction ───

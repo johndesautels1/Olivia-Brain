@@ -5,6 +5,7 @@
 // =============================================================================
 import prisma from "@/lib/db/client";
 import { buildBehaviorAnalysisPrompt } from "./olivia-prompts";
+import { callLLM } from "@/lib/agents/llm";
 
 const MINIMUM_DATA_POINTS = 20; // Threshold before pattern analysis activates
 const CONFIDENCE_GROWTH_RATE = 0.02; // Per accepted suggestion
@@ -422,32 +423,21 @@ export async function generateWeekSummary(
     dismissedSuggestions: `Prep completion: ${digest.prepCompletion}%`,
   });
 
-  // Use Anthropic Sonnet for the summary
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return "Olivia needs an API key to generate summaries.";
+  // Route through `callLLM` per Architecture Standards Law 3.
+  // The wrapper already swallows missing-key + upstream-error into a
+  // null return, matching the prior code's graceful-degrade semantics.
+  const result = await callLLM({
+    model: "claude-sonnet-4-6",
+    systemPrompt: "You generate concise weekly behavior summaries for a founder using Olivia's calendar.",
+    userPrompt: prompt,
+    temperature: 1.0, // Preserve the implicit Anthropic default from the prior raw-fetch call
+    maxTokens: 500,
+    timeoutMs: 30_000, // 30s timeout for short summary
+  });
+  if (!result) return "Could not generate summary at this time.";
+  const summary = result.text || "No summary generated.";
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 500,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(30_000), // 30s timeout for short summary
-    });
-
-    if (!res.ok) return "Could not generate summary at this time.";
-
-    const data = await res.json();
-    const summary =
-      data.content?.[0]?.type === "text" ? data.content[0].text : "No summary generated.";
-
     // Save to FounderWeek
     const start = weekStartDate || getWeekStart(new Date());
     await prisma.founderWeek.update({
@@ -462,7 +452,9 @@ export async function generateWeekSummary(
 
     return summary;
   } catch {
-    return "Could not generate summary at this time.";
+    /* If the DB write fails we still return the summary text so the
+     * caller can render it — same fail-soft posture as the prior code. */
+    return summary;
   }
 }
 

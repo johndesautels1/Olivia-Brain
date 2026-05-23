@@ -1,7 +1,22 @@
 // =============================================================================
 // AGENTIC CALENDAR — Olivia Intelligence Engine
 // NLP parsing, prep task generation, proactive suggestions.
-// Uses existing cascade providers (Anthropic Sonnet/Opus) for LLM calls.
+//
+// LLM call discipline:
+//   - `callSonnet`            routes through `callLLM` (canonical wrapper)
+//                             — gets free cost/token tracking + retry +
+//                             graceful degrade + provider abstraction.
+//   - `callSonnetWithTools`   uses a raw fetch to Anthropic Messages
+//                             because `callLLM` does not yet support
+//                             arbitrary tool definitions (only the opt-in
+//                             `enableWebSearch` flag). When the founder
+//                             approves extending `callLLM` with a
+//                             `tools?: AnthropicTool[]` parameter +
+//                             iterative tool-loop helper, this function
+//                             converts via the same pattern. Tracked as
+//                             open architectural work in
+//                             `docs/HANDOFF.md § Recommended next pickup`.
+//
 // NOW WITH FULL TOOL ACCESS — Olivia can search programs, events, orgs, etc.
 // =============================================================================
 
@@ -9,6 +24,7 @@ import { buildNlpParsePrompt, buildPrepPlanPrompt, buildProactiveSuggestionPromp
 import { getCategoryConfig, isOliviaPrepEnabled } from "./event-categories";
 import { nlpParseResultSchema, prepPlanResultSchema, proactiveSuggestionsArraySchema, dailyBriefResultSchema, memoryExtractionResultSchema } from "./olivia-schemas";
 import { OLIVIA_TOOLS, executeOliviaTool } from "@/lib/olivia/tools";
+import { callLLM } from "@/lib/agents/llm";
 
 // ─── Types ───
 
@@ -80,44 +96,26 @@ export interface ProactiveSuggestion {
 }
 
 // ─── LLM Call Helper ───
-// Calls Anthropic Sonnet directly for calendar intelligence tasks.
-// Uses the same env var pattern as the cascade providers.
+// Routes through `callLLM` (the canonical wrapper) for calendar
+// intelligence tasks. Inherits cost/token tracking, structured logging,
+// retry, and graceful-degrade-to-null semantics from the wrapper.
 
 async function callSonnet(systemPrompt: string, userPrompt: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
-  }
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      temperature: 0.4, // Lower temperature for more consistent, less hallucinatory responses
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-    signal: AbortSignal.timeout(60_000), // 60s timeout for Sonnet calls
+  const result = await callLLM({
+    model: "claude-sonnet-4-6",
+    systemPrompt,
+    userPrompt,
+    temperature: 0.4, // Lower temperature for more consistent, less hallucinatory responses
+    maxTokens: 4096,
+    timeoutMs: 60_000, // 60s timeout for Sonnet calls
   });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Anthropic API error ${response.status}: ${errText}`);
+  if (!result) {
+    /* `callLLM` returns null on missing API key OR call failure. Both
+     * surface here as an Error to preserve the prior raw-fetch
+     * contract — callers wrap this in try/catch. */
+    throw new Error("Sonnet call failed (missing key or upstream error — see callLLM logs)");
   }
-
-  const data = await response.json();
-
-  // Extract text from content blocks
-  const textBlocks = (data.content || []).filter(
-    (block: { type: string }) => block.type === "text"
-  );
-  return textBlocks.map((b: { text: string }) => b.text).join("\n");
+  return result.text;
 }
 
 // ─── Agentic LLM Call with Tools ───
