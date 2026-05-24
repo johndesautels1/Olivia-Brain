@@ -1358,6 +1358,62 @@ model OliviaPresentation {
   @@map("olivia_presentations")
 }
 
+/// Cristiano verdict library — federates judge verdicts from OB itself
+/// (`/api/cristiano/judge`) and from linked apps via gateway push
+/// (`/api/gateway/cristiano/verdicts`). Powers the three Cristiano
+/// dashboard sub-tabs (Ask Cristiano / Verdict Library / Gateway Inbox).
+///
+/// See `src/lib/cristiano/types.ts` for the `CristianoVerdictV1`
+/// discriminated-union envelope. Idempotency is enforced by
+/// `(userId, requestHash)` — re-firing the same request for the same
+/// user returns the existing verdict without spending a new LLM call.
+///
+/// Privacy: NEVER projected onto any public surface (mirrors the
+/// `UserCompanyDeadline` privacy contract in `~/CLAUDE.md`). Verdicts
+/// belong to the requesting user — `userId` is the canonical owner key.
+model CristianoVerdict {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String   @db.Uuid
+
+  // Verdict identity
+  kind                String   // "startup_match" | "city_compare" | "freeform"
+  sourceApp           String   @default("ob")
+  externalId          String?  // ID from source app for dedup
+
+  // Request payload (kept for replay)
+  requestPayload      Json
+  requestHash         String   @db.Char(64) // SHA256 hex — see lib/cristiano/hash.ts
+
+  // Verdict response
+  verdictBody         Json
+  spokenScript        String   @db.Text
+  verdictTitle        String
+
+  // Presentation artifacts
+  preRenderedVideoUrl String?
+  thumbnailUrl        String?
+  durationSeconds     Int?
+
+  // Status + tracing
+  status              String   @default("ready") // "pending" | "ready" | "failed"
+  errorMessage        String?
+  modelUsed           String?
+  tokenInputCount     Int?
+  tokenOutputCount    Int?
+  latencyMs           Int?
+
+  // Provenance
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  expiresAt           DateTime?
+
+  @@unique([userId, requestHash])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, kind])
+  @@index([sourceApp, externalId])
+  @@map("cristiano_verdicts")
+}
+
 /// Layer 2: GDPR Consent Records — user consent for data storage,
 /// AI processing, and learning. userId references Clerk user ID.
 model OliviaConsent {
