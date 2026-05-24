@@ -46,6 +46,7 @@ function makeVerdictFixture(
     preRenderedVideoUrl: null,
     thumbnailUrl: null,
     durationSeconds: null,
+    captionsUrl: null,
     status: "ready",
     errorMessage: null,
     modelUsed: "claude-opus-4-7",
@@ -118,6 +119,41 @@ describe("CristianoVerdictPlayer", () => {
         .getByTestId("cristiano-verdict-player")
         .getAttribute("data-mode"),
     ).toBe("live");
+  });
+
+  // ─── H2 audit fix — captions track for WCAG 1.2.2 Level A ──
+  it("renders <track kind='captions'> when captionsUrl is set (WCAG 1.2.2)", () => {
+    const verdict = makeVerdictFixture({
+      preRenderedVideoUrl: "https://example.test/video.mp4",
+      captionsUrl: "https://example.test/captions.vtt",
+    });
+    render(<CristianoVerdictPlayer verdict={verdict} />);
+    const track = screen.getByTestId("verdict-captions-track");
+    expect(track).toBeTruthy();
+    expect(track.getAttribute("kind")).toBe("captions");
+    expect(track.getAttribute("src")).toBe("https://example.test/captions.vtt");
+    expect(track.getAttribute("srclang")).toBe("en");
+    expect(track.hasAttribute("default")).toBe(true);
+  });
+
+  it("omits the <track> element when captionsUrl is null", () => {
+    const verdict = makeVerdictFixture({
+      preRenderedVideoUrl: "https://example.test/video.mp4",
+      captionsUrl: null,
+    });
+    render(<CristianoVerdictPlayer verdict={verdict} />);
+    expect(screen.queryByTestId("verdict-captions-track")).toBeFalsy();
+  });
+
+  it("sets crossOrigin='anonymous' on the video when captions are provided (so the track can load cross-origin)", () => {
+    const verdict = makeVerdictFixture({
+      preRenderedVideoUrl: "https://example.test/video.mp4",
+      captionsUrl: "https://example.test/captions.vtt",
+    });
+    render(<CristianoVerdictPlayer verdict={verdict} />);
+    const player = screen.getByTestId("cristiano-verdict-player");
+    const video = player.querySelector("video");
+    expect(video?.getAttribute("crossorigin")).toBe("anonymous");
   });
 });
 

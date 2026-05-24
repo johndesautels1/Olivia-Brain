@@ -171,6 +171,7 @@ export function CristianoVerdictPlayer({
           poster={verdict.thumbnailUrl ?? undefined}
           controls
           preload="metadata"
+          crossOrigin={verdict.captionsUrl ? "anonymous" : undefined}
           className="w-full rounded-lg bg-black"
           aria-label={`Pre-rendered verdict video: ${verdict.verdictTitle}`}
           onPlay={() => setPlaybackState("playing")}
@@ -183,7 +184,22 @@ export function CristianoVerdictPlayer({
             setErrorReason("voice_unavailable");
             onPlaybackComplete?.("voice_unavailable");
           }}
-        />
+        >
+          {/* WebVTT captions track — WCAG 1.2.2 Level A.
+              When the source app ships captions, they render alongside
+              video playback. Independent of the transcript <details>
+              below (which covers WCAG 1.2.3 media-alternative). */}
+          {verdict.captionsUrl ? (
+            <track
+              kind="captions"
+              srcLang="en"
+              label="English captions"
+              src={verdict.captionsUrl}
+              default
+              data-testid="verdict-captions-track"
+            />
+          ) : null}
+        </video>
       )}
 
       {/* Play button — visible when idle */}

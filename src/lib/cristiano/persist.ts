@@ -102,6 +102,7 @@ export interface SaveVerdictInput {
   preRenderedVideoUrl?: string | null;
   thumbnailUrl?: string | null;
   durationSeconds?: number | null;
+  captionsUrl?: string | null;
   status?: "pending" | "ready" | "failed";
   errorMessage?: string | null;
   modelUsed?: string | null;
@@ -134,6 +135,7 @@ export async function saveVerdict(
       preRenderedVideoUrl: input.preRenderedVideoUrl ?? null,
       thumbnailUrl: input.thumbnailUrl ?? null,
       durationSeconds: input.durationSeconds ?? null,
+      captionsUrl: input.captionsUrl ?? null,
       status: input.status ?? "ready",
       errorMessage: input.errorMessage ?? null,
       modelUsed: input.modelUsed ?? null,
@@ -176,6 +178,7 @@ export function toRecord(row: CristianoVerdict): CristianoVerdictRecord {
     preRenderedVideoUrl: row.preRenderedVideoUrl,
     thumbnailUrl: row.thumbnailUrl,
     durationSeconds: row.durationSeconds,
+    captionsUrl: row.captionsUrl,
     status: row.status as "pending" | "ready" | "failed",
     errorMessage: row.errorMessage,
     modelUsed: row.modelUsed,

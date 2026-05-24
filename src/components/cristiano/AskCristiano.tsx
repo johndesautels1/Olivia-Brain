@@ -207,10 +207,10 @@ export function AskCristiano() {
               role="tab"
               aria-selected={kind === k}
               onClick={() => setKind(k)}
-              className={`min-h-[44px] rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60 ${
+              className={`min-h-[44px] rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60 ${
                 kind === k
-                  ? "bg-aurum/20 text-aurum border border-aurum/40"
-                  : "text-fog/70 hover:text-fog hover:bg-fog/5 border border-transparent"
+                  ? "bg-aurum text-onyx border border-aurum"
+                  : "text-fog/80 hover:text-fog hover:bg-fog/5 border border-transparent"
               }`}
               data-testid={`ask-cristiano-kind-${k}`}
             >
@@ -409,7 +409,7 @@ export function AskCristiano() {
           <button
             type="button"
             onClick={handleReset}
-            className="mt-2 text-xs text-red-300 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
+            className="mt-2 inline-flex min-h-[44px] items-center text-xs text-red-300 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
           >
             Try again
           </button>

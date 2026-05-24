@@ -72,6 +72,13 @@ const GatewayPushBodySchema = z.object({
   preRenderedVideoUrl: z.string().url().max(2048).optional(),
   thumbnailUrl: z.string().url().max(2048).optional(),
   durationSeconds: z.number().int().min(0).max(86_400).optional(),
+  /**
+   * Captions track URL (typically WebVTT). When set AND
+   * preRenderedVideoUrl is set, the verdict player renders
+   * <track kind="captions"> for WCAG 1.2.2 Level A compliance.
+   * Source apps that ship captions populate this field.
+   */
+  captionsUrl: z.string().url().max(2048).optional(),
 });
 
 const UserIdSchema = z.string().uuid();
@@ -235,6 +242,7 @@ export async function POST(request: NextRequest) {
       preRenderedVideoUrl: body.preRenderedVideoUrl ?? null,
       thumbnailUrl: body.thumbnailUrl ?? null,
       durationSeconds: body.durationSeconds ?? null,
+      captionsUrl: body.captionsUrl ?? null,
       status: "ready",
     });
 

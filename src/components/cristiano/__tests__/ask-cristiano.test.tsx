@@ -43,6 +43,7 @@ function makeVerdictFixture(
     preRenderedVideoUrl: null,
     thumbnailUrl: null,
     durationSeconds: null,
+    captionsUrl: null,
     status: "ready",
     errorMessage: null,
     modelUsed: "claude-opus-4-7",

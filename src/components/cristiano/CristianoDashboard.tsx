@@ -119,10 +119,10 @@ export function CristianoDashboard({ initialTab }: CristianoDashboardProps) {
               aria-selected={isActive}
               aria-controls={`cristiano-panel-${tab}`}
               onClick={() => setActiveTab(tab)}
-              className={`min-h-[44px] flex-1 sm:flex-none rounded-md px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60 ${
+              className={`min-h-[44px] flex-1 sm:flex-none rounded-md px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60 ${
                 isActive
-                  ? "bg-aurum/20 text-aurum border border-aurum/40"
-                  : "text-fog/70 hover:text-fog hover:bg-fog/5 border border-transparent"
+                  ? "bg-aurum text-onyx border border-aurum"
+                  : "text-fog/80 hover:text-fog hover:bg-fog/5 border border-transparent"
               }`}
               data-testid={`cristiano-dashboard-tab-${tab}`}
             >

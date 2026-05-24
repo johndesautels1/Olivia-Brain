@@ -314,6 +314,15 @@ export interface CristianoVerdictRecord {
   preRenderedVideoUrl: string | null;
   thumbnailUrl: string | null;
   durationSeconds: number | null;
+  /**
+   * Captions track URL (typically WebVTT). When set AND `preRenderedVideoUrl`
+   * is set, the player renders `<track kind="captions">` for WCAG 1.2.2
+   * Level A compliance during playback. Independent of the `spokenScript`
+   * transcript (which covers WCAG 1.2.3 — media alternative).
+   *
+   * Source apps that ship captions populate this on gateway-push.
+   */
+  captionsUrl: string | null;
 
   status: "pending" | "ready" | "failed";
   errorMessage: string | null;
