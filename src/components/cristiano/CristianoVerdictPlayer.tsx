@@ -191,7 +191,7 @@ export function CristianoVerdictPlayer({
         <button
           type="button"
           onClick={effectiveMode === "live" ? playLive : playVideo}
-          className="inline-flex items-center gap-2 rounded-md border border-aurum/40 bg-aurum/10 px-4 py-2 text-sm font-medium text-aurum hover:bg-aurum/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-aurum/40 bg-aurum/10 px-4 py-2 text-sm font-medium text-aurum hover:bg-aurum/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60"
           aria-label={`Play verdict: ${verdict.verdictTitle}`}
           data-testid="verdict-play-button"
         >

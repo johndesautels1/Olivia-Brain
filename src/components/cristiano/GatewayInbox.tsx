@@ -121,7 +121,7 @@ export function GatewayInbox() {
           <button
             type="button"
             onClick={handleRefresh}
-            className="inline-flex items-center gap-2 rounded-md border border-aurum/40 bg-aurum/15 px-3 py-1.5 text-xs font-medium text-aurum hover:bg-aurum/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-aurum/40 bg-aurum/15 px-3 py-1.5 text-xs font-medium text-aurum hover:bg-aurum/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60"
             data-testid="gateway-inbox-refresh"
             aria-label={`Refresh — ${newCount} new verdict${newCount === 1 ? "" : "s"} since you last looked`}
           >

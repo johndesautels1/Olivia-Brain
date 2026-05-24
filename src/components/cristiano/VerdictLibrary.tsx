@@ -146,6 +146,16 @@ export function VerdictLibrary({
       aria-label="Cristiano verdict library"
       data-testid="verdict-library"
     >
+      {/* Heading — fills the h2 slot in the dashboard heading
+          hierarchy (h1=dashboard root, h2=sub-tab, h3=row content).
+          Visually styled but semantically important for SR users. */}
+      <header>
+        <h2 className="text-base font-semibold text-fog">Verdict Library</h2>
+        <p className="text-xs text-fog/70">
+          Every verdict Cristiano has rendered, newest first.
+        </p>
+      </header>
+
       {/* Filters */}
       {(!hideKindFilter || !hideSourceAppFilter) && (
         <div className="flex flex-wrap items-center gap-3">
@@ -242,7 +252,7 @@ export function VerdictLibrary({
                 }
                 aria-expanded={isSelected}
                 aria-label={`${isSelected ? "Hide" : "Show"} verdict: ${v.verdictTitle}`}
-                className={`w-full text-left px-4 py-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50 ${
+                className={`min-h-[44px] w-full text-left px-4 py-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50 ${
                   isSelected ? "bg-aurum/10" : "hover:bg-fog/5"
                 }`}
                 data-testid="verdict-row"
@@ -295,7 +305,7 @@ export function VerdictLibrary({
           type="button"
           onClick={() => void fetchPage(nextCursor)}
           disabled={loading}
-          className="rounded-md border border-fog/20 bg-onyx/60 px-4 py-2 text-xs font-medium text-fog hover:bg-fog/5 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
+          className="min-h-[44px] rounded-md border border-fog/20 bg-onyx/60 px-4 py-2 text-xs font-medium text-fog hover:bg-fog/5 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
           data-testid="verdict-library-load-more"
         >
           {loading ? "Loading..." : "Load more"}

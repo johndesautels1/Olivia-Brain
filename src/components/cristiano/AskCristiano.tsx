@@ -207,7 +207,7 @@ export function AskCristiano() {
               role="tab"
               aria-selected={kind === k}
               onClick={() => setKind(k)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60 ${
+              className={`min-h-[44px] rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60 ${
                 kind === k
                   ? "bg-aurum/20 text-aurum border border-aurum/40"
                   : "text-fog/70 hover:text-fog hover:bg-fog/5 border border-transparent"
@@ -387,7 +387,7 @@ export function AskCristiano() {
             <button
               type="submit"
               disabled={submitState.phase === "submitting"}
-              className="inline-flex items-center gap-2 rounded-md border border-aurum/40 bg-aurum/15 px-4 py-2 text-sm font-medium text-aurum hover:bg-aurum/25 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-aurum/40 bg-aurum/15 px-4 py-2 text-sm font-medium text-aurum hover:bg-aurum/25 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60"
               data-testid="ask-cristiano-submit"
             >
               {submitState.phase === "submitting"
@@ -443,7 +443,7 @@ export function AskCristiano() {
           <button
             type="button"
             onClick={handleReset}
-            className="rounded-md border border-fog/20 bg-onyx/60 px-4 py-2 text-xs font-medium text-fog hover:bg-fog/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
+            className="min-h-[44px] rounded-md border border-fog/20 bg-onyx/60 px-4 py-2 text-xs font-medium text-fog hover:bg-fog/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
             data-testid="ask-cristiano-ask-again"
           >
             Ask another question
