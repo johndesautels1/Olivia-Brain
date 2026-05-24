@@ -85,7 +85,11 @@ export async function createVapiAssistant(
           name,
           voice: {
             provider: "11labs",
-            voiceId: env.ELEVENLABS_VOICE_OLIVIA ?? "21m00Tcm4TlvDq8ikWAM",
+            // LTM-prod-aligned Olivia voice (matches ELEVENLABS_OLIVIA_VOICE_ID
+            // in LTM .env.vercel). Founder direction 2026-05-25: every
+            // Olivia voice across every surface uses this id so OB + LTM
+            // do not present conflicting voices to the user.
+            voiceId: env.ELEVENLABS_VOICE_OLIVIA ?? "rVk0ZvRulp6xrYJkGztP",
           },
           model: {
             provider: "anthropic",
@@ -257,12 +261,18 @@ export function handleAssistantRequest(
 ): { assistantId?: string; assistant?: Partial<VapiAssistant> } {
   // Return a dynamic assistant configuration based on the phone number
   // In production, look up the caller and return appropriate assistant
+  const env = getServerEnv();
   return {
     assistant: {
       name: "Olivia",
       voice: {
         provider: "11labs",
-        voiceId: "21m00Tcm4TlvDq8ikWAM",
+        // Route through the env var so the canonical Olivia voice can
+        // be rotated centrally; falls back to the LTM-prod-aligned
+        // id so OB + LTM never present conflicting voices. Founder
+        // direction 2026-05-25: every Olivia voice across every
+        // surface points at this id.
+        voiceId: env.ELEVENLABS_VOICE_OLIVIA ?? "rVk0ZvRulp6xrYJkGztP",
       },
       firstMessage: "Hello! This is Olivia from CLUES Intelligence. How can I assist you today?",
     },

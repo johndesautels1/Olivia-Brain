@@ -167,11 +167,19 @@ const serverEnvSchema = z.object({
   // ELEVENLABS_VOICE_OLIVIA / ELEVENLABS_VOICE_CRISTIANO below (which the
   // multi-provider voice abstraction uses for non-LiveAvatar TTS paths).
   // Per-persona voice id is resolved by `src/lib/avatar/personas.ts`.
+  // 2026-05-25 founder direction: every persona voice across every OB
+  // surface points at the same LTM-production-aligned ElevenLabs voice
+  // so the two apps do not present conflicting voices to the user.
+  // ELEVENLABS_VOICE_OLIVIA + ELEVENLABS_VOICE_EMELIA below were
+  // historically pinned to the ElevenLabs public sample voices
+  // (Rachel `21m00Tcm4TlvDq8ikWAM`, Bella `EXAVITQu4vr4xnSDxMaL`) which
+  // is the wrong identity for both personas; updated to the LTM-prod
+  // values that the LiveAvatar path already uses.
   ELEVENLABS_OLIVIA_VOICE_ID: z.string().default("rVk0ZvRulp6xrYJkGztP"),
   ELEVENLABS_CRISTIANO_VOICE_ID: z.string().default("yoZ06aMxZJJ28mfd3POQ"),
-  ELEVENLABS_VOICE_OLIVIA: z.string().default("21m00Tcm4TlvDq8ikWAM"),
+  ELEVENLABS_VOICE_OLIVIA: z.string().default("rVk0ZvRulp6xrYJkGztP"),
   ELEVENLABS_VOICE_CRISTIANO: z.string().default("yoZ06aMxZJJ28mfd3POQ"),
-  ELEVENLABS_VOICE_EMELIA: z.string().default("EXAVITQu4vr4xnSDxMaL"),
+  ELEVENLABS_VOICE_EMELIA: z.string().default("H3Q2a7I32K2D9dOOWwV0"),
 
   DEEPGRAM_API_KEY: optionalSecret,
 

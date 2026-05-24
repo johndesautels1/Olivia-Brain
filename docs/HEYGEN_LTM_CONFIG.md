@@ -244,16 +244,36 @@ These values are loaded from Vercel env at runtime. **Olivia Brain must accept t
 
 ### From `D:\London-Tech-Map\.env.vercel` (live values for the LiveAvatar Olivia path):
 
-| Env Var | Purpose | Live Value (UUID format → preserve format) |
-|---------|---------|---------------------------------------------|
-| `LIVEAVATAR_API_KEY` | LiveAvatar X-API-KEY header | `b7aebc48-dcba-11f0-a99e-066a7fa2e369` |
+**Secrets are NEVER echoed in this doc.** Per the founder-confirmed
+no-leak posture (2026-05-25), every `*_API_KEY` value below is
+labelled by env var name only; copy the actual value from the
+LTM Vercel project's env-vars panel into the OB Vercel project's
+env-vars panel (Production + Preview, marked Sensitive).
+Non-secret IDs (voice IDs, avatar IDs — designed to be referenced
+by integration code) ARE listed inline so the OB code defaults
++ docs match the LTM-prod set without divergence.
+
+| Env Var | Purpose | Live Value |
+|---------|---------|------------|
+| `LIVEAVATAR_API_KEY` | LiveAvatar X-API-KEY header | `[REDACTED — copy from LTM Vercel]` |
 | `LIVEAVATAR_OLIVIA_AVATAR_ID` | UUID of Olivia's avatar in LiveAvatar dashboard | `a9870a4c-20a2-4f2a-993f-b004c00068c7` |
 | `LIVEAVATAR_OLIVIA_VOICE_ID` | LiveAvatar's own voice (NOT used in LITE mode) | `""` (empty — LITE bypasses LiveAvatar TTS) |
-| `ELEVENLABS_API_KEY` | xi-api-key for TTS | `d141…03f` |
+| `ELEVENLABS_API_KEY` | xi-api-key for TTS | `[REDACTED — copy from LTM Vercel]` |
 | `ELEVENLABS_OLIVIA_VOICE_ID` | Olivia's ElevenLabs voice | `rVk0ZvRulp6xrYJkGztP` |
-| `OPENAI_API_KEY` | Brain (GPT-4o tool calling) | `sk-proj-…` |
+| `ELEVENLABS_EMILIA_VOICE_ID` | Emilia's ElevenLabs voice (back-end persona) | `H3Q2a7I32K2D9dOOWwV0` |
+| `HEYGEN_OLIVIA_AVATAR_ID` | Olivia's HeyGen avatar (legacy V2 pipeline) | `54d715432c27452fb8211bb28417c824` |
+| `HEYGEN_OLIVIA_VOICE_ID` | Olivia's HeyGen voice (legacy V2 pipeline) | `f10c70dd5d7b4910afcc491e6cf508fb` |
+| `HEYGEN_CRISTIANO_AVATAR_ID` | Cristiano's HeyGen avatar (LTM analysis pipeline) | `7a0ee88ad6814ed9af896f9164407c41` |
+| `HEYGEN_CRISTIANO_VOICE_ID` | Cristiano's HeyGen voice (LTM analysis pipeline) | `74073e432e794695a34950f148f1a3a6` |
+| `OPENAI_API_KEY` | Brain (GPT-4o tool calling) | `[REDACTED — copy from LTM Vercel]` |
+| `HEYGEN_API_KEY` | HeyGen API key (LTM analysis pipeline) | `[REDACTED — copy from LTM Vercel]` |
 
-> ⚠️ **The LiveAvatar API key happens to be identical to `HEYGEN_API_KEY`** in this codebase — they are both `b7aebc48-dcba-11f0-a99e-066a7fa2e369`. This is because LiveAvatar = HeyGen post-rebrand and they share the same account. Don't assume one without the other; load both from env.
+> ⚠️ **LiveAvatar and HeyGen share the same vendor account** — LiveAvatar
+> is HeyGen post-rebrand. `LIVEAVATAR_API_KEY` and `HEYGEN_API_KEY` in
+> the LTM Vercel project hold the same secret value. OB should mirror
+> that pairing (set both to the same value in OB Vercel). Per
+> `~/CLAUDE.md` Vercel scoping rules: Production + Preview only,
+> marked Sensitive.
 
 ### Pinned LiveAvatar request body (`src/lib/olivia/liveavatar.ts:48-55`):
 
