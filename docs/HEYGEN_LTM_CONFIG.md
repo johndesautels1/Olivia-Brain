@@ -2,6 +2,7 @@
 
 > **Last audited:** 2026-05-02 against `D:\London-Tech-Map` HEAD.
 > **Persona refactor:** 2026-05-24 — OB pipeline now persona-aware (Olivia + Cristiano). See § 0 addendum below.
+> **Verdict library:** 2026-05-25 — Cristiano dashboard ships with `cristiano_verdicts` Prisma model + `/api/cristiano/judge` brain + `/api/gateway/cristiano/verdicts` push + `/cristiano` standalone route. See § 0.1 addendum below.
 > **Authoritative source files:** referenced inline. If the LTM file changes, this doc is wrong — re-audit.
 
 ---
@@ -52,6 +53,56 @@ Only the `avatar_id` body field varies per persona. Nothing else changes.
 | ValuationWorkbench | `src/components/valuation/ValuationWorkbench.tsx` | ⏳ not yet — same |
 
 **Pipelines #2 (LTM HeyGen v3 / `LiveAvatarPlayer.tsx`) + #3 (LTM legacy `/api/olivia/video`) per the table below remain LTM-only and untouched in OB.** When LTM does the eventual backport (separate session), it adopts OB's persona-aware pipeline and rips out `LiveAvatarPlayer.tsx`.
+
+---
+
+## § 0.1 · 2026-05-25 ADDENDUM — Cristiano Verdict Library + Dashboard
+
+**State change:** OB now ships a dedicated Cristiano dashboard at `/cristiano` with three sub-tabs (Ask Cristiano / Verdict Library / Gateway Inbox), backed by:
+
+- `cristiano_verdicts` Prisma model + inline SQL migration `prisma/sql/14-add-cristiano-verdict.sql`
+- `POST /api/cristiano/judge` — Opus 4.7 verdict renderer for 3 kinds (`startup_match` / `city_compare` / `freeform`)
+- `GET /api/cristiano/verdicts` + `GET /api/cristiano/verdicts/[id]` — list + detail
+- `POST /api/gateway/cristiano/verdicts` — service-to-service push for linked apps
+- `OliviaVideoAvatarRef.presentVerdict(script, options)` — imperative one-shot speak distinct from Olivia's reactive `lastReply` loop
+
+**Architectural locks:**
+
+1. **Vendor-neutral `CristianoVerdictV1` envelope.** Discriminated union on `kind`. Each consuming app delivers a verdict body matching the per-kind Zod schema. Adding a new kind is a 3-step compile-time-enforced diff (`src/lib/cristiano/types.ts`).
+2. **Idempotency via SHA256 of canonical request payload.** Same user + same request = same verdict row (`@@unique([userId, requestHash])`). Re-fire spends zero LLM tokens.
+3. **Gateway bearer auth uses `crypto.timingSafeEqual`** for constant-time token compare. Cross-app forgery guard at the route handler: bearer-resolved source app MUST match the body's `sourceApp`.
+4. **Two play modes per verdict.** `preRenderedVideoUrl` (e.g. lifescore HeyGen Video Agent V2 MP4) plays via native `<video>`; absent that, OB re-narrates via the LiveAvatar LITE pipeline (persona=cristiano).
+5. **Privacy contract.** `cristiano_verdicts` rows NEVER project onto any public surface. `userId` is the canonical owner key. Mirrors `UserCompanyDeadline` precedent.
+
+**Env vars Cristiano dashboard needs (operator action — Production + Preview, marked Sensitive):**
+
+```
+# Bearer tokens — one per consuming app, rotated independently
+GATEWAY_TOKEN_LTM                = <openssl rand -hex 32 or equivalent>
+GATEWAY_TOKEN_LIFESCORE          = <one-shot 32+ byte token>
+GATEWAY_TOKEN_CLUESLONDON        = <...>
+GATEWAY_TOKEN_CLUESINTELLIGENCE  = <...>
+GATEWAY_TOKEN_CLUESXSCORE        = <...>
+GATEWAY_TOKEN_HEART_RECOVERY     = <...>
+GATEWAY_TOKEN_PROPERTY_SEARCH    = <...>
+GATEWAY_TOKEN_TRANSIT            = <...>
+```
+
+Set per app as it comes online. Until tokens are set, the gateway endpoint returns clean 503 "Gateway tokens not configured" — no broken UX.
+
+**Three-app Opus alignment achieved 2026-05-25:** LTM + OB + lifescore all on `claude-opus-4-7` and `claude-sonnet-4-6`. Lifescore was bumped via `73b216b` on its own repo (`github.com/johndesautels1/lifescore`).
+
+**What's left for the verdict library to be fully live:**
+
+| # | Action | Owner |
+|---|---|---|
+| 1 | Apply `prisma/sql/14-add-cristiano-verdict.sql` against OB production Supabase | Founder |
+| 2 | Set `GATEWAY_TOKEN_*` env vars on OB Vercel per consuming app | Founder |
+| 3 | Backport LTM's `POST /api/gateway-publish` that fires verdicts at OB's gateway | Separate LTM session |
+| 4 | Backport lifescore's gateway publisher (post-comparison) | Separate lifescore session |
+| 5 | Mount `<CristianoDashboard />` inside the existing Ask Olivia surface | Separate OB commit |
+
+Per founder direction 2026-05-23 + reaffirmed 2026-05-25, LTM + lifescore edits happen in their own sessions. This batch is strictly OB-scope plus the one-line-per-file lifescore Opus version bump that the founder explicitly authorized 2026-05-25.
 
 ---
 

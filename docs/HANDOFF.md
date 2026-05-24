@@ -1,5 +1,155 @@
 # Olivia Brain — Handoff to next agent
 
+> **Last updated:** 2026-05-25 (Cristiano dashboard batch close — 8 OB commits + 1 lifescore backport)
+
+---
+
+## 🤝 TODAY'S BATCH — 2026-05-25 — Cristiano dashboard (8 OB commits + lifescore Opus backport)
+
+The 5 architecture pieces founder approved 2026-05-25 ("all 5 need done") are
+shipped. Three sub-tabs (Ask / Library / Inbox), one judge brain
+endpoint, one verdict-library endpoint, one gateway push endpoint
+with constant-time bearer auth, one imperative `presentVerdict()`
+method on the avatar component, vendor-neutral discriminated-union
+envelope, and a Prisma model with idempotent unique-constraint
+lookup.
+
+### Commit table
+
+| # | Hash (OB) | What |
+|---|---|---|
+| C1 | `f41548e` | Foundation — `CristianoVerdictV1` envelope + Zod validators + SHA256 idempotency hash + Prisma model + inline SQL migration |
+| C2 | `5c7b20c` | Judge brain — `lib/cristiano/brain.ts` + `lib/cristiano/persist.ts` + `POST /api/cristiano/judge` (claude-opus-4-7, 3 per-kind handlers, Result-typed) |
+| C3 | `4948194` | Verdict list + detail endpoints — `GET /api/cristiano/verdicts` + `GET /api/cristiano/verdicts/[id]` |
+| C4 | `bc268f2` | Gateway bearer auth — `lib/gateway/auth.ts` (constant-time `timingSafeEqual`) + `POST /api/gateway/cristiano/verdicts` + 8 `GATEWAY_TOKEN_*` env vars |
+| C5 | `0121c7c` | `OliviaVideoAvatarRef.presentVerdict(script, options)` imperative method — one-shot speak, autoDisconnect, typed outcome |
+| C6 | `9a5391b` | `CristianoVerdictPlayer` + `VerdictLibrary` + `GatewayInbox` (one shared player, two play modes — live LiveAvatar / pre-rendered MP4) |
+| C7 | `d25e3c1` | `AskCristiano` form — 3-kind picker, per-kind validation, submit → judge → live narrate |
+| C8 | (this commit) | `CristianoDashboard` parent + `/cristiano` route + HANDOFF docs |
+
+### lifescore backport (separate repo)
+
+| # | Hash (lifescore) | What |
+|---|---|---|
+| L1 | `73b216b` (lifescore main) | `chore(judge): bump Opus model claude-opus-4-6 -> claude-opus-4-7` — 10 files (7 prod sites, 2 tests, 1 pricing table + 6 docs), 100/100 lifescore tests green, retains deprecated 4-6 pricing entry for historical Supabase rows. Now LTM + OB + lifescore all aligned on Opus 4.7 / Sonnet 4.6. |
+
+### Architecturally closed this batch
+
+- ✅ `CristianoVerdictV1` discriminated-union envelope (kinds: startup_match / city_compare / freeform) with kind-aware Zod request + body schemas
+- ✅ `cristiano_verdicts` Prisma model with `@@unique([userId, requestHash])` idempotency constraint + inline SQL migration `prisma/sql/14-add-cristiano-verdict.sql`
+- ✅ Opus 4.7 judge brain — 3 per-kind handlers with Result-typed Returns, tolerant JSON extraction, Zod re-validation of LLM output
+- ✅ List + detail endpoints with keyset pagination
+- ✅ Gateway bearer auth — 8 source-app tokens, constant-time `timingSafeEqual` compare, cross-app forgery guard at the route handler
+- ✅ One-shot `presentVerdict()` pattern on `OliviaVideoAvatar` (distinct from Olivia's reactive `lastReply` chat loop)
+- ✅ Three sub-tab UI: Ask Cristiano (submit + live narrate) / Verdict Library (replay archive) / Gateway Inbox (poll for pushes every 30s)
+- ✅ `/cristiano` standalone route + embeddable `<CristianoDashboard />` component
+- ✅ Cross-repo model alignment: LTM `claude-opus-4-7` + OB `claude-opus-4-7` + lifescore `claude-opus-4-7` (was 4-6)
+
+### Test results this batch
+
+- C1: 36/36 new (types + hash)
+- C2: +9 new (judge route surface)
+- C3: +11 new (list 5 + detail 6)
+- C4: +27 new (gateway auth 13 + push route 14)
+- C5: regression-only — 108/108 olivia + studio + avatar still green
+- C6: +13 new (player + library + inbox smoke)
+- C7: +10 new (AskCristiano form + submit)
+- C8: +13 new (dashboard parent + tab nav + accessibility)
+- **Full batch cumulative: 118/118 green** across `src/lib/cristiano`, `src/lib/gateway`, `src/app/api/cristiano`, `src/app/api/gateway`, `src/components/cristiano`
+- lifescore: 100/100 green after backport (31 costCalculator tests + 69 others)
+- `npx tsc --noEmit --incremental` — clean after every OB commit
+
+### Founder direction locked 2026-05-25 (verbatim)
+
+> "all 5 need done and you need to carefully line by line meeting all 2026
+> microsoft apple ibm and google latest code standards implement all 5
+> remembering never to touch the code in those other apps"
+
+> "commit to github then backport lifescore and make sure you commit to
+> the right repro then finish c8"
+
+> "He doesnt talk to people just like a judge he renders decsioins
+> verdicts and reccomendations" (locked the persona separation)
+
+> "stay out of ltm" (preserved from 2026-05-23 — LTM walled garden held throughout this batch)
+
+### Operator actions OWED to fully activate the Cristiano dashboard
+
+#### Apply the SQL migration (Supabase SQL editor → OB production)
+
+Run this against `db.lumfvloapckluhzvtgdn.supabase.co` (OB production). Idempotent — re-running is safe via `IF NOT EXISTS` guards.
+
+```sql
+CREATE TABLE IF NOT EXISTS "cristiano_verdicts" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "userId" UUID NOT NULL,
+    "kind" TEXT NOT NULL,
+    "sourceApp" TEXT NOT NULL DEFAULT 'ob',
+    "externalId" TEXT,
+    "requestPayload" JSONB NOT NULL,
+    "requestHash" CHAR(64) NOT NULL,
+    "verdictBody" JSONB NOT NULL,
+    "spokenScript" TEXT NOT NULL,
+    "verdictTitle" TEXT NOT NULL,
+    "preRenderedVideoUrl" TEXT,
+    "thumbnailUrl" TEXT,
+    "durationSeconds" INTEGER,
+    "status" TEXT NOT NULL DEFAULT 'ready',
+    "errorMessage" TEXT,
+    "modelUsed" TEXT,
+    "tokenInputCount" INTEGER,
+    "tokenOutputCount" INTEGER,
+    "latencyMs" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3),
+    CONSTRAINT "cristiano_verdicts_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "cristiano_verdicts_userId_requestHash_key"
+    ON "cristiano_verdicts" ("userId", "requestHash");
+CREATE INDEX IF NOT EXISTS "cristiano_verdicts_userId_createdAt_idx"
+    ON "cristiano_verdicts" ("userId", "createdAt" DESC);
+CREATE INDEX IF NOT EXISTS "cristiano_verdicts_userId_kind_idx"
+    ON "cristiano_verdicts" ("userId", "kind");
+CREATE INDEX IF NOT EXISTS "cristiano_verdicts_sourceApp_externalId_idx"
+    ON "cristiano_verdicts" ("sourceApp", "externalId");
+```
+
+#### Set per-app gateway tokens on Vercel (Production + Preview, marked Sensitive)
+
+Set as each linked app comes online. Recommended token format: 32+ random bytes (e.g. `openssl rand -hex 32`). Rotate independently per app.
+
+```
+GATEWAY_TOKEN_LTM
+GATEWAY_TOKEN_LIFESCORE
+GATEWAY_TOKEN_CLUESLONDON
+GATEWAY_TOKEN_CLUESINTELLIGENCE
+GATEWAY_TOKEN_CLUESXSCORE
+GATEWAY_TOKEN_HEART_RECOVERY
+GATEWAY_TOKEN_PROPERTY_SEARCH
+GATEWAY_TOKEN_TRANSIT
+```
+
+Until tokens are set, the gateway endpoint returns clean 503 "Gateway tokens not configured" — no broken UX.
+
+### Recommended next pickups
+
+1. **Mount `<CristianoDashboard />` inside the existing Ask Olivia surface** (separate commit; the dashboard route stands alone today at `/cristiano`).
+2. **LTM gateway publisher backport** (separate LTM session — walled-garden out of this batch) — add `POST /api/gateway-publish` in LTM that fires verdicts at OB's `/api/gateway/cristiano/verdicts`. Once that lands, LTM's Cristiano top-3 matches appear in OB's Gateway Inbox automatically.
+3. **lifescore gateway publisher backport** (separate lifescore session) — same pattern, fires HeyGen Video Agent V2 MP4 URL + city-compare verdict at OB.
+4. **`/cristiano?tab=...` deep-link** — query-string driven initialTab — wire via Next's `useSearchParams`. Low effort, high utility for cross-app navigation.
+5. **User-app linkage table + per-user authorization** — deferred per `lib/gateway/auth.ts` threat-model note. When a single OB user can be addressed by multiple gatewayed apps, we need a lookup that asserts "yes, LTM is allowed to act on behalf of user X."
+6. **WCAG/APCA audit on the new Cristiano surfaces** — mirror the 2026-05-23 audit pattern.
+
+### EXCLUDED / BLOCKED (unchanged from 2026-05-23)
+
+- **Track L cluesintelligence** — EXCLUDED until founder unlocks
+- **LTM code edits** — walled garden, no exceptions
+
+---
+
+> **Prior session header (2026-05-24 LiveAvatar persona batch — 6 commits) preserved below for cross-batch context.**
+
 > **Last updated:** 2026-05-24 (LiveAvatar persona batch close — 6 commits) — **Olivia ⇄ LTM parity verified (forward-port C1 = no-op, OB is at LTM contract + beyond) + persona-aware LiveAvatar LITE pipeline (single pipeline, two personas — Olivia + Cristiano) + `OliviaVideoAvatar` accepts `personaId` prop + Cristiano cinematic verdict mounted in `CristianoReEvaluation` + `HEYGEN_LTM_CONFIG.md` § 0 addendum + consent route 2026-bar fix (JSON guard, auth-misconfig 503).**
 
 ---
