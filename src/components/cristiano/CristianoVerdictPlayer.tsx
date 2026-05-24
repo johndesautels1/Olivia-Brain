@@ -150,7 +150,7 @@ export function CristianoVerdictPlayer({
           {verdict.verdictTitle}
         </h3>
         <p
-          className="font-mono text-[10px] uppercase tracking-[0.18em] text-fog/60"
+          className="font-mono text-[10px] uppercase tracking-[0.18em] text-fog/80"
           data-testid="verdict-kind-tag"
         >
           {verdict.kind.replace(/_/g, " ")} · {verdict.sourceApp}

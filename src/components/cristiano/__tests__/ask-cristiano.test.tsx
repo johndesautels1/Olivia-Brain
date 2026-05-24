@@ -92,6 +92,77 @@ describe("AskCristiano — mount + kind picker", () => {
     expect(screen.getByTestId("ask-cristiano-city1")).toBeTruthy();
     expect(screen.getByTestId("ask-cristiano-city2")).toBeTruthy();
   });
+
+  // ─── M1/M2 audit fix — tablist linkage ──
+  it("kind tabs have aria-controls pointing to the form panel (M1)", () => {
+    render(<AskCristiano />);
+    const tabs = [
+      screen.getByTestId("ask-cristiano-kind-freeform"),
+      screen.getByTestId("ask-cristiano-kind-city_compare"),
+      screen.getByTestId("ask-cristiano-kind-startup_match"),
+    ];
+    for (const tab of tabs) {
+      expect(tab.getAttribute("aria-controls")).toBe("ask-cristiano-form-panel");
+    }
+  });
+
+  it("each kind tab has a unique id used by aria-labelledby on the form panel (M2)", () => {
+    render(<AskCristiano />);
+    expect(
+      screen.getByTestId("ask-cristiano-kind-freeform").getAttribute("id"),
+    ).toBe("ask-cristiano-kind-tab-freeform");
+    expect(
+      screen
+        .getByTestId("ask-cristiano-kind-city_compare")
+        .getAttribute("id"),
+    ).toBe("ask-cristiano-kind-tab-city_compare");
+    expect(
+      screen
+        .getByTestId("ask-cristiano-kind-startup_match")
+        .getAttribute("id"),
+    ).toBe("ask-cristiano-kind-tab-startup_match");
+  });
+
+  it("form-panel has role=tabpanel + aria-labelledby pointing to the active tab (M2)", () => {
+    render(<AskCristiano />);
+    const form = screen.getByTestId("ask-cristiano-form");
+    expect(form.getAttribute("role")).toBe("tabpanel");
+    expect(form.getAttribute("id")).toBe("ask-cristiano-form-panel");
+    expect(form.getAttribute("aria-labelledby")).toBe(
+      "ask-cristiano-kind-tab-freeform",
+    );
+    fireEvent.click(screen.getByTestId("ask-cristiano-kind-city_compare"));
+    expect(
+      screen
+        .getByTestId("ask-cristiano-form")
+        .getAttribute("aria-labelledby"),
+    ).toBe("ask-cristiano-kind-tab-city_compare");
+  });
+
+  it("only the active kind tab has tabIndex=0; others have tabIndex=-1 (roving focus)", () => {
+    render(<AskCristiano />);
+    expect(
+      screen
+        .getByTestId("ask-cristiano-kind-freeform")
+        .getAttribute("tabindex"),
+    ).toBe("0");
+    expect(
+      screen
+        .getByTestId("ask-cristiano-kind-city_compare")
+        .getAttribute("tabindex"),
+    ).toBe("-1");
+    fireEvent.click(screen.getByTestId("ask-cristiano-kind-city_compare"));
+    expect(
+      screen
+        .getByTestId("ask-cristiano-kind-freeform")
+        .getAttribute("tabindex"),
+    ).toBe("-1");
+    expect(
+      screen
+        .getByTestId("ask-cristiano-kind-city_compare")
+        .getAttribute("tabindex"),
+    ).toBe("0");
+  });
 });
 
 // ─── Submission ──────────────────────────────────────────────────────────────
@@ -205,6 +276,46 @@ describe("AskCristiano — submit + render flow", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("ask-cristiano-error")).toBeTruthy();
+    });
+  });
+
+  // ─── M5 audit fix — submitting status: aria-busy + live region ──
+  it("sets aria-busy=true on the form while submitting (M5)", async () => {
+    // Hold the fetch promise open so we can observe the in-flight state.
+    let resolveFetch: ((res: { ok: boolean; json: () => Promise<unknown> }) => void) | null = null;
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    render(<AskCristiano />);
+    fireEvent.change(screen.getByTestId("ask-cristiano-question"), {
+      target: { value: "Should we hire a CTO this quarter?" },
+    });
+    fireEvent.click(screen.getByTestId("ask-cristiano-submit"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("ask-cristiano-form").getAttribute("aria-busy"),
+      ).toBe("true");
+    });
+
+    // Status live region announces the submission to SR users.
+    const status = screen.getByTestId("ask-cristiano-status");
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    expect(status.textContent).toMatch(/Cristiano is rendering/i);
+
+    // Release the held fetch so the test exits cleanly.
+    resolveFetch?.({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        verdict: makeVerdictFixture(),
+        alreadyExisted: false,
+      }),
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("ask-cristiano-rendered")).toBeTruthy();
     });
   });
 

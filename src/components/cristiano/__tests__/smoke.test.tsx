@@ -270,4 +270,43 @@ describe("GatewayInbox", () => {
     });
     expect(screen.queryByTestId("gateway-inbox-refresh")).toBeFalsy();
   });
+
+  // ─── M6 audit fix — live region for new gateway arrivals ──
+  it("renders a polite live region for new gateway-verdict announcements (M6)", async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, verdicts: [], hasMore: false }),
+    });
+    render(<GatewayInbox />);
+    await waitFor(() => {
+      expect(screen.getByTestId("gateway-inbox-status")).toBeTruthy();
+    });
+    const status = screen.getByTestId("gateway-inbox-status");
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    expect(status.getAttribute("aria-atomic")).toBe("true");
+    // Empty content when newCount=0 — avoids announcing on initial mount.
+    expect(status.textContent?.trim()).toBe("");
+  });
+});
+
+// ─── M4 audit fix — accessible name on filter selects ──
+describe("VerdictLibrary — filter select accessible names (M4)", () => {
+  it("kind filter uses 'Kind:' as accessible name (no aria-label override)", async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, verdicts: [], hasMore: false }),
+    });
+    render(<VerdictLibrary />);
+    // After audit fix M4, the select has NO aria-label so the
+    // implicit <label> wrap provides the accessible name from
+    // the "Kind:" <span>. We assert the aria-label is absent
+    // (not "Filter verdicts by kind").
+    await waitFor(() => {
+      const allSelects = document.querySelectorAll("select");
+      expect(allSelects.length).toBeGreaterThanOrEqual(2);
+      for (const select of Array.from(allSelects)) {
+        expect(select.getAttribute("aria-label")).toBeNull();
+      }
+    });
+  });
 });

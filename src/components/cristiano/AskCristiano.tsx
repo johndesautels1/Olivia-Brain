@@ -185,6 +185,24 @@ export function AskCristiano() {
       aria-label="Ask Cristiano"
       data-testid="ask-cristiano"
     >
+      {/* M5 audit fix — polite live region for submission state.
+          When state transitions to "submitting" the announcement fires
+          so SR users know Cristiano is rendering (the call can take
+          60+ seconds on the Opus side). sr-only keeps it invisible
+          for sighted users who see the disabled button + "Cristiano
+          is rendering..." button text. */}
+      <span
+        aria-live="polite"
+        className="sr-only"
+        data-testid="ask-cristiano-status"
+      >
+        {submitState.phase === "submitting"
+          ? "Cristiano is rendering your verdict. This typically takes 30 to 90 seconds."
+          : submitState.phase === "rendered"
+            ? "Verdict ready. Cristiano will now narrate the pronouncement."
+            : ""}
+      </span>
+
       <header>
         <h2 className="text-base font-semibold text-fog">Ask Cristiano</h2>
         <p className="text-xs text-fog/70">
@@ -193,7 +211,12 @@ export function AskCristiano() {
         </p>
       </header>
 
-      {/* Kind picker — hidden when a verdict has rendered. */}
+      {/* Kind picker — hidden when a verdict has rendered.
+          M1/M2 audit fix: each tab has `id` + `aria-controls` pointing
+          to the single shared form-panel below. The form-panel has
+          `role="tabpanel"` + `aria-labelledby` pointing back to the
+          ACTIVE tab. Shared-panel pattern per ARIA APG (one panel
+          whose content changes based on the active tab). */}
       {submitState.phase !== "rendered" && (
         <div
           role="tablist"
@@ -205,7 +228,10 @@ export function AskCristiano() {
               key={k}
               type="button"
               role="tab"
+              id={`ask-cristiano-kind-tab-${k}`}
               aria-selected={kind === k}
+              aria-controls="ask-cristiano-form-panel"
+              tabIndex={kind === k ? 0 : -1}
               onClick={() => setKind(k)}
               className={`min-h-[44px] rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60 ${
                 kind === k
@@ -220,10 +246,14 @@ export function AskCristiano() {
         </div>
       )}
 
-      {/* Form */}
+      {/* Form / tab-panel */}
       {submitState.phase !== "rendered" && (
         <form
           onSubmit={handleSubmit}
+          role="tabpanel"
+          id="ask-cristiano-form-panel"
+          aria-labelledby={`ask-cristiano-kind-tab-${kind}`}
+          aria-busy={submitState.phase === "submitting"}
           className="space-y-4 rounded-lg border border-fog/10 bg-onyx/40 p-4"
           data-testid="ask-cristiano-form"
         >

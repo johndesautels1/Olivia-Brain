@@ -135,7 +135,7 @@ export function CristianoDashboard({ initialTab }: CristianoDashboardProps) {
       {/* Sub-tab description — keyed by activeTab so it changes
           synchronously with the panel below. */}
       <p
-        className="text-xs text-fog/60"
+        className="text-xs text-fog/80"
         data-testid={`cristiano-dashboard-description-${activeTab}`}
       >
         {TAB_DESCRIPTIONS[activeTab]}

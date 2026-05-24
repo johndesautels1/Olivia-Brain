@@ -160,6 +160,11 @@ export function VerdictLibrary({
       {(!hideKindFilter || !hideSourceAppFilter) && (
         <div className="flex flex-wrap items-center gap-3">
           {!hideKindFilter && (
+            // M4 audit fix: removed `aria-label` (was "Filter verdicts
+            // by kind") so the visible "Kind:" text serves as the
+            // accessible name. WCAG 2.5.3 — Label in Name. Implicit
+            // <label> wrap provides the accessible name from the
+            // <span> content automatically.
             <label className="flex items-center gap-2 text-xs text-fog/70">
               <span>Kind:</span>
               <select
@@ -172,7 +177,6 @@ export function VerdictLibrary({
                   )
                 }
                 className="rounded border border-fog/20 bg-onyx px-2 py-1 text-xs text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
-                aria-label="Filter verdicts by kind"
               >
                 <option value="">All kinds</option>
                 {CRISTIANO_VERDICT_KINDS.map((kind) => (
@@ -185,6 +189,7 @@ export function VerdictLibrary({
           )}
 
           {!hideSourceAppFilter && (
+            // M4 audit fix: same — visible "Source:" is the accessible name.
             <label className="flex items-center gap-2 text-xs text-fog/70">
               <span>Source:</span>
               <select
@@ -197,7 +202,6 @@ export function VerdictLibrary({
                   )
                 }
                 className="rounded border border-fog/20 bg-onyx px-2 py-1 text-xs text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
-                aria-label="Filter verdicts by source app"
               >
                 <option value="">All sources</option>
                 {CRISTIANO_SOURCE_APPS.map((app) => (
@@ -262,7 +266,7 @@ export function VerdictLibrary({
                     <p className="text-sm font-medium text-fog truncate">
                       {v.verdictTitle}
                     </p>
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-fog/60">
+                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-fog/80">
                       {v.kind.replace(/_/g, " ")} · {v.sourceApp} ·{" "}
                       {new Date(v.createdAt).toLocaleDateString()}
                     </p>

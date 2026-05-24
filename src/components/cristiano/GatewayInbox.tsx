@@ -110,6 +110,24 @@ export function GatewayInbox() {
       aria-label="Gateway inbox"
       data-testid="gateway-inbox"
     >
+      {/* M6 audit fix — polite live region announcing new gateway
+          arrivals. Polling detects new verdicts every 30s; when
+          `newCount` changes from 0 → N (or N → M), SR users hear
+          the announcement. Empty string when count is 0 to avoid
+          announcing on initial mount. Separate from the visible
+          refresh button so the announcement copy can be more
+          descriptive than the button text. */}
+      <span
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="gateway-inbox-status"
+      >
+        {newCount > 0
+          ? `${newCount} new verdict${newCount === 1 ? "" : "s"} pushed in by linked apps. Use the refresh button to load them.`
+          : ""}
+      </span>
+
       <header className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-fog">Gateway Inbox</h2>
