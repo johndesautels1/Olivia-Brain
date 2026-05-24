@@ -282,9 +282,12 @@ describe("AskCristiano — submit + render flow", () => {
   // ─── M5 audit fix — submitting status: aria-busy + live region ──
   it("sets aria-busy=true on the form while submitting (M5)", async () => {
     // Hold the fetch promise open so we can observe the in-flight state.
-    let resolveFetch: ((res: { ok: boolean; json: () => Promise<unknown> }) => void) | null = null;
+    // Definite-assignment assertion + Promise generic prevent TS narrowing
+    // `resolveFetch` to `never` when it's mutated inside the executor.
+    type FetchResolution = { ok: boolean; json: () => Promise<unknown> };
+    let resolveFetch!: (res: FetchResolution) => void;
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockReturnValue(
-      new Promise((resolve) => {
+      new Promise<FetchResolution>((resolve) => {
         resolveFetch = resolve;
       }),
     );
@@ -306,7 +309,7 @@ describe("AskCristiano — submit + render flow", () => {
     expect(status.textContent).toMatch(/Cristiano is rendering/i);
 
     // Release the held fetch so the test exits cleanly.
-    resolveFetch?.({
+    resolveFetch({
       ok: true,
       json: async () => ({
         ok: true,
