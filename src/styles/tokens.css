@@ -235,7 +235,21 @@
   /* Brand */
   --color-aurum: var(--aurum-primary);
   --color-aurum-soft: var(--aurum-soft);
+  --color-aurum-highlight: var(--aurum-soft);
   --color-aether: var(--aether-primary);
+
+  /* Cristiano dashboard + valuation surface aliases.
+     Maintained as semantic aliases to canonical palette tokens so the
+     Cristiano + WarRoom surfaces resolve their `text-fog`, `bg-onyx`,
+     and `var(--color-aurum-highlight)` references without bypassing
+     the design system. Mapping:
+       fog              -> fg-primary (warm cream #F1ECE0)
+       onyx             -> canvas-base (deep navy #050B15)
+       aurum-highlight  -> aurum-soft (lighter gold #E2C78B)
+     New code should prefer the canonical names; these aliases
+     ensure existing surfaces are not styling-orphans. */
+  --color-fog: var(--fg-primary);
+  --color-onyx: var(--canvas-base);
 
   /* Status */
   --color-mint-up: var(--mint-up);

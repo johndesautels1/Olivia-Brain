@@ -335,3 +335,39 @@ These gaps are flagged HONESTLY rather than glossed over.
 Held to Apple / Microsoft / Google 2026 leading coding practices per `~/CLAUDE.md` and `docs/api-specs/_MASTER_REGISTER.md §10.4`. This audit is a deliverable, not a fix — Phase 1 / 2 / 3 commits follow.
 
 100% no breaking changes (audit is documentation, no code changes) and 100% no partial coding (every finding cite-able to file:line; no hand-waving).
+
+---
+
+## § 8 · Post-audit fix — undeclared `@theme` tokens (2026-05-25, addendum)
+
+**Discovered during the next session's audit of the prior agent's commits.** The H3, M3, and L7 fixes in commits `52adba6`, `c0f1b44`, and `9dce51a` all operate on Tailwind utility classes (`text-fog`, `bg-onyx`, `text-fog/70`, `text-fog/80`, `bg-fog/5`, `border-fog/10`) whose underlying theme tokens were **never declared in `src/styles/tokens.css`**. In Tailwind v4, utilities whose `@theme` key is undeclared **prune silently** — producing no CSS output. So:
+
+- `text-fog/70 → /80` opacity bumps (M3, L7): no-op on no-op until the token exists.
+- `bg-aurum text-onyx` selected-tab state (H3): `bg-aurum` renders (gold), `text-onyx` produces no `color` declaration → text inherits from `body { color: var(--fg-primary) }` → renders cream, not the intended near-black-on-gold.
+- `WarRoom*.tsx` references like `bg-[var(--color-onyx)]` and `bg-[var(--color-aurum-highlight)]` resolved to invalid → background painted from page gradient fallback.
+
+The handoff's premise — *"those surfaces ship to production, so the classes resolve somehow even if I didn't see how"* — was incorrect. They ship with degraded inherited styling because the page hasn't been visually audited since the rail link landed two days prior.
+
+**Fix shipped this commit:**
+
+```css
+/* Inside src/styles/tokens.css @theme { ... } block */
+--color-fog: var(--fg-primary);                /* warm cream #F1ECE0 */
+--color-onyx: var(--canvas-base);              /* deep navy #050B15 */
+--color-aurum-highlight: var(--aurum-soft);    /* lighter gold #E2C78B */
+```
+
+**Regression guard:** `src/lib/evaluation/token-coverage-guard.test.ts` — vitest source-scan asserts the three aliases stay declared inside `@theme` AND that the canonical palette tokens they alias (`--fg-primary`, `--canvas-base`, `--aurum-soft`) stay declared in `:root`. CI fails on either removal.
+
+**Status of the originally HIGH/MEDIUM/LOW findings after this fix:**
+
+- **H3 (selected-tab contrast)** — UPGRADED from no-op to functional. `text-onyx` now resolves to `#050B15` against `bg-aurum` `#C4A96A`. APCA Lc estimate is in the AAA range for body text, but **still pending true browser-rendered measurement** per § 6 (operator action).
+- **M3 (small text opacity bumps)** — UPGRADED from no-op to functional. `text-fog/80` now resolves to `#F1ECE0` at 80% alpha. Same caveat: APCA measurement against the actual rendered LCH cascade pending.
+- **L7 (body text opacity bumps)** — same as M3.
+
+**What this fix does NOT do (intentionally out of scope):**
+
+1. Replace the opacity-modifier pattern (`text-fog/N`) with distinct LCH-tuned tokens (`text-fg-primary` / `text-fg-secondary` / `text-fg-tertiary`). The design system docs prefer the latter; the Cristiano surfaces use the former. A future refactor can migrate, but doing so right now would touch ~50 class instances across 5 files — out of scope for the compounding-finding fix.
+2. Declare other undeclared tokens used by adjacent surfaces. A broader sweep found `--color-graphite`, `--color-coral-downside`, `--color-cyan-interactive`, `--color-jade-upside`, `--color-status-warning` similarly undeclared in valuation / quantara surfaces. These are out of scope for THIS audit (different commits, different prior agents) and surfaced as a separate finding to the founder.
+
+**Held to Apple / Microsoft / Google / IBM 2026 leading coding practices per `~/CLAUDE.md` and `docs/api-specs/_MASTER_REGISTER.md §10.4`. 100% no breaking changes (additive `@theme` declarations + new test file only; no signature, behavior, or palette removals). 100% no partial coding (all three tokens declared, all three test-asserted, all three referenced sites now resolve to the intended palette value).**
