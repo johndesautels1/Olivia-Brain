@@ -68,6 +68,12 @@ import type {
 
 const RAIL_LINKS: { href: string; label: string; description: string }[] = [
   {
+    href: "/cristiano",
+    label: "Cristiano",
+    description:
+      "The Judge — verdict library, Ask Cristiano, and gateway inbox",
+  },
+  {
     href: "/calendar",
     label: "Calendar",
     description: "Personal calendar + voice scheduling",
