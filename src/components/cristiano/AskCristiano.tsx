@@ -16,7 +16,7 @@
  * `~/CLAUDE.md` and `docs/api-specs/_MASTER_REGISTER.md §10.4`.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, type KeyboardEvent } from "react";
 
 import { CristianoVerdictPlayer } from "@/components/cristiano/CristianoVerdictPlayer";
 import {
@@ -178,6 +178,40 @@ export function AskCristiano() {
     setSubmitState({ phase: "idle" });
   };
 
+  /**
+   * L8 audit fix: ARIA APG tablist keyboard nav on the kind picker.
+   * Left/Right cycle with wrap; Home/End jump to first/last. Focus
+   * follows the active tab so SR users hear the new selection
+   * announced.
+   */
+  const handleKindKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>) => {
+      const kinds = CRISTIANO_VERDICT_KINDS;
+      const currentIdx = kinds.indexOf(kind);
+      let nextIdx: number | null = null;
+
+      if (event.key === "ArrowRight") {
+        nextIdx = (currentIdx + 1) % kinds.length;
+      } else if (event.key === "ArrowLeft") {
+        nextIdx = (currentIdx - 1 + kinds.length) % kinds.length;
+      } else if (event.key === "Home") {
+        nextIdx = 0;
+      } else if (event.key === "End") {
+        nextIdx = kinds.length - 1;
+      }
+
+      if (nextIdx === null) return;
+      event.preventDefault();
+      const nextKind = kinds[nextIdx];
+      setKind(nextKind);
+      const nextKindEl = document.querySelector<HTMLButtonElement>(
+        `[data-testid="ask-cristiano-kind-${nextKind}"]`,
+      );
+      nextKindEl?.focus();
+    },
+    [kind],
+  );
+
   // ── Render ──
   return (
     <section
@@ -205,7 +239,7 @@ export function AskCristiano() {
 
       <header>
         <h2 className="text-base font-semibold text-fog">Ask Cristiano</h2>
-        <p className="text-xs text-fog/70">
+        <p className="text-xs text-fog/80">
           Pick a verdict kind, submit a structured question, and watch
           Cristiano render the pronouncement.
         </p>
@@ -233,6 +267,7 @@ export function AskCristiano() {
               aria-controls="ask-cristiano-form-panel"
               tabIndex={kind === k ? 0 : -1}
               onClick={() => setKind(k)}
+              onKeyDown={handleKindKeyDown}
               className={`min-h-[44px] rounded-md px-3 py-1.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60 ${
                 kind === k
                   ? "bg-aurum text-onyx border border-aurum"
@@ -259,36 +294,45 @@ export function AskCristiano() {
         >
           {kind === "freeform" && (
             <>
-              <label className="block">
+              {/* L1: explicit htmlFor + id. L2: maxLength + minLength
+                  matching the JS validator. L6: visible "(required)"
+                  marker in the label text. */}
+              <label className="block" htmlFor="ask-cristiano-question-input">
                 <span className="text-xs font-medium text-fog/80">
                   Question (required, 8-2000 characters)
                 </span>
                 <textarea
+                  id="ask-cristiano-question-input"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   rows={3}
+                  minLength={8}
+                  maxLength={2000}
                   className="mt-1 w-full rounded-md border border-fog/20 bg-onyx px-3 py-2 text-sm text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
                   placeholder="What decision should Cristiano render?"
                   aria-required="true"
                   data-testid="ask-cristiano-question"
                 />
               </label>
-              <label className="block">
+              <label className="block" htmlFor="ask-cristiano-context-input">
                 <span className="text-xs font-medium text-fog/80">
                   Context (optional, max 8000 chars)
                 </span>
                 <textarea
+                  id="ask-cristiano-context-input"
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
                   rows={4}
+                  maxLength={8000}
                   className="mt-1 w-full rounded-md border border-fog/20 bg-onyx px-3 py-2 text-sm text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
                 />
               </label>
-              <label className="block">
+              <label className="block" htmlFor="ask-cristiano-criteria-input">
                 <span className="text-xs font-medium text-fog/80">
                   Criteria (one per line, max 8)
                 </span>
                 <textarea
+                  id="ask-cristiano-criteria-input"
                   value={criteriaRaw}
                   onChange={(e) => setCriteriaRaw(e.target.value)}
                   rows={3}
@@ -301,28 +345,32 @@ export function AskCristiano() {
 
           {kind === "city_compare" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block">
+              <label className="block" htmlFor="ask-cristiano-city1-input">
                 <span className="text-xs font-medium text-fog/80">
-                  City 1
+                  City 1 (required)
                 </span>
                 <input
+                  id="ask-cristiano-city1-input"
                   type="text"
                   value={city1}
                   onChange={(e) => setCity1(e.target.value)}
+                  maxLength={240}
                   className="mt-1 w-full rounded-md border border-fog/20 bg-onyx px-3 py-2 text-sm text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
                   placeholder="London"
                   aria-required="true"
                   data-testid="ask-cristiano-city1"
                 />
               </label>
-              <label className="block">
+              <label className="block" htmlFor="ask-cristiano-city2-input">
                 <span className="text-xs font-medium text-fog/80">
-                  City 2
+                  City 2 (required)
                 </span>
                 <input
+                  id="ask-cristiano-city2-input"
                   type="text"
                   value={city2}
                   onChange={(e) => setCity2(e.target.value)}
+                  maxLength={240}
                   className="mt-1 w-full rounded-md border border-fog/20 bg-onyx px-3 py-2 text-sm text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
                   placeholder="Paris"
                   aria-required="true"
@@ -334,30 +382,39 @@ export function AskCristiano() {
 
           {kind === "startup_match" && (
             <>
-              <p className="text-xs text-fog/70">
+              <p className="text-xs text-fog/80">
                 Quick form for OB standalone use. Full DNA Builder is on
                 London Tech Map — when LTM lands its gateway publisher,
                 its richer verdicts arrive here automatically.
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="block">
+                <label
+                  className="block"
+                  htmlFor="ask-cristiano-companyName-input"
+                >
                   <span className="text-xs font-medium text-fog/80">
-                    Company name
+                    Company name (required)
                   </span>
                   <input
+                    id="ask-cristiano-companyName-input"
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
+                    maxLength={240}
                     className="mt-1 w-full rounded-md border border-fog/20 bg-onyx px-3 py-2 text-sm text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
                     aria-required="true"
                     data-testid="ask-cristiano-companyName"
                   />
                 </label>
-                <label className="block">
+                <label
+                  className="block"
+                  htmlFor="ask-cristiano-fundingRound-input"
+                >
                   <span className="text-xs font-medium text-fog/80">
                     Funding round
                   </span>
                   <select
+                    id="ask-cristiano-fundingRound-input"
                     value={fundingRound}
                     onChange={(e) => setFundingRound(e.target.value)}
                     className="mt-1 w-full rounded-md border border-fog/20 bg-onyx px-3 py-2 text-sm text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
@@ -370,23 +427,32 @@ export function AskCristiano() {
                   </select>
                 </label>
               </div>
-              <label className="block">
+              <label
+                className="block"
+                htmlFor="ask-cristiano-sectorTags-input"
+              >
                 <span className="text-xs font-medium text-fog/80">
                   Sector tags (comma-separated)
                 </span>
                 <input
+                  id="ask-cristiano-sectorTags-input"
                   type="text"
                   value={sectorTagsRaw}
                   onChange={(e) => setSectorTagsRaw(e.target.value)}
+                  maxLength={480}
                   className="mt-1 w-full rounded-md border border-fog/20 bg-onyx px-3 py-2 text-sm text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
                   placeholder="fintech, payments"
                 />
               </label>
-              <label className="block">
+              <label
+                className="block"
+                htmlFor="ask-cristiano-outreachGoal-input"
+              >
                 <span className="text-xs font-medium text-fog/80">
                   Outreach goal
                 </span>
                 <select
+                  id="ask-cristiano-outreachGoal-input"
                   value={outreachGoal}
                   onChange={(e) => setOutreachGoal(e.target.value)}
                   className="mt-1 w-full rounded-md border border-fog/20 bg-onyx px-3 py-2 text-sm text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
@@ -397,14 +463,19 @@ export function AskCristiano() {
                   <option value="customer">Customer</option>
                 </select>
               </label>
-              <label className="block">
+              <label
+                className="block"
+                htmlFor="ask-cristiano-productSummary-input"
+              >
                 <span className="text-xs font-medium text-fog/80">
-                  Product summary (paragraph)
+                  Product summary (paragraph, required)
                 </span>
                 <textarea
+                  id="ask-cristiano-productSummary-input"
                   value={productSummary}
                   onChange={(e) => setProductSummary(e.target.value)}
                   rows={4}
+                  maxLength={8000}
                   className="mt-1 w-full rounded-md border border-fog/20 bg-onyx px-3 py-2 text-sm text-fog focus:border-aurum/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50"
                   aria-required="true"
                   data-testid="ask-cristiano-productSummary"
@@ -455,7 +526,7 @@ export function AskCristiano() {
         >
           {submitState.alreadyExisted && (
             <p
-              className="text-xs text-fog/70"
+              className="text-xs text-fog/80"
               data-testid="ask-cristiano-already-existed"
             >
               You&apos;ve already asked this — Cristiano is replaying his

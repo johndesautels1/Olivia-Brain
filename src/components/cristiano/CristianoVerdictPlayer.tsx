@@ -134,9 +134,17 @@ export function CristianoVerdictPlayer({
   }, []);
 
   // ── Render ──
+  // L4 audit fix: the player is a meaningful landmark — role="region"
+  // + aria-labelledby pointing to the h3 lets SR users navigate to it
+  // via landmark rotor (iOS) or D-key (Windows). titleId scopes the
+  // h3 id to the verdict so multiple players on the same page
+  // (Verdict Library expanded rows) don't collide on duplicate ids.
+  const titleId = `verdict-title-${verdict.id}`;
   return (
     <div
       className="cristiano-verdict-player rounded-xl border border-aurum/20 bg-onyx/90 p-4 space-y-3"
+      role="region"
+      aria-labelledby={titleId}
       data-testid="cristiano-verdict-player"
       data-mode={effectiveMode}
       data-state={playbackState}
@@ -144,6 +152,7 @@ export function CristianoVerdictPlayer({
       {/* Verdict header */}
       <header className="space-y-1">
         <h3
+          id={titleId}
           className="text-base font-semibold text-fog"
           data-testid="verdict-title"
         >
@@ -245,7 +254,11 @@ export function CristianoVerdictPlayer({
         className="rounded-md border border-fog/10 bg-onyx/60 p-3 text-sm text-fog/80"
         data-testid="verdict-transcript"
       >
-        <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-[0.18em] text-fog/60">
+        {/* L5 audit fix: explicit focus-visible ring on the summary so
+            keyboard users get a visible focus indicator consistent with
+            the rest of the surface (browser-default summary focus
+            outline varies). rounded-sm gives the ring a clean shape. */}
+        <summary className="cursor-pointer rounded-sm font-mono text-[11px] uppercase tracking-[0.18em] text-fog/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/50">
           Verdict transcript
         </summary>
         <p className="mt-2 whitespace-pre-wrap leading-relaxed">

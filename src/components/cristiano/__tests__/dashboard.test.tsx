@@ -153,3 +153,93 @@ describe("CristianoDashboard — accessibility", () => {
     expect(askTab.className).toMatch(/min-h-\[44px\]/);
   });
 });
+
+// ─── L8 audit fix — ARIA APG arrow-key tablist navigation ──
+describe("CristianoDashboard — keyboard arrow-key navigation (L8)", () => {
+  it("ArrowRight cycles forward through the tabs (with wrap)", () => {
+    render(<CristianoDashboard />);
+    const askTab = screen.getByTestId("cristiano-dashboard-tab-ask");
+    fireEvent.keyDown(askTab, { key: "ArrowRight" });
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-tab-library")
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+
+    // From last tab, ArrowRight wraps to first.
+    fireEvent.keyDown(
+      screen.getByTestId("cristiano-dashboard-tab-library"),
+      { key: "ArrowRight" },
+    );
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-tab-inbox")
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    fireEvent.keyDown(
+      screen.getByTestId("cristiano-dashboard-tab-inbox"),
+      { key: "ArrowRight" },
+    );
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-tab-ask")
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+
+  it("ArrowLeft cycles backward through the tabs (with wrap)", () => {
+    render(<CristianoDashboard />);
+    const askTab = screen.getByTestId("cristiano-dashboard-tab-ask");
+    // From first tab, ArrowLeft wraps to last.
+    fireEvent.keyDown(askTab, { key: "ArrowLeft" });
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-tab-inbox")
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+
+  it("Home jumps to first tab; End jumps to last", () => {
+    render(<CristianoDashboard initialTab="library" />);
+    fireEvent.keyDown(
+      screen.getByTestId("cristiano-dashboard-tab-library"),
+      { key: "End" },
+    );
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-tab-inbox")
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    fireEvent.keyDown(
+      screen.getByTestId("cristiano-dashboard-tab-inbox"),
+      { key: "Home" },
+    );
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-tab-ask")
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+
+  it("does not intercept non-arrow keys (Space/Enter still trigger click)", () => {
+    render(<CristianoDashboard />);
+    const askTab = screen.getByTestId("cristiano-dashboard-tab-ask");
+    // Should not change selection on a non-handled key.
+    fireEvent.keyDown(askTab, { key: "a" });
+    expect(askTab.getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("active tab has tabIndex=0, others have -1 (roving focus)", () => {
+    render(<CristianoDashboard />);
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-tab-ask")
+        .getAttribute("tabindex"),
+    ).toBe("0");
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-tab-library")
+        .getAttribute("tabindex"),
+    ).toBe("-1");
+  });
+});

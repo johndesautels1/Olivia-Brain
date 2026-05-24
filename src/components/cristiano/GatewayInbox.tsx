@@ -131,7 +131,7 @@ export function GatewayInbox() {
       <header className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-fog">Gateway Inbox</h2>
-          <p className="text-xs text-fog/70">
+          <p className="text-xs text-fog/80">
             Verdicts pushed into Olivia Brain by linked apps. Polls every 30s.
           </p>
         </div>

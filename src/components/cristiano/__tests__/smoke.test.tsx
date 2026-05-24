@@ -121,6 +121,19 @@ describe("CristianoVerdictPlayer", () => {
     ).toBe("live");
   });
 
+  // ─── L4 audit fix — region landmark + aria-labelledby ──
+  it("renders role=region + aria-labelledby pointing to the h3 title (L4)", () => {
+    const verdict = makeVerdictFixture({ id: "abc-def-123" });
+    render(<CristianoVerdictPlayer verdict={verdict} />);
+    const player = screen.getByTestId("cristiano-verdict-player");
+    expect(player.getAttribute("role")).toBe("region");
+    expect(player.getAttribute("aria-labelledby")).toBe(
+      "verdict-title-abc-def-123",
+    );
+    const title = screen.getByTestId("verdict-title");
+    expect(title.getAttribute("id")).toBe("verdict-title-abc-def-123");
+  });
+
   // ─── H2 audit fix — captions track for WCAG 1.2.2 Level A ──
   it("renders <track kind='captions'> when captionsUrl is set (WCAG 1.2.2)", () => {
     const verdict = makeVerdictFixture({

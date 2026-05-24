@@ -151,7 +151,7 @@ export function VerdictLibrary({
           Visually styled but semantically important for SR users. */}
       <header>
         <h2 className="text-base font-semibold text-fog">Verdict Library</h2>
-        <p className="text-xs text-fog/70">
+        <p className="text-xs text-fog/80">
           Every verdict Cristiano has rendered, newest first.
         </p>
       </header>
@@ -165,7 +165,7 @@ export function VerdictLibrary({
             // accessible name. WCAG 2.5.3 — Label in Name. Implicit
             // <label> wrap provides the accessible name from the
             // <span> content automatically.
-            <label className="flex items-center gap-2 text-xs text-fog/70">
+            <label className="flex items-center gap-2 text-xs text-fog/80">
               <span>Kind:</span>
               <select
                 value={kindFilter}
@@ -190,7 +190,7 @@ export function VerdictLibrary({
 
           {!hideSourceAppFilter && (
             // M4 audit fix: same — visible "Source:" is the accessible name.
-            <label className="flex items-center gap-2 text-xs text-fog/70">
+            <label className="flex items-center gap-2 text-xs text-fog/80">
               <span>Source:</span>
               <select
                 value={sourceAppFilter}
@@ -217,7 +217,7 @@ export function VerdictLibrary({
 
       {/* List */}
       {loading && verdicts.length === 0 && (
-        <p className="text-sm text-fog/70" data-testid="verdict-library-loading">
+        <p className="text-sm text-fog/80" data-testid="verdict-library-loading">
           Loading verdicts...
         </p>
       )}
@@ -232,7 +232,7 @@ export function VerdictLibrary({
       )}
       {!loading && verdicts.length === 0 && !error && (
         <p
-          className="text-sm text-fog/70"
+          className="text-sm text-fog/80"
           data-testid="verdict-library-empty"
         >
           No verdicts yet. Cristiano renders verdicts when a linked app
@@ -272,17 +272,21 @@ export function VerdictLibrary({
                     </p>
                   </div>
                   {v.preRenderedVideoUrl ? (
-                    <span
-                      className="shrink-0 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-emerald-300"
-                      title="This verdict has a pre-rendered video"
-                    >
+                    // L3 audit fix: replaced `title=` (which doesn't
+                    // surface on touch + inconsistent SR support) with
+                    // an inline sr-only span so SR users hear the
+                    // full description; sighted users still see "Video".
+                    <span className="shrink-0 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-emerald-300">
+                      <span className="sr-only">
+                        This verdict has a pre-rendered video:{" "}
+                      </span>
                       Video
                     </span>
                   ) : (
-                    <span
-                      className="shrink-0 rounded-full border border-aurum/30 bg-aurum/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-aurum"
-                      title="Live narration via LiveAvatar"
-                    >
+                    <span className="shrink-0 rounded-full border border-aurum/30 bg-aurum/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-aurum">
+                      <span className="sr-only">
+                        Live narration via LiveAvatar:{" "}
+                      </span>
                       Live
                     </span>
                   )}

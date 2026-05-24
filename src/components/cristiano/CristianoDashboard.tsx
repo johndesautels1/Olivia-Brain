@@ -19,7 +19,7 @@
  * `~/CLAUDE.md` and `docs/api-specs/_MASTER_REGISTER.md §10.4`.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type KeyboardEvent } from "react";
 
 import { AskCristiano } from "@/components/cristiano/AskCristiano";
 import { GatewayInbox } from "@/components/cristiano/GatewayInbox";
@@ -85,6 +85,42 @@ export function CristianoDashboard({ initialTab }: CristianoDashboardProps) {
     }
   }, [activeTab]);
 
+  /**
+   * L8 audit fix: ARIA APG tablist keyboard nav. Left/Right cycle
+   * with wrap; Home/End jump to first/last. Focus follows the
+   * active tab so SR users hear the new selection announced. Mouse
+   * click still works via the button's own onClick.
+   */
+  const handleTabKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>) => {
+      const tabs = CRISTIANO_DASHBOARD_TABS;
+      const currentIdx = tabs.indexOf(activeTab);
+      let nextIdx: number | null = null;
+
+      if (event.key === "ArrowRight") {
+        nextIdx = (currentIdx + 1) % tabs.length;
+      } else if (event.key === "ArrowLeft") {
+        nextIdx = (currentIdx - 1 + tabs.length) % tabs.length;
+      } else if (event.key === "Home") {
+        nextIdx = 0;
+      } else if (event.key === "End") {
+        nextIdx = tabs.length - 1;
+      }
+
+      if (nextIdx === null) return;
+      event.preventDefault();
+      const nextTab = tabs[nextIdx];
+      setActiveTab(nextTab);
+      // Move keyboard focus to the new active tab so SR users
+      // hear the new selection announced.
+      const nextTabEl = document.querySelector<HTMLButtonElement>(
+        `[data-testid="cristiano-dashboard-tab-${nextTab}"]`,
+      );
+      nextTabEl?.focus();
+    },
+    [activeTab],
+  );
+
   return (
     <div
       className="cristiano-dashboard space-y-6"
@@ -95,7 +131,7 @@ export function CristianoDashboard({ initialTab }: CristianoDashboardProps) {
         <h1 className="text-2xl font-bold tracking-tight text-fog">
           Cristiano — The Judge
         </h1>
-        <p className="max-w-2xl text-sm text-fog/70">
+        <p className="max-w-2xl text-sm text-fog/80">
           One-way verdict surface. Cristiano renders decisions and
           recommendations on structured rubrics and presents them
           via the LiveAvatar pipeline. He does not converse — he
@@ -118,7 +154,9 @@ export function CristianoDashboard({ initialTab }: CristianoDashboardProps) {
               role="tab"
               aria-selected={isActive}
               aria-controls={`cristiano-panel-${tab}`}
+              tabIndex={isActive ? 0 : -1}
               onClick={() => setActiveTab(tab)}
+              onKeyDown={handleTabKeyDown}
               className={`min-h-[44px] flex-1 sm:flex-none rounded-md px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-aurum/60 ${
                 isActive
                   ? "bg-aurum text-onyx border border-aurum"
