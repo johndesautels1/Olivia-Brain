@@ -160,6 +160,20 @@ export type RecordingError =
  */
 export type { AvatarState } from "@/lib/avatar/types";
 
+/**
+ * Reason a `presentVerdict` call concluded short of the full
+ * spoken script. `done` = the script narrated end-to-end; other
+ * values match the underlying handle's `SpeakErrorReason` so callers
+ * can distinguish benign aborts (pre-empted by another verdict) from
+ * voice-unavailable failures.
+ */
+export type PresentVerdictOutcome =
+  | "done"
+  | "voice_unavailable"
+  | "ws_closed"
+  | "stream_aborted"
+  | "connect_failed";
+
 export interface OliviaVideoAvatarRef {
   // Connection controls — use when hideOverlays={true}
   connect: () => Promise<void>;
@@ -170,6 +184,25 @@ export interface OliviaVideoAvatarRef {
   interrupt: () => void;
   replayLast: () => void;
   getLastReply: () => string;
+
+  /**
+   * One-shot verdict presentation. Different from the reactive
+   * `lastReply` pattern Olivia uses:
+   *   - Lazily connects the session if needed.
+   *   - Speaks the entire script as a single utterance.
+   *   - Optionally disconnects when the script ends so credits aren't
+   *     burned on an idle session (defaults to false — caller chooses).
+   *   - Returns a `PresentVerdictOutcome` describing what happened.
+   *
+   * This is the canonical pattern for Cristiano verdict rendering:
+   * "render the pronouncement once, then yield the floor." Differs
+   * from the conversational Olivia path where every reply pre-empts
+   * the previous one via the `lastReply` useEffect.
+   */
+  presentVerdict: (
+    script: string,
+    options?: { autoDisconnect?: boolean },
+  ) => Promise<PresentVerdictOutcome>;
 
   // Recording controls
   startRecording: () => Promise<boolean>;
@@ -707,6 +740,59 @@ export const OliviaVideoAvatar = forwardRef<OliviaVideoAvatarRef, Props>(functio
       }
     },
     getLastReply: () => lastSpokenRef.current,
+
+    presentVerdict: async (script, options) => {
+      const trimmed = (script ?? "").trim();
+      if (!trimmed) return "stream_aborted";
+
+      const handle = handleRef.current;
+      if (!handle) return "connect_failed";
+
+      // Lazy connect — verdict surfaces mount the component once and
+      // call presentVerdict later when the verdict is ready. The
+      // handle's connect() is idempotent (returns the in-flight
+      // promise on re-call), so this is safe to invoke even when the
+      // session is already connecting/connected.
+      if (state === "disconnected" || state === "error") {
+        try {
+          await handle.connect();
+        } catch (err) {
+          console.warn(
+            "[OliviaVideoAvatar] presentVerdict connect failed:",
+            err instanceof Error ? err.message : err,
+          );
+          return "connect_failed";
+        }
+      }
+
+      // Use a fresh AbortController so this verdict can be interrupted
+      // independently of any prior speak. Wire it through the same
+      // speakAbortRef so the next presentVerdict/interrupt pre-empts.
+      speakAbortRef.current?.abort();
+      const controller = new AbortController();
+      speakAbortRef.current = controller;
+
+      lastSpokenRef.current = trimmed;
+
+      const result = await handle.speak(trimmed, controller.signal);
+      if (speakAbortRef.current === controller) {
+        speakAbortRef.current = null;
+      }
+
+      if (options?.autoDisconnect) {
+        // Disconnect after the script lands — judges don't loiter on
+        // an idle credit-burning session. The state-change listener
+        // fires onDisconnect/onSpeakingChange(false) naturally.
+        handle.disconnect();
+      }
+
+      if (result.reason && result.reason !== "stream_aborted") {
+        onSpeakErrorRef.current?.(result.reason);
+      }
+
+      if (!result.reason) return "done";
+      return result.reason;
+    },
 
     // ── Recording controls ──
     startRecording,
