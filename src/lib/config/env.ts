@@ -146,6 +146,22 @@ const serverEnvSchema = z.object({
   LIVEAVATAR_OLIVIA_AVATAR_ID: optionalSecret,
   LIVEAVATAR_CRISTIANO_AVATAR_ID: optionalSecret,
 
+  // ── Gateway bearer tokens (Cristiano push channel) ─────────────────
+  // One env var per consuming app — service-account bearer in the
+  // `Authorization: Bearer <token>` header on POSTs to
+  // `/api/gateway/cristiano/verdicts`. Server identifies the user
+  // via `X-Cristiano-User-Id` after verifying the bearer.
+  // Resolved by `src/lib/gateway/auth.ts`. Production + Preview,
+  // marked Sensitive — rotate per app.
+  GATEWAY_TOKEN_LTM: optionalSecret,
+  GATEWAY_TOKEN_LIFESCORE: optionalSecret,
+  GATEWAY_TOKEN_CLUESLONDON: optionalSecret,
+  GATEWAY_TOKEN_CLUESINTELLIGENCE: optionalSecret,
+  GATEWAY_TOKEN_CLUESXSCORE: optionalSecret,
+  GATEWAY_TOKEN_HEART_RECOVERY: optionalSecret,
+  GATEWAY_TOKEN_PROPERTY_SEARCH: optionalSecret,
+  GATEWAY_TOKEN_TRANSIT: optionalSecret,
+
   ELEVENLABS_API_KEY: optionalSecret,
   // LTM-pinned voice IDs for the LiveAvatar path. Distinct from
   // ELEVENLABS_VOICE_OLIVIA / ELEVENLABS_VOICE_CRISTIANO below (which the
