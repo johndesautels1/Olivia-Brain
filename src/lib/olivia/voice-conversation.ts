@@ -1,6 +1,20 @@
 // src/lib/olivia/voice-conversation.ts
 // Olivia voice conversation engine
 // Handles LLM calls for generating conversational responses and extracting data
+//
+// Architecture Standards Law 3: every LLM call routes through the
+// canonical `callLLM` wrapper at `src/lib/agents/llm.ts`. Prior to
+// the 2026-05-25 refactor this file held its own raw fetch to
+// `api.anthropic.com/v1/messages` (the same shape as the parallel
+// fix in `voice-document.ts`); the refactor preserves every
+// observable behavior of the prior `callAnthropic(prompt, maxTokens)`
+// -> { success, text?, error? } contract while delegating transport,
+// retry, observability, and cost-tracking to the shared wrapper.
+// Held to Apple / IBM / Microsoft / Google 2026 leading coding
+// practices per `~/CLAUDE.md` and
+// `docs/api-specs/_MASTER_REGISTER.md` section 10.4.
+
+import { callLLM } from "@/lib/agents/llm";
 
 import {
   buildConversationPrompt,
@@ -130,11 +144,24 @@ export interface PreviousCallContext {
 // Configuration
 // ═══════════════════════════════════════════════════════════════════════════
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+// Note: the prior `ANTHROPIC_API_URL` constant was removed in the
+// callLLM refactor. The endpoint is now owned by `MODEL_MAP` in
+// `src/lib/agents/llm.ts`; this file declares only the model + the
+// caller-tunable knobs (per-callsite max tokens, timeout, sampling).
 const MODEL_ID = "claude-sonnet-4-6"; // Fast + good for conversations
 const MAX_TOKENS_CONVERSATION = 1024; // Keep responses concise
 const MAX_TOKENS_EXTRACTION = 4096; // More room for full extraction
 const TIMEOUT_MS = 30_000; // 30 second timeout for live calls
+// Behavior-preserving: the prior raw fetch omitted `temperature`, which
+// causes Anthropic's Messages API to default to 1.0. We pass 1.0
+// explicitly so callLLM forwards it; the wire payload is equivalent to
+// the prior implicit default.
+const TEMPERATURE = 1.0;
+// Behavior-preserving: the prior raw fetch omitted `system`. callLLM's
+// callAnthropicMessages includes `system: options.systemPrompt`
+// unconditionally; the empty string is treated by the Anthropic API
+// the same as omission (no system instructions are applied).
+const SYSTEM_PROMPT = "";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Core Functions
@@ -148,61 +175,61 @@ export function isAnthropicConfigured(): boolean {
 }
 
 /**
- * Call Anthropic API with a prompt
+ * Submit `prompt` to the canonical `callLLM` wrapper and adapt the
+ * result into this module's existing `{ success, text?, error? }`
+ * surface. The pre-flight `ANTHROPIC_API_KEY` check is preserved so
+ * the caller still receives a specific "not configured" error string
+ * for the most common deployment-misconfiguration case; other
+ * failures degrade to a generic message because `callLLM` returns
+ * `null` for any non-success and surfaces the underlying reason via
+ * its own structured logging (Architecture Standards Law 3 +
+ * observability section of the 2026 standards table).
+ *
+ * Behavior-preserved end-to-end (matches the parallel refactor in
+ * `voice-document.ts`):
+ *   - Anthropic Messages endpoint + `2023-06-01` API version + model
+ *     `claude-sonnet-4-6` (encoded in callLLM's MODEL_MAP).
+ *   - 30-second timeout (callLLM uses `AbortSignal.timeout(30_000)`
+ *     internally; equivalent cancellation effect to the prior
+ *     `AbortController + setTimeout` pair).
+ *   - Text-block concatenation with newline separator (callLLM's
+ *     `callAnthropicMessages` performs the identical
+ *     `.filter(type === "text").map(.text).join("\n")` reduction).
+ *   - Caller-supplied `maxTokens` forwarded unchanged so the
+ *     5 callsites keep their distinct ceilings
+ *     (CONVERSATION=1024, EXTRACTION=4096, detection=512).
+ *   - Implicit temperature=1.0 now passed explicitly; the on-wire
+ *     payload matches the prior implicit default.
  */
 async function callAnthropic(
   prompt: string,
   maxTokens: number = MAX_TOKENS_CONVERSATION
 ): Promise<{ success: boolean; text?: string; error?: string }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return { success: false, error: "ANTHROPIC_API_KEY not configured" };
   }
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const result = await callLLM({
+    model: MODEL_ID,
+    systemPrompt: SYSTEM_PROMPT,
+    userPrompt: prompt,
+    temperature: TEMPERATURE,
+    maxTokens,
+    timeoutMs: TIMEOUT_MS,
+  });
 
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL_ID,
-        max_tokens: maxTokens,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("[VoiceConversation] Anthropic API error:", response.status, errText);
-      return { success: false, error: `API error ${response.status}` };
-    }
-
-    const json = await response.json();
-    const textBlocks = (json.content ?? []).filter(
-      (b: { type: string }) => b.type === "text"
-    );
-    const text = textBlocks.map((b: { text: string }) => b.text).join("\n");
-
-    return { success: true, text };
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      return { success: false, error: "Request timed out" };
-    }
-    console.error("[VoiceConversation] Request failed:", error);
+  if (!result) {
+    // callLLM has already logged the underlying reason (timeout,
+    // non-2xx, empty response, etc.) via its structured warn channel.
+    // The generic surface preserves the prior pattern of returning a
+    // user-readable error string without re-deriving the cause here.
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: "LLM call failed (see server logs for the underlying reason)",
     };
   }
+
+  return { success: true, text: result.text };
 }
 
 /**
