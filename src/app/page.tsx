@@ -35,6 +35,7 @@ import { SectionNav } from "@/components/studio/SectionNav";
 import { DocumentTree } from "@/components/studio/DocumentTree";
 import { FrameworksPanel } from "@/components/studio/FrameworksPanel";
 import { PlanSectionNav } from "@/components/studio/PlanSectionNav";
+import { CristianoDashboard } from "@/components/cristiano/CristianoDashboard";
 import { OliviaChatTab } from "@/components/studio/OliviaChatTab";
 import { PitchCoachTab } from "@/components/studio/PitchCoachTab";
 import { PreviewTab } from "@/components/studio/PreviewTab";
@@ -387,6 +388,16 @@ export default function HomePage() {
         id: "olivia",
         label: "Olivia",
         content: <OliviaChatTab onAuditEntry={pushAudit} />,
+      },
+      {
+        /* Cristiano sits second so both personas (the bilateral
+         * conversationalist + the unilateral judge) are adjacent in the
+         * tab strip. `embedded` suppresses the dashboard's persona
+         * h1 since the tab label already identifies the surface, and
+         * surfaces a compact "Full view" link to /cristiano. */
+        id: "cristiano",
+        label: "Cristiano",
+        content: <CristianoDashboard embedded />,
       },
       {
         id: "coach",

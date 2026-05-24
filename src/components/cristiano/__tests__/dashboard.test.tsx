@@ -243,3 +243,72 @@ describe("CristianoDashboard — keyboard arrow-key navigation (L8)", () => {
     ).toBe("-1");
   });
 });
+
+// ─── embedded prop (home page Inspector mount) ──────────────────────────────
+describe("CristianoDashboard — embedded prop", () => {
+  it("renders the full persona h1 + intro by default (standalone /cristiano route)", () => {
+    render(<CristianoDashboard />);
+    expect(screen.getByText("Cristiano — The Judge")).toBeTruthy();
+    expect(
+      screen.queryByTestId("cristiano-dashboard-view-standalone"),
+    ).toBeFalsy();
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard")
+        .getAttribute("data-embedded"),
+    ).toBe("false");
+  });
+
+  it("suppresses the persona h1 when embedded (Inspector mount)", () => {
+    render(<CristianoDashboard embedded />);
+    expect(screen.queryByText("Cristiano — The Judge")).toBeFalsy();
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard")
+        .getAttribute("data-embedded"),
+    ).toBe("true");
+    // The compact eyebrow stays so the surface still has a label.
+    expect(screen.getByText("The Judge")).toBeTruthy();
+  });
+
+  it("surfaces a 'Full view' link to /cristiano with the active tab encoded in the href when embedded", () => {
+    render(<CristianoDashboard embedded initialTab="library" />);
+    const link = screen.getByTestId("cristiano-dashboard-view-standalone");
+    expect(link.tagName.toLowerCase()).toBe("a");
+    expect(link.getAttribute("href")).toBe("/cristiano?tab=library");
+    // Link must satisfy WCAG 2.5.5 AAA touch-target minimum.
+    expect(link.className).toMatch(/min-h-\[44px\]/);
+    // Accessible name describes the action concretely (not just "Full view").
+    expect(link.getAttribute("aria-label")).toMatch(
+      /Cristiano Verdict Library.*standalone/i,
+    );
+  });
+
+  it("'Full view' link href updates when the user switches sub-tabs while embedded", () => {
+    render(<CristianoDashboard embedded />);
+    // Default is "ask".
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-view-standalone")
+        .getAttribute("href"),
+    ).toBe("/cristiano?tab=ask");
+    // Switch to inbox.
+    fireEvent.click(screen.getByTestId("cristiano-dashboard-tab-inbox"));
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-view-standalone")
+        .getAttribute("href"),
+    ).toBe("/cristiano?tab=inbox");
+  });
+
+  it("preserves the existing sub-tablist + keyboard navigation in embedded mode (no regression)", () => {
+    render(<CristianoDashboard embedded />);
+    const askTab = screen.getByTestId("cristiano-dashboard-tab-ask");
+    fireEvent.keyDown(askTab, { key: "ArrowRight" });
+    expect(
+      screen
+        .getByTestId("cristiano-dashboard-tab-library")
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+  });
+});
