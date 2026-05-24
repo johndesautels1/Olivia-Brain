@@ -2,9 +2,12 @@
  * G1-048: Modern Slavery Statement Generator
  *
  * Generates a UK Modern Slavery Act 2015 (s.54) compliant statement for
- * a company. Companies with turnover >= £36M must publish an annual
- * statement; smaller companies often choose to publish voluntarily as
- * an enterprise-buyer-readiness signal.
+ * a company. Companies whose turnover meets or exceeds the statutory
+ * threshold (see `UK_MODERN_SLAVERY.turnoverThresholdGbp` in
+ * `src/lib/regulatory-config/uk-modern-slavery.ts` -- canonical
+ * source of truth per Architecture Standards Law 6) must publish an
+ * annual statement; smaller companies often choose to publish
+ * voluntarily as an enterprise-buyer-readiness signal.
  *
  * Schedule: on_demand. Two input shapes are supported:
  *   - userProfileId — pulls UserCompanyProfile (companyName, sector,
@@ -34,6 +37,14 @@ import {
   resolveUserCompany,
   type CompanySource,
 } from "../resolve-company";
+// Architecture Standards Law 6 -- regulatory constants live in
+// src/lib/regulatory-config, not inline. UK_MODERN_SLAVERY exposes
+// the £36M turnover threshold + the validUntil stale-config date
+// scanned by the sibling __tests__/uk-modern-slavery.test.ts CI guard.
+import {
+  UK_MODERN_SLAVERY,
+  formatUkModernSlaveryThreshold,
+} from "@/lib/regulatory-config/uk-modern-slavery";
 
 // ─────────────────────────────────────────────
 // Input contract
@@ -167,9 +178,10 @@ const DEFAULT_SYSTEM_PROMPT = [
 ].join(" ");
 
 function buildUserPrompt(c: ResolvedCompany): string {
+  const thresholdLabel = formatUkModernSlaveryThreshold();
   const turnoverLine =
     c.turnoverGbp === null
-      ? "  turnover: not provided (assume below £36M threshold unless otherwise stated)"
+      ? `  turnover: not provided (assume below ${thresholdLabel} threshold unless otherwise stated)`
       : `  turnover: £${Math.round(c.turnoverGbp).toLocaleString()} GBP`;
   const employeeLine =
     c.employeeCount === null
@@ -192,7 +204,7 @@ function buildUserPrompt(c: ResolvedCompany): string {
     fyLine,
     `  publishVoluntarily: ${c.publishVoluntarily ? "yes" : "no"}`,
     "",
-    "Determine whether this company is legally required to publish a statement (turnover threshold £36M) and explain the reasoning.",
+    `Determine whether this company is legally required to publish a statement (turnover threshold ${thresholdLabel}) and explain the reasoning.`,
     "Then write the statement itself in markdown, covering ALL SIX areas required by s.54: (1) organisational structure & supply chains, (2) policies, (3) due diligence processes, (4) risk assessment & management, (5) effectiveness KPIs, (6) training.",
     "If turnover is below the threshold and publishVoluntarily is yes, write a voluntary statement framed as enterprise-buyer-readiness.",
     "If turnover is below the threshold and publishVoluntarily is no, still produce a statement but mark it as draft-only and explicitly note in `notes` that publication is not legally required.",

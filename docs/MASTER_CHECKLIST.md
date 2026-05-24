@@ -7,7 +7,17 @@
 
 ---
 
-## Active track — Architecture Standards Audits (C) + Bundle Audit (E) — ALL AUDITS COMPLETE 2026-05-25
+## Active track — Remediation (post-audit fixes)
+
+| # | Item | Status | Output | Commit |
+|---|---|---|---|---|
+| FIX-1 | **Law 6 Phase 1+2** — create `src/lib/regulatory-config/` + `uk-modern-slavery.ts` with `validUntil` + stale-config CI guard; refactor `g1-048` to import the constant at all 3 inline sites | ✅ Shipped | `src/lib/regulatory-config/uk-modern-slavery.ts` + sibling `__tests__/uk-modern-slavery.test.ts` + g1-048 refactor | (this commit) |
+| FIX-2 | **Bundle E Phase 1** — wire `@next/bundle-analyzer` + `npm run analyze` script | ⏳ Next | `next.config.ts` + `package.json` | — |
+| FIX-3 | **Bundle E Phase 3a** — lazy-load `ChartFromSpec` via `dynamic()` so recharts (~120KB) leaves the initial home bundle | ⏳ After FIX-2 | reply-renderer touch | — |
+| FIX-4 | **Law 8 CI guard** — source-scan guard asserting every API route with body input uses Zod | ⏳ After FIX-3 | `src/lib/evaluation/law-8-route-zod-guard.test.ts` | — |
+| FIX-5 | **Law 5 CI guard** — source-scan guard asserting every agent's `dataSources` entry is non-empty (precursor to strict-typing) | ⏳ After FIX-4 | `src/lib/evaluation/agent-data-sources-guard.test.ts` | — |
+
+## Audit-track summary — all 4 audits complete 2026-05-25
 
 | # | Item | Status | Output | Commit |
 |---|---|---|---|---|
@@ -46,7 +56,8 @@ Reverse-chronological:
 
 | SHA | What |
 |---|---|
-| (this commit) | Bundle-size audit (E-1) — 5 findings (no `@next/bundle-analyzer`; no perf budget; framer-motion static across 9 valuation files; recharts not lazy-loaded inside ChartFromSpec; verify three.js path). 6 existing dynamic-import strengths enumerated. 5-phase plan starting with `@next/bundle-analyzer` wire-up (~30 min) |
+| (this commit) | **FIX-1 Law 6 remediation Phase 1+2** — create `src/lib/regulatory-config/` + `uk-modern-slavery.ts` with the £36M threshold + ISO `validUntil` field + barrel index + 11-case Law-6 stale-config CI guard (asserts `validUntil >= today + 90d`); refactor `g1-048` at all 3 inline sites (docstring + LLM input + LLM prompt instruction) to import via `formatUkModernSlaveryThreshold()`. 26/26 tests pass (11 new + 15 existing g1-048). Single source of truth for the threshold across OB. |
+| `e508164` | Bundle-size audit (E-1) — 5 findings (no `@next/bundle-analyzer`; no perf budget; framer-motion static across 9 valuation files; recharts not lazy-loaded inside ChartFromSpec; verify three.js path). 6 existing dynamic-import strengths enumerated. 5-phase plan starting with `@next/bundle-analyzer` wire-up (~30 min) |
 | `d588899` | Law 8 audit — 2 findings (37/119 API routes use Zod = 31% coverage; no CI guard for the 3-layer pattern); G1-033 canonical pattern annotated layer-by-layer; 4-phase remediation plan |
 | `c9d234b` | Law 6 audit — 3 findings (regulatory-config dir missing, £36M inline in g1-048 at 3 sites, no stale-config alert); 4-phase remediation plan |
 | `d249205` | Law 5 audit — 2 findings (dataSources typed `string[]` not strict-typed, no CI AST guard); 4-phase remediation plan + MASTER_CHECKLIST.md created |
