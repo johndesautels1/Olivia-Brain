@@ -11,9 +11,9 @@
 
 | # | Item | Status | Output | Commit |
 |---|---|---|---|---|
-| C-1 | **Architecture Law 5 audit** — agent `dataSources` strict-typing + CI AST guard | ✅ Audit shipped | `docs/07_ARCHITECTURE_LAW_5_AUDIT.md` | (this commit) |
-| C-2 | **Architecture Law 6 audit** — regulatory constants in `src/lib/regulatory-config/` with `validUntil` | ⏳ Next | `docs/08_ARCHITECTURE_LAW_6_AUDIT.md` (pending) | — |
-| C-3 | **Architecture Law 8 audit** — schema-first at every boundary (Zod + type guard + tolerant JSON parser per G1-033) | ⏳ After C-2 | `docs/09_ARCHITECTURE_LAW_8_AUDIT.md` (pending) | — |
+| C-1 | **Architecture Law 5 audit** — agent `dataSources` strict-typing + CI AST guard | ✅ Audit shipped | `docs/07_ARCHITECTURE_LAW_5_AUDIT.md` | `d249205` |
+| C-2 | **Architecture Law 6 audit** — regulatory constants in `src/lib/regulatory-config/` with `validUntil` | ✅ Audit shipped | `docs/08_ARCHITECTURE_LAW_6_AUDIT.md` | (this commit) |
+| C-3 | **Architecture Law 8 audit** — schema-first at every boundary (Zod + type guard + tolerant JSON parser per G1-033) | ⏳ Next | `docs/09_ARCHITECTURE_LAW_8_AUDIT.md` (pending) | — |
 | E-1 | **Bundle-size audit** — Next/recharts/mapbox-gl/framer/radix; surface lazy-load opportunities; performance budget | ⏳ After C | `docs/10_BUNDLE_SIZE_AUDIT.md` (pending) | — |
 
 ---
@@ -46,6 +46,8 @@ Reverse-chronological:
 
 | SHA | What |
 |---|---|
+| (this commit) | Law 6 audit — 3 findings (regulatory-config dir missing, £36M inline in g1-048 at 3 sites, no stale-config alert); 4-phase remediation plan |
+| `d249205` | Law 5 audit — 2 findings (dataSources typed `string[]` not strict-typed, no CI AST guard); 4-phase remediation plan + MASTER_CHECKLIST.md created |
 | `edf3a05` | Redact leaked API keys in `HEYGEN_LTM_CONFIG.md`; align Olivia voice defaults across `env.ts` + `vapi.ts` to LTM production set `rVk0ZvRulp6xrYJkGztP`; enrich `.env.example` with persona voice + avatar ID section; update `HANDOFF_2026-05-25.md` § 3.4 with LTM-prod IDs inline + secret-rotation note |
 | `53e9480` | voice/process route handler — 21 contract tests covering auth + validation + LLM-failure + happy + persistence + unexpected-throw + no-leak security posture |
 | `f87610b` | voice-conversation raw fetch → callLLM (Architecture Law 3); 43 new tests covering all 5 callsites + every error branch + every pure helper |
