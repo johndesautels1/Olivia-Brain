@@ -7,14 +7,14 @@
 
 ---
 
-## Active track — Architecture Standards Audits (C) + Bundle Audit (E)
+## Active track — Architecture Standards Audits (C) + Bundle Audit (E) — ALL AUDITS COMPLETE 2026-05-25
 
 | # | Item | Status | Output | Commit |
 |---|---|---|---|---|
 | C-1 | **Architecture Law 5 audit** — agent `dataSources` strict-typing + CI AST guard | ✅ Audit shipped | `docs/07_ARCHITECTURE_LAW_5_AUDIT.md` | `d249205` |
 | C-2 | **Architecture Law 6 audit** — regulatory constants in `src/lib/regulatory-config/` with `validUntil` | ✅ Audit shipped | `docs/08_ARCHITECTURE_LAW_6_AUDIT.md` | (this commit) |
 | C-3 | **Architecture Law 8 audit** — schema-first at every boundary (Zod + type guard + tolerant JSON parser per G1-033) | ✅ Audit shipped | `docs/09_ARCHITECTURE_LAW_8_AUDIT.md` | (this commit) |
-| E-1 | **Bundle-size audit** — Next/recharts/mapbox-gl/framer/radix; surface lazy-load opportunities; performance budget | ⏳ Next | `docs/10_BUNDLE_SIZE_AUDIT.md` (pending) | — |
+| E-1 | **Bundle-size audit** — Next/recharts/mapbox-gl/framer/radix; surface lazy-load opportunities; performance budget | ✅ Audit shipped | `docs/10_BUNDLE_SIZE_AUDIT.md` | (this commit) |
 
 ---
 
@@ -46,7 +46,8 @@ Reverse-chronological:
 
 | SHA | What |
 |---|---|
-| (this commit) | Law 8 audit — 2 findings (37/119 API routes use Zod = 31% coverage; no CI guard for the 3-layer pattern); G1-033 canonical pattern annotated layer-by-layer; 4-phase remediation plan |
+| (this commit) | Bundle-size audit (E-1) — 5 findings (no `@next/bundle-analyzer`; no perf budget; framer-motion static across 9 valuation files; recharts not lazy-loaded inside ChartFromSpec; verify three.js path). 6 existing dynamic-import strengths enumerated. 5-phase plan starting with `@next/bundle-analyzer` wire-up (~30 min) |
+| `d588899` | Law 8 audit — 2 findings (37/119 API routes use Zod = 31% coverage; no CI guard for the 3-layer pattern); G1-033 canonical pattern annotated layer-by-layer; 4-phase remediation plan |
 | `c9d234b` | Law 6 audit — 3 findings (regulatory-config dir missing, £36M inline in g1-048 at 3 sites, no stale-config alert); 4-phase remediation plan |
 | `d249205` | Law 5 audit — 2 findings (dataSources typed `string[]` not strict-typed, no CI AST guard); 4-phase remediation plan + MASTER_CHECKLIST.md created |
 | `edf3a05` | Redact leaked API keys in `HEYGEN_LTM_CONFIG.md`; align Olivia voice defaults across `env.ts` + `vapi.ts` to LTM production set `rVk0ZvRulp6xrYJkGztP`; enrich `.env.example` with persona voice + avatar ID section; update `HANDOFF_2026-05-25.md` § 3.4 with LTM-prod IDs inline + secret-rotation note |
