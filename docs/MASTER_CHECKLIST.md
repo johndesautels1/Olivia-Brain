@@ -13,8 +13,8 @@
 |---|---|---|---|---|
 | FIX-1 | **Law 6 Phase 1+2** — create `src/lib/regulatory-config/` + `uk-modern-slavery.ts` with `validUntil` + stale-config CI guard; refactor `g1-048` to import the constant at all 3 inline sites | ✅ Shipped | `src/lib/regulatory-config/uk-modern-slavery.ts` + sibling `__tests__/uk-modern-slavery.test.ts` + g1-048 refactor | (this commit) |
 | FIX-2 | **Bundle E Phase 1** — wire `@next/bundle-analyzer` + `npm run analyze` script | ⏳ Next | `next.config.ts` + `package.json` | — |
-| FIX-3 | **Bundle E Phase 3a** — lazy-load `ChartFromSpec` via `dynamic()` so recharts (~120KB) leaves the initial home bundle | ⏳ After FIX-2 | reply-renderer touch | — |
-| FIX-4 | **Law 8 CI guard** — source-scan guard asserting every API route with body input uses Zod | ⏳ After FIX-3 | `src/lib/evaluation/law-8-route-zod-guard.test.ts` | — |
+| FIX-3 | **Bundle E Phase 3a** — lazy-load `ChartFromSpec` via `dynamic({ ssr: false })` in `MarkdownReply.tsx` so recharts (~120 KB) leaves the home-page initial bundle; chunk loads only when a chat reply emits a ` ```chart ` fence; barrel `index.ts` still re-exports the canonical `ChartFromSpec` statically so direct consumers (e.g. `ChartFromSpec.mount.test.tsx`) are unaffected | ✅ Shipped | `src/components/home/reply-renderer/MarkdownReply.tsx` + `MarkdownReply.test.tsx` (chart-fence dispatch test → async `findByText`) | (this commit) |
+| FIX-4 | **Law 8 CI guard** — source-scan guard asserting every API route with body input uses Zod | ⏳ Next | `src/lib/evaluation/law-8-route-zod-guard.test.ts` | — |
 | FIX-5 | **Law 5 CI guard** — source-scan guard asserting every agent's `dataSources` entry is non-empty (precursor to strict-typing) | ⏳ After FIX-4 | `src/lib/evaluation/agent-data-sources-guard.test.ts` | — |
 
 ## Audit-track summary — all 4 audits complete 2026-05-25
@@ -50,13 +50,19 @@ These block production but cannot be done from a coding-agent session:
 
 ---
 
-## Done this session (2026-05-25, post-handoff)
+## Done this session (2026-05-26)
 
 Reverse-chronological:
 
 | SHA | What |
 |---|---|
-| (this commit) | **FIX-1 Law 6 remediation Phase 1+2** — create `src/lib/regulatory-config/` + `uk-modern-slavery.ts` with the £36M threshold + ISO `validUntil` field + barrel index + 11-case Law-6 stale-config CI guard (asserts `validUntil >= today + 90d`); refactor `g1-048` at all 3 inline sites (docstring + LLM input + LLM prompt instruction) to import via `formatUkModernSlaveryThreshold()`. 26/26 tests pass (11 new + 15 existing g1-048). Single source of truth for the threshold across OB. |
+| (this commit) | **FIX-3 Bundle E Phase 3a** — lazy-load `ChartFromSpec` via `next/dynamic({ ssr: false })` in `MarkdownReply.tsx` with a fixed-height (220 px) `Loading chart...` placeholder so layout does not jump. Recharts (~120 KB gzipped) now leaves the home-page initial bundle; the chunk loads only when a chat reply emits a ` ```chart ` fence. `index.ts` barrel re-export unchanged → `ChartFromSpec.mount.test.tsx` (which imports the component directly) still mounts synchronously. `MarkdownReply.test.tsx` chart-fence-dispatch test converted to async `findByText` (1 line of test setup; chunk resolves on next microtask). 159/159 reply-renderer tests green; `tsc --noEmit --incremental` clean. Zero LTM writes. |
+
+## Done prior session (2026-05-25, post-handoff)
+
+| SHA | What |
+|---|---|
+| `c19d77a` | **FIX-1 Law 6 remediation Phase 1+2** — create `src/lib/regulatory-config/` + `uk-modern-slavery.ts` with the £36M threshold + ISO `validUntil` field + barrel index + 11-case Law-6 stale-config CI guard (asserts `validUntil >= today + 90d`); refactor `g1-048` at all 3 inline sites (docstring + LLM input + LLM prompt instruction) to import via `formatUkModernSlaveryThreshold()`. 26/26 tests pass (11 new + 15 existing g1-048). Single source of truth for the threshold across OB. |
 | `e508164` | Bundle-size audit (E-1) — 5 findings (no `@next/bundle-analyzer`; no perf budget; framer-motion static across 9 valuation files; recharts not lazy-loaded inside ChartFromSpec; verify three.js path). 6 existing dynamic-import strengths enumerated. 5-phase plan starting with `@next/bundle-analyzer` wire-up (~30 min) |
 | `d588899` | Law 8 audit — 2 findings (37/119 API routes use Zod = 31% coverage; no CI guard for the 3-layer pattern); G1-033 canonical pattern annotated layer-by-layer; 4-phase remediation plan |
 | `c9d234b` | Law 6 audit — 3 findings (regulatory-config dir missing, £36M inline in g1-048 at 3 sites, no stale-config alert); 4-phase remediation plan |

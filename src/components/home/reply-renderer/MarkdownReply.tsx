@@ -22,8 +22,8 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
-import { ChartFromSpec } from "./ChartFromSpec";
 import { parseChartSpec } from "./chart-spec";
 import { GammaCard, parseGammaSpec } from "./GammaCard";
 import { CitationStrip, parseCitations } from "./CitationStrip";
@@ -34,6 +34,46 @@ import { UIManifest } from "./UIManifest";
 import { parseUISpec } from "./ui-spec";
 import { ComparisonView } from "./ComparisonView";
 import { parseComparisonSpec } from "./comparison-spec";
+
+/**
+ * Lazy-loaded `ChartFromSpec` (Bundle E-1 Phase 3a, FIX-3 2026-05-26).
+ *
+ * `ChartFromSpec` pulls in recharts (~120 KB gzipped). Most Olivia
+ * replies do not emit a ` ```chart ` fence, so the chart renderer
+ * should not ride along in the initial home-page JS. `next/dynamic`
+ * with `ssr: false` keeps recharts out of both the server and client
+ * initial bundles — the chunk loads only when a chat reply manifests
+ * a chart.
+ *
+ * Public API surface preserved: the barrel `./index.ts` continues to
+ * re-export the canonical `ChartFromSpec` from `./ChartFromSpec`
+ * statically for any direct consumer (e.g. dedicated unit-test mounts).
+ * Only the `MarkdownReply` integration path goes through this lazy
+ * wrapper.
+ */
+const ChartFromSpecLazy = dynamic(
+  () => import("./ChartFromSpec").then((m) => ({ default: m.ChartFromSpec })),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{
+          height: 220,
+          display: "grid",
+          placeItems: "center",
+          color: "var(--fg-tertiary)",
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--text-2xs)",
+          letterSpacing: "0.10em",
+          textTransform: "uppercase",
+        }}
+        aria-label="Loading chart"
+      >
+        Loading chart...
+      </div>
+    ),
+  },
+);
 
 export interface MarkdownReplyProps {
   text: string;
@@ -96,7 +136,7 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
                     border: "1px solid var(--border-subtle)",
                   }}
                 >
-                  <ChartFromSpec spec={parsed.spec} maxWidth={maxChartWidth} />
+                  <ChartFromSpecLazy spec={parsed.spec} maxWidth={maxChartWidth} />
                 </div>
               );
             }

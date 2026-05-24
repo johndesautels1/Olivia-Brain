@@ -139,7 +139,7 @@ describe("MarkdownReply — inline code", () => {
 // ─────────────────────────────────────────────
 
 describe("MarkdownReply — fence dispatch", () => {
-  it("dispatches ```chart``` to ChartFromSpec (figcaption surfaces title)", () => {
+  it("dispatches ```chart``` to ChartFromSpec (figcaption surfaces title)", async () => {
     const md = [
       "Here's the breakdown:",
       "",
@@ -153,10 +153,14 @@ describe("MarkdownReply — fence dispatch", () => {
       }),
       "```",
     ].join("\n");
-    const { container } = render(<MarkdownReply text={md} />);
-    expect(container.querySelector("figcaption")?.textContent).toBe(
-      "Funding by stage",
-    );
+    /* `ChartFromSpec` is lazy-loaded via `next/dynamic({ ssr: false })` to
+     * keep recharts (~120 KB) out of the home-page initial bundle (Bundle
+     * E-1 Phase 3a, FIX-3 2026-05-26). The figcaption appears once the
+     * chunk resolves on the next microtask — `findByText` retries until
+     * it does. */
+    const { findByText } = render(<MarkdownReply text={md} />);
+    const caption = await findByText("Funding by stage");
+    expect(caption.tagName.toLowerCase()).toBe("figcaption");
   });
 
   it("dispatches ```gamma``` to GammaCard (Open-in-Gamma anchor)", () => {
