@@ -43,11 +43,15 @@
  * ## Auth contract
  *
  * - HTTP header: `Authorization: Bearer ${CLUES_LONDON_V1_API_KEY}`.
- * - LTM-side env var holding the accepted keys: `LTCI_API_KEYS` (plural,
- *   comma-separated). Per LTM `src/lib/api-key.ts`. This repo only needs
- *   one of those keys; the LTM operator manages the list.
- * - Rate limit on the LTM side: 60 req / minute per IP. The provider
- *   surfaces 429 cleanly as a `QueryResult` failure.
+ * - LTM-side auth (as of 2026-07-03): the key must be a `cll_`-prefixed
+ *   `ApiKey` row bound to an Enterprise-entitled `UserProfile` (the old
+ *   `LTCI_API_KEYS` env layer was retired). LTM re-checks the owner's
+ *   `rest-api` feature + `apiCallsPerMonth` quota live on every call.
+ *   Auth impl: LTM `src/lib/api/public-v1.ts`. Poll `GET /api/v1/usage`
+ *   (free/unmetered) to track remaining quota.
+ * - Rate limit on the LTM side: 60 req / minute per IP (burst) plus the
+ *   monthly quota above. The provider surfaces 429 cleanly as a
+ *   `QueryResult` failure.
  *
  * ## Testing
  *

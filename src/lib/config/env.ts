@@ -108,8 +108,11 @@ const serverEnvSchema = z.object({
   // header (`x-olivia-signature`). Used by the calendar adapter today.
   CLUES_LONDON_INTERNAL_API_KEY: optionalSecret,
   // Public LTM v1 namespace (/api/v1/*). Standard Authorization: Bearer
-  // header. LTM-side env var name is `LTCI_API_KEYS` (plural, comma-
-  // separated). Used by the bridge LtmKnowledgeProvider.
+  // header. As of 2026-07-03 LTM validates this against a `cll_`-prefixed
+  // ApiKey row (the retired `LTCI_API_KEYS` env layer is gone), so the
+  // value must be an LTM-issued `cll_...` key bound to an Enterprise-
+  // entitled UserProfile (rest-api feature + apiCallsPerMonth quota).
+  // Auth impl: LTM `src/lib/api/public-v1.ts`. Used by LtmKnowledgeProvider.
   CLUES_LONDON_V1_API_KEY: optionalSecret,
 
   TWILIO_ACCOUNT_SID: optionalSecret,
