@@ -175,6 +175,14 @@
   .bar span.i { background: var(--idle); }
   .frac { font-family: var(--mono); font-size: .74rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+  /* spoke grid */
+  .spokes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .spoke { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; }
+  .spoke.docked { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); background: color-mix(in srgb, var(--good) 7%, var(--panel)); }
+  .spoke h4 { margin: 0; font-size: 1rem; color: var(--ink); }
+  .spoke p { margin: 0; font-size: .82rem; color: var(--muted); line-height: 1.5; }
+  .spoke code { font-family: var(--mono); font-size: .74em; color: var(--accent-soft); }
+
   /* two-col cards */
   .cols { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; box-shadow: var(--shadow); }
@@ -222,8 +230,50 @@
   <div class="callout">
     <h2>⚠ The one thing to understand first — this project pivoted</h2>
     <p><strong>There are two build plans living in the same repo.</strong> The original <code>BATTLE_PLAN.md</code> describes a relocation-intelligence "brain" (186 items, 9-model cascade, personas, memory). On <strong>2026-05-02</strong> the work pivoted: Olivia Brain became the canonical home for porting London Tech Map's (LTM) best technology — Studio Olivia, the valuation engine, the Quantara founder-intake, and Deal Protection — targeting a <strong>June 2026 demo</strong>. That newer plan lives in <code>docs/BUILD_SEQUENCE.md</code> and is organized as <strong>Tracks A–O</strong>.</p>
-    <p><strong>The docs have drifted apart.</strong> <code>OLIVIA_BUILD_STATE.md</code> says 65%, <code>BATTLE_PLAN.md</code> says 85–88% in one place and lists different totals in another, and the Track tables in <code>BUILD_SEQUENCE.md</code> were never fully re-checked even though the work shipped. So the Track Ledger below is graded against the <em>filesystem</em>, and the divergences are called out honestly — fitting for a project whose own rules treat audit inaccuracy as a trust violation.</p>
+    <p><strong>The docs had drifted apart</strong> — <code>OLIVIA_BUILD_STATE.md</code> said 65%, <code>BATTLE_PLAN.md</code> said 85–88% (and contradicted itself), and the Track tables in <code>BUILD_SEQUENCE.md</code> were never re-checked even though the work shipped. That drift is now <strong>fixed at the source</strong>: build status is generated from the file system into <code>docs/BUILD_TRUTH.md</code> by <code>npm run build:truth</code> and enforced by a CI guard, so the numbers can't silently rot again. This board is a visual snapshot of that generated truth.</p>
   </div>
+
+  <!-- HUB + 6 SPOKES -->
+  <section style="margin-top:34px">
+    <div class="sec-head">
+      <span class="num">◎</span>
+      <h2>The architecture — hub &amp; 6 spokes</h2>
+      <span class="note">1 / 6 docked</span>
+    </div>
+    <p style="max-width:80ch;color:var(--ink-soft);margin:0 0 20px;font-size:.95rem">Olivia is the <strong>hub</strong>: a grand-master agentic super-agent with a token-authed <strong>gateway</strong> (<code>src/lib/gateway</code>) and a Universal Knowledge Protocol <strong>bridge</strong> (<code>src/lib/bridge</code>) that docks into six spoke apps. She's the brain, not the warehouse — each spoke stays the system of record for its own domain. A spoke counts as <em>docked</em> when a bridge provider exists for it; the rest are <strong>blocked by design</strong> until each app is live to expose its provider interface. This is exactly why the codebase looks broader than any single plan: the hub absorbs each spoke's best tech one at a time (London Tech Map first).</p>
+    <div class="spokes">
+      <div class="spoke docked">
+        <span class="pill done"><span class="mk"></span> Docked</span>
+        <h4>London Tech Map</h4>
+        <p><code>bridge/providers/ltm.ts</code> — the first and biggest spoke; its valuation + Quantara + Deal-Protection tech was ported into the hub.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>CLUES Intelligence</h4>
+        <p>Flagship relocation intelligence. Embedded reference data present; provider blocked until the app exposes its interface.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>CLUES LifeScore</h4>
+        <p>LifeScore metrics feed the SMART Score™ engine — blocked on the LifeScore app going live.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>HEARTBEAT</h4>
+        <p>Cardiac-recovery domain. "Long way out" per portfolio status; provider not yet implementable.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>CLUES-TES</h4>
+        <p>Transit &amp; Environmental Systems. Future spoke; provider blocked until live.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>Desautels Brokerage</h4>
+        <p>Operational brokerage. Docking is a UKP-provider task once its API surface is exposed.</p>
+      </div>
+    </div>
+  </section>
 
   <div class="stats" role="list" aria-label="Snapshot metrics">
     <div class="stat" role="listitem">
@@ -575,7 +625,7 @@
   </section>
 
   <footer>
-    <p><strong>How this was built.</strong> Statuses graded against the working tree at HEAD <code>addeb5c</code> — file counts are live (<code>find</code> over <code>src/</code>); track membership from <code>docs/BUILD_SEQUENCE.md</code>; the original rollup from <code>BATTLE_PLAN.md</code>; latest activity from <code>git log</code> + <code>MASTER_CHECKLIST.md</code>; blocked/owed items from <code>OLIVIA_BUILD_STATE.md</code> + <code>HANDOFF_2026-05-26.md</code>.</p>
+    <p><strong>Canonical source.</strong> The numbers here mirror <code>docs/BUILD_TRUTH.md</code>, generated from the source tree by <code>npm run build:truth</code> and locked by <code>src/lib/evaluation/build-status-drift-guard.test.ts</code> — a CI guard that fails if the committed counts ever diverge from the tree. The old narrative docs (<code>BATTLE_PLAN.md</code>, <code>OLIVIA_BUILD_STATE.md</code>, <code>BUILD_SEQUENCE.md</code>, <code>MASTER_CHECKLIST.md</code>) now carry banners deferring to BUILD_TRUTH, so the three-way percentage disagreement can't recur.</p>
     <p><strong>Test/typecheck — re-run live 2026-07-09.</strong> <code>npm run typecheck</code> passes clean. <code>npm test</code> reports <strong>1853 / 1869 passing (99.1%)</strong> across 157 files — the tree has grown far past the "510 / 39 suites" figure the handoff last documented. All <strong>16 failures are environmental</strong>: 13 are API-route integration tests that need a local Postgres (<code>Can't reach database server at 127.0.0.1:5432</code>) plus the auth stub, and 3 are Quantara UI-render timing assertions. None are code regressions, and none touch the docs-only change this board ships in.</p>
     <p><strong>One caveat on grading.</strong> Several Track statuses are graded "in progress / infra exists" where a doc claims done but the first-column marker was never re-checked; those are flagged rather than taken at face value.</p>
     <p class="src">Sources: BUILD_SEQUENCE.md · BATTLE_PLAN.md · OLIVIA_BUILD_STATE.md · MASTER_CHECKLIST.md · HANDOFF_2026-05-26.md · git history</p>

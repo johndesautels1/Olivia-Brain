@@ -1,5 +1,13 @@
 # OLIVIA BRAIN - BATTLE PLAN
 
+> ⚠️ **The completion numbers in this file are NOT authoritative and are known to be self-inconsistent.**
+> Live build status — track completion, spoke docking, file/test counts — has a single
+> generated source of truth: [`docs/BUILD_TRUTH.md`](./docs/BUILD_TRUTH.md) (and `BUILD_TRUTH.json`),
+> produced by `npm run build:truth` from the source tree and enforced by
+> `src/lib/evaluation/build-status-drift-guard.test.ts`. This document is retained as the
+> **pre-pivot vision + planning history**; where it disagrees with BUILD_TRUTH, BUILD_TRUTH wins.
+> (Context: the build pivoted 2026-05-02 to the Track-based LTM port — see `docs/BUILD_SEQUENCE.md`.)
+
 > **Last Updated:** 2026-05-01
 > **Current Phase:** Phase 4 & 5 (Sprint 4.1, 5.1, 5.2, 5.3 complete)
 > **Total Items:** 186 tracked, 164 completed (~88% complete)

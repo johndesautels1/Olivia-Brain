@@ -30,5 +30,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # Fails if docs/BUILD_TRUTH.{json,md} no longer match the source tree —
+      # i.e. someone changed src/ without running `npm run build:truth`. This is
+      # the CI-level enforcement of the anti-drift guarantee (no DB needed).
+      - name: Build-status truth is current
+        run: npm run build:truth -- --check
+
       - name: Build
         run: npm run build

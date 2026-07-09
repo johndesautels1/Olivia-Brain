@@ -18,7 +18,8 @@
     "db:pull": "prisma db pull",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "build:truth": "node scripts/build-truth.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.67",

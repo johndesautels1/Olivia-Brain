@@ -1,5 +1,11 @@
 # Olivia Brain — Build Sequence (Sessions 4 → Launch)
 
+> ⚠️ **This is the track/session PLAN. The per-row status marks are NOT authoritative** — several
+> shipped tracks (V, Q, P, …) were never re-ticked here. For live status use the generated single
+> source of truth: [`BUILD_TRUTH.md`](./BUILD_TRUTH.md) (`npm run build:truth`, enforced by
+> `src/lib/evaluation/build-status-drift-guard.test.ts`). Use this file for track *definitions,
+> scope, and exit criteria*; use BUILD_TRUTH for *what is actually done*.
+
 > Canonical session-by-session plan. Updated 2026-05-02 after sessions 1–3 wrapped.
 >
 > **Companion docs**
