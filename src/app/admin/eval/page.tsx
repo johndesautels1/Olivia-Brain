@@ -159,7 +159,7 @@ export default function EvalPage() {
             maxWidth: 720,
           }}
         >
-          Hand-picked golden cases that gate Olivia's release quality. Each
+          Hand-picked golden cases that gate Olivia&apos;s release quality. Each
           case runs the cascade against a target prompt and verifies spoke
           routing, manifest fences, substring presence/absence, and duration
           caps. Run sparingly — each case costs ~500 tokens.
@@ -352,7 +352,7 @@ function CaseCard({
           fontStyle: "italic",
         }}
       >
-        "{entry.prompt}"
+        &quot;{entry.prompt}&quot;
       </p>
 
       {result && Object.keys(result.checks).length > 0 && (

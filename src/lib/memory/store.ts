@@ -84,7 +84,7 @@ class InMemoryConversationStore implements ConversationStore {
 
   async getRecentTurns(conversationId: string, limit = 8, clientId?: string) {
     const bucket = getMemoryBucket();
-    let turns = bucket.turnsByConversation.get(conversationId) ?? [];
+    const turns = bucket.turnsByConversation.get(conversationId) ?? [];
 
     // Filter by client ID if specified
     if (clientId) {

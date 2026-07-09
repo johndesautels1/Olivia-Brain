@@ -79,7 +79,7 @@ export function MapView({ accessToken, googleMapsApiKey }: MapViewProps) {
       const layers = m.getStyle().layers;
       let labelLayerId: string | undefined;
       for (const layer of layers || []) {
-        if (layer.type === "symbol" && (layer.layout as any)?.["text-field"]) {
+        if (layer.type === "symbol" && (layer.layout as Record<string, unknown> | undefined)?.["text-field"]) {
           labelLayerId = layer.id;
           break;
         }

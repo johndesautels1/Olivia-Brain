@@ -30,6 +30,37 @@ interface GoogleMap3DViewProps {
   onFallback?: () => void; // signal parent to switch to fallback
 }
 
+/* ── Minimal structural types for the beta `maps3d` library ──
+   The library is dynamically imported and its elements are custom HTML
+   elements with extra methods/properties. These interfaces model exactly
+   the surface this component touches. */
+interface Maps3DLatLngAltitude {
+  lat: number;
+  lng: number;
+  altitude?: number;
+}
+interface Maps3DCamera {
+  center: Maps3DLatLngAltitude;
+  range?: number;
+  tilt?: number;
+  heading?: number;
+}
+interface Maps3DMapElement extends HTMLElement {
+  range?: number | null;
+  heading?: number | null;
+  center?: Maps3DLatLngAltitude | null;
+  flyCameraTo(options: { endCamera: Maps3DCamera; durationMillis: number }): void;
+}
+interface Maps3DMarkerElement extends HTMLElement {
+  outerCoordinates?: Maps3DLatLngAltitude[];
+}
+interface Maps3DModule {
+  Map3DElement: new (options: Record<string, unknown>) => Maps3DMapElement;
+  Marker3DElement: new (options: Record<string, unknown>) => Maps3DMarkerElement;
+  MarkerElement: new (options: Record<string, unknown>) => Maps3DMarkerElement;
+  Polygon3DElement: new (options: Record<string, unknown>) => Maps3DMarkerElement;
+}
+
 /* ── Score tier color helper ── */
 function scoreTierColor(score: number): string {
   if (score <= 20) return SCORE_BLOB_COLORS.red;
@@ -90,11 +121,11 @@ function rangeToApproxZoom(range: number): number {
 export function GoogleMap3DView({ apiKey, mapboxToken, onFallback }: GoogleMap3DViewProps) {
   const router = useRouter();
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map3DRef = useRef<any>(null); // Map3DElement
-  const markersRef = useRef<any[]>([]);
-  const cubeMarkersRef = useRef<any[]>([]);
-  const polygonsRef = useRef<any[]>([]);
-  const appointmentMarkersRef = useRef<any[]>([]);
+  const map3DRef = useRef<Maps3DMapElement | null>(null); // Map3DElement
+  const markersRef = useRef<Maps3DMarkerElement[]>([]);
+  const cubeMarkersRef = useRef<Maps3DMarkerElement[]>([]);
+  const polygonsRef = useRef<Maps3DMarkerElement[]>([]);
+  const appointmentMarkersRef = useRef<Maps3DMarkerElement[]>([]);
 
   // Appointments from calendar widget
   const { showAppointments, appointments, loadAppointments } = useMapAppointments();
@@ -133,10 +164,10 @@ export function GoogleMap3DView({ apiKey, mapboxToken, onFallback }: GoogleMap3D
     setOptions({ key: apiKey, v: "beta" });
 
     importLibrary("maps3d")
-      .then((maps3d: any) => {
+      .then((maps3d) => {
         if (!mapContainer.current) return;
 
-        const { Map3DElement } = maps3d;
+        const { Map3DElement } = maps3d as unknown as Maps3DModule;
 
         const map3D = new Map3DElement({
           center: {
@@ -170,7 +201,7 @@ export function GoogleMap3DView({ apiKey, mapboxToken, onFallback }: GoogleMap3D
 
         setMapReady(true);
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         console.error("Map3DElement init failed:", err);
         setMapError(
           "Photorealistic 3D map failed to load. Falling back to standard map."
@@ -250,8 +281,8 @@ export function GoogleMap3DView({ apiKey, mapboxToken, onFallback }: GoogleMap3D
     polygonsRef.current = [];
 
     // Dynamically import Polygon3DElement
-    importLibrary("maps3d").then((maps3d: any) => {
-      const { Polygon3DElement } = maps3d;
+    importLibrary("maps3d").then((maps3d) => {
+      const { Polygon3DElement } = maps3d as unknown as Maps3DModule;
       if (!Polygon3DElement) return;
 
       for (const [slug, dist] of Object.entries(DISTRICT_BOUNDARIES)) {
@@ -301,8 +332,8 @@ export function GoogleMap3DView({ apiKey, mapboxToken, onFallback }: GoogleMap3D
     const counts = getDistrictCounts();
     const maxCount = Math.max(...Object.values(counts), 1);
 
-    importLibrary("maps3d").then((maps3d: any) => {
-      const { Marker3DElement, MarkerElement } = maps3d;
+    importLibrary("maps3d").then((maps3d) => {
+      const { Marker3DElement, MarkerElement } = maps3d as unknown as Maps3DModule;
 
       // MarkerElement (gmp-marker) supports custom HTML on 3D maps.
       // Marker3DElement does NOT support arbitrary HTML — only SVG/img in <template>.
@@ -337,7 +368,7 @@ export function GoogleMap3DView({ apiKey, mapboxToken, onFallback }: GoogleMap3D
         const b = parseInt(color.slice(5, 7), 16);
 
         try {
-          let marker: any;
+          let marker: Maps3DMarkerElement;
 
           if (useMarkerElement) {
             // ── MarkerElement: supports arbitrary HTML children on 3D maps ──
@@ -526,8 +557,8 @@ export function GoogleMap3DView({ apiKey, mapboxToken, onFallback }: GoogleMap3D
       allFeatures.push(...videoGeoJSON.features);
     }
 
-    importLibrary("maps3d").then((maps3d: any) => {
-      const { Marker3DElement, MarkerElement } = maps3d;
+    importLibrary("maps3d").then((maps3d) => {
+      const { Marker3DElement, MarkerElement } = maps3d as unknown as Maps3DModule;
       const useMarkerElement = !!MarkerElement;
 
       for (const feature of allFeatures) {
@@ -566,7 +597,7 @@ export function GoogleMap3DView({ apiKey, mapboxToken, onFallback }: GoogleMap3D
         };
 
         try {
-          let marker: any;
+          let marker: Maps3DMarkerElement;
 
           if (useMarkerElement) {
             // ── MarkerElement: supports HTML children ──
@@ -735,13 +766,13 @@ export function GoogleMap3DView({ apiKey, mapboxToken, onFallback }: GoogleMap3D
     // Don't render if appointments are hidden or empty
     if (!showAppointments || appointments.length === 0) return;
 
-    importLibrary("maps3d").then((maps3d: any) => {
-      const { MarkerElement, Marker3DElement } = maps3d;
+    importLibrary("maps3d").then((maps3d) => {
+      const { MarkerElement, Marker3DElement } = maps3d as unknown as Maps3DModule;
       const useMarkerElement = !!MarkerElement;
 
       for (const apt of appointments) {
         try {
-          let marker: any;
+          let marker: Maps3DMarkerElement;
 
           if (useMarkerElement) {
             // ── MarkerElement: supports HTML children ──

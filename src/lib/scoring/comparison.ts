@@ -195,7 +195,7 @@ function generateComparisonSummary(
 
   const winnerCategoryCount = categoryWins[winner.cityId] || 0;
 
-  let summaryParts: string[] = [];
+  const summaryParts: string[] = [];
 
   // Winner declaration
   if (winner.margin >= 15) {

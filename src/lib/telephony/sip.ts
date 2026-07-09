@@ -57,7 +57,7 @@ export async function listSIPTrunks(): Promise<SIPTrunk[]> {
   }
 
   const data = await response.json();
-  return data.trunks.map((trunk: any) => ({
+  return data.trunks.map((trunk: { sid: string; friendly_name: string; domain_name: string; secure: boolean }) => ({
     sid: trunk.sid,
     friendlyName: trunk.friendly_name,
     domainName: trunk.domain_name,

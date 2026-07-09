@@ -278,7 +278,7 @@ export async function syncOutlookCalendar(
       nextDeltaToken = data["@odata.deltaLink"] || null;
       break;
     }
-  } while (true); // eslint-disable-line no-constant-condition
+  } while (true);  
 
   // Process events
   let created = 0;

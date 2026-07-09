@@ -391,8 +391,8 @@ export default function AvatarEvalPage() {
             the decision rubric
           </a>{" "}
           (latency × 0.4 + lip-sync MOS × 0.4 + cost × 0.2) ranks them. The
-          "Run live" button captures TTFM directly for the LiveAvatar vendor;
-          for other vendors, drive the vendor's own player and paste the
+          &quot;Run live&quot; button captures TTFM directly for the LiveAvatar vendor;
+          for other vendors, drive the vendor&apos;s own player and paste the
           latency in.
         </p>
       </header>
@@ -421,7 +421,7 @@ export default function AvatarEvalPage() {
             Migration not applied
           </span>
           <p style={{ margin: 0, color: "var(--fg-primary)" }}>
-            The <code>avatar_eval_runs</code> table doesn't exist in the
+            The <code>avatar_eval_runs</code> table doesn&apos;t exist in the
             database. Apply{" "}
             <code style={{ color: "var(--aurum-primary)" }}>
               {migrationRequired.sqlFile ??
@@ -661,7 +661,7 @@ export default function AvatarEvalPage() {
                   fontStyle: "italic",
                 }}
               >
-                "{script.text}"
+                &quot;{script.text}&quot;
               </p>
               {script.notes && (
                 <span
@@ -1052,7 +1052,7 @@ function CategoryGroup({
                       textOverflow: "ellipsis",
                     }}
                   >
-                    "{s.text}"
+                    &quot;{s.text}&quot;
                   </span>
                 </span>
                 {mos != null && (

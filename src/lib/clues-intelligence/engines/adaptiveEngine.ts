@@ -368,45 +368,45 @@ export function recordAnswer(
 ): AdaptiveState {
   const updated = structuredClone(state);
 
-  const module = updated.modules.find(m => m.moduleId === moduleId);
-  if (!module) return updated;
+  const mod = updated.modules.find(m => m.moduleId === moduleId);
+  if (!mod) return updated;
 
-  const belief = module.questions.find(q => q.questionNumber === questionNumber);
+  const belief = mod.questions.find(q => q.questionNumber === questionNumber);
   if (!belief || belief.answered) return updated;
 
   // Mark as answered
   belief.answered = true;
-  module.answeredCount++;
+  mod.answeredCount++;
   updated.totalAnswered++;
 
-  // L2 fix: Reduce module MOE based on the question's information gain
+  // L2 fix: Reduce mod MOE based on the question's information gain
   const moeReduction = belief.eig * MOE_REDUCTION_PER_ANSWER;
-  module.moduleMOE = Math.max(0, module.moduleMOE - moeReduction);
+  mod.moduleMOE = Math.max(0, mod.moduleMOE - moeReduction);
 
-  // Check if module is now complete (MOE target reached)
-  if (module.moduleMOE <= 0.02) {
-    module.isComplete = true;
-    // Skip remaining questions in this module
-    for (const q of module.questions) {
+  // Check if mod is now complete (MOE target reached)
+  if (mod.moduleMOE <= 0.02) {
+    mod.isComplete = true;
+    // Skip remaining questions in this mod
+    for (const q of mod.questions) {
       if (!q.answered) {
         q.skipReason = 'Module confidence target reached';
-        module.skippedCount++;
+        mod.skippedCount++;
         updated.totalSkipped++;
       }
     }
   }
 
-  // Recalculate EIG for remaining questions in this module
+  // Recalculate EIG for remaining questions in this mod
   // After answering, nearby questions become less valuable (information overlap)
-  recalculateModuleEIG(module, belief);
+  recalculateModuleEIG(mod, belief);
 
   // Recalculate overall MOE
   updated.overallMOE = calculateOverallMOE(updated);
   updated.estimatedRemaining = estimateRemainingQuestions(updated.modules);
   updated.isSessionComplete = updated.overallMOE <= 0.02;
 
-  // If current module is complete, advance to next
-  if (module.isComplete && !updated.isSessionComplete) {
+  // If current mod is complete, advance to next
+  if (mod.isComplete && !updated.isSessionComplete) {
     const nextModule = updated.modules.find(m => !m.isComplete);
     updated.activeModuleId = nextModule?.moduleId ?? null;
   }
@@ -425,10 +425,10 @@ export function markPreFilled(
 ): AdaptiveState {
   const updated = structuredClone(state);
 
-  const module = updated.modules.find(m => m.moduleId === moduleId);
-  if (!module) return updated;
+  const mod = updated.modules.find(m => m.moduleId === moduleId);
+  if (!mod) return updated;
 
-  const belief = module.questions.find(q => q.questionNumber === questionNumber);
+  const belief = mod.questions.find(q => q.questionNumber === questionNumber);
   if (!belief || belief.answered) return updated;
 
   belief.preFillable = true;
@@ -437,22 +437,22 @@ export function markPreFilled(
   belief.answered = true;
   // L1 fix: Pre-fills contribute data (partial answer), so count them as answered
   // They're also skipped (user didn't manually answer), so increment both.
-  module.answeredCount++;
-  module.skippedCount++;
+  mod.answeredCount++;
+  mod.skippedCount++;
   updated.totalAnswered++;
   updated.totalSkipped++;
 
   // L2 fix: Pre-fills provide partial information gain
   const partialReduction = belief.eig * MOE_REDUCTION_PER_PREFILL;
-  module.moduleMOE = Math.max(0, module.moduleMOE - partialReduction);
+  mod.moduleMOE = Math.max(0, mod.moduleMOE - partialReduction);
 
-  // Check if module is now complete (MOE target reached)
-  if (module.moduleMOE <= 0.02) {
-    module.isComplete = true;
-    for (const q of module.questions) {
+  // Check if mod is now complete (MOE target reached)
+  if (mod.moduleMOE <= 0.02) {
+    mod.isComplete = true;
+    for (const q of mod.questions) {
       if (!q.answered) {
         q.skipReason = 'Module confidence target reached';
-        module.skippedCount++;
+        mod.skippedCount++;
         updated.totalSkipped++;
       }
     }
@@ -476,15 +476,15 @@ export function skipQuestion(
 ): AdaptiveState {
   const updated = structuredClone(state);
 
-  const module = updated.modules.find(m => m.moduleId === moduleId);
-  if (!module) return updated;
+  const mod = updated.modules.find(m => m.moduleId === moduleId);
+  if (!mod) return updated;
 
-  const belief = module.questions.find(q => q.questionNumber === questionNumber);
+  const belief = mod.questions.find(q => q.questionNumber === questionNumber);
   if (!belief || belief.answered) return updated;
 
   belief.skipReason = 'User skipped';
   belief.answered = true;
-  module.skippedCount++;
+  mod.skippedCount++;
   updated.totalSkipped++;
 
   // No MOE reduction for skipped questions, but recalculate estimated remaining
@@ -565,9 +565,9 @@ function calculateOverallMOE(state: AdaptiveState): number {
   // M2 fix: Use weighted average by moduleWeight instead of simple average
   let totalWeightedMOE = 0;
   let totalWeight = 0;
-  for (const module of state.modules) {
-    totalWeightedMOE += module.moduleMOE * module.moduleWeight;
-    totalWeight += module.moduleWeight;
+  for (const mod of state.modules) {
+    totalWeightedMOE += mod.moduleMOE * mod.moduleWeight;
+    totalWeight += mod.moduleWeight;
   }
 
   return totalWeight > 0 ? totalWeightedMOE / totalWeight : 0;
@@ -575,9 +575,9 @@ function calculateOverallMOE(state: AdaptiveState): number {
 
 function estimateRemainingQuestions(modules: ModuleAdaptiveState[]): number {
   let remaining = 0;
-  for (const module of modules) {
-    if (module.isComplete) continue;
-    const unanswered = module.questions.filter(q => !q.answered && !q.skipReason).length;
+  for (const mod of modules) {
+    if (mod.isComplete) continue;
+    const unanswered = mod.questions.filter(q => !q.answered && !q.skipReason).length;
     // Estimate: we'll need about 30% of remaining unanswered questions
     // (the rest will be skipped once MOE target is reached)
     remaining += Math.ceil(unanswered * 0.3);

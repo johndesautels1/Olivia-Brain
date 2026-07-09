@@ -5,6 +5,7 @@
  * Handle Twilio status callbacks for calls, SMS, and recordings.
  */
 
+import { createHmac } from "crypto";
 import type { CallStatus, SMSStatus, PhoneCall, SMSMessage } from "./types";
 
 /**
@@ -147,8 +148,6 @@ export function validateTwilioSignature(
   url: string,
   params: Record<string, string>
 ): boolean {
-  const crypto = require("crypto");
-
   // Build the data string
   const sortedKeys = Object.keys(params).sort();
   let data = url;
@@ -157,8 +156,7 @@ export function validateTwilioSignature(
   }
 
   // Calculate expected signature
-  const expectedSignature = crypto
-    .createHmac("sha1", authToken)
+  const expectedSignature = createHmac("sha1", authToken)
     .update(data)
     .digest("base64");
 

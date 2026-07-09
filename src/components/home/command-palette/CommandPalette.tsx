@@ -226,7 +226,7 @@ export function CommandPalette({ open, onClose, commands }: CommandPaletteProps)
                 fontStyle: "italic",
               }}
             >
-              No commands match "{query}".
+              No commands match &quot;{query}&quot;.
             </p>
           )}
 

@@ -126,7 +126,7 @@ export function DocumentEditor({ collections, initialData }: DocumentEditorProps
 
       try {
         const method = isEditing ? "PUT" : "POST";
-        const payload: any = {
+        const payload: Record<string, unknown> = {
           title: title.trim(),
           collectionId,
           documentType,

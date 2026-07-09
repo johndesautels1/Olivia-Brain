@@ -217,7 +217,7 @@ export default function DecisionPage() {
             Migration not applied
           </span>
           <p style={{ margin: 0, color: "var(--fg-primary)" }}>
-            The <code>avatar_eval_runs</code> table doesn't exist in the
+            The <code>avatar_eval_runs</code> table doesn&apos;t exist in the
             database. Apply{" "}
             <code style={{ color: "var(--aurum-primary)" }}>
               {migrationRequired.sqlFile ??

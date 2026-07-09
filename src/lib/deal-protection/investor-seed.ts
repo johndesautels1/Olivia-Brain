@@ -21,7 +21,7 @@
  */
 import type { InvestorReputationWrite } from './investor-types';
 
-interface InvestorSeedRecord extends InvestorReputationWrite {}
+type InvestorSeedRecord = InvestorReputationWrite;
 
 const SEED_NOTE =
   'Anonymized archetype seeded by P4 — replace with a verified real-world entry before going to production.';

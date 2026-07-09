@@ -377,7 +377,7 @@ export default function VoicePage() {
                 fontStyle: "italic",
               }}
             >
-              You said: "{transcript}"
+              You said: &quot;{transcript}&quot;
             </p>
           )}
           {reply && (
@@ -428,7 +428,7 @@ export default function VoicePage() {
                 textAlign: "center",
               }}
             >
-              Your browser doesn't support MediaRecorder. Voice mode requires
+              Your browser doesn&apos;t support MediaRecorder. Voice mode requires
               Chrome / Edge / Safari 14.1+.
             </p>
           )}

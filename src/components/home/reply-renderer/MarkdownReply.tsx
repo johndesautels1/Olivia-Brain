@@ -23,7 +23,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import dynamic from "next/dynamic";
-import type { ReactNode } from "react";
+import type { ReactNode, ComponentPropsWithoutRef } from "react";
 import { parseChartSpec } from "./chart-spec";
 import { GammaCard, parseGammaSpec } from "./GammaCard";
 import { CitationStrip, parseCitations } from "./CitationStrip";
@@ -94,10 +94,7 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
           className,
           children,
           ...props
-        }: {
-          className?: string;
-          children?: ReactNode;
-        } & Record<string, any>) => {
+        }: ComponentPropsWithoutRef<"code">) => {
           const lang = /language-([\w-]+)/.exec(className ?? "")?.[1];
           const raw = String(children ?? "").replace(/\n$/, "");
           const isInline = !lang;
@@ -233,7 +230,7 @@ export function MarkdownReply({ text, maxChartWidth = 560 }: MarkdownReplyProps)
           /* Generic code block. */
           return <CodeBlock raw={raw} lang={lang} />;
         },
-        a: ({ href, children, ...props }: { href?: string; children?: ReactNode } & Record<string, any>) => (
+        a: ({ href, children, ...props }: ComponentPropsWithoutRef<"a">) => (
           <a
             {...props}
             href={href}

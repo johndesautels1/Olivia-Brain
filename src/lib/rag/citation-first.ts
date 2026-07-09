@@ -239,7 +239,7 @@ export class CitationFirstRAG {
     const minCredibility = options?.minCredibility ?? 0;
 
     // Filter chunks by criteria
-    let candidateChunks = this.chunks.filter((chunk) => {
+    const candidateChunks = this.chunks.filter((chunk) => {
       if (options?.sourceTypes && !options.sourceTypes.includes(chunk.source.type)) {
         return false;
       }
