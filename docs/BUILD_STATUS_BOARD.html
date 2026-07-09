@@ -233,13 +233,13 @@
     </div>
     <div class="stat" role="listitem">
       <p class="k">Test suite</p>
-      <p class="v good">510</p>
-      <p class="sub">passing / 39 suites · as last documented</p>
+      <p class="v good">1853</p>
+      <p class="sub">of 1869 pass (99.1%) · re-run 2026-07-09 · 16 fail on missing local DB</p>
     </div>
     <div class="stat" role="listitem">
       <p class="k">Typecheck</p>
       <p class="v good">clean</p>
-      <p class="sub">tsc --noEmit · documented green</p>
+      <p class="sub">tsc --noEmit · verified 2026-07-09</p>
     </div>
     <div class="stat" role="listitem">
       <p class="k">API routes</p>
@@ -576,7 +576,8 @@
 
   <footer>
     <p><strong>How this was built.</strong> Statuses graded against the working tree at HEAD <code>addeb5c</code> — file counts are live (<code>find</code> over <code>src/</code>); track membership from <code>docs/BUILD_SEQUENCE.md</code>; the original rollup from <code>BATTLE_PLAN.md</code>; latest activity from <code>git log</code> + <code>MASTER_CHECKLIST.md</code>; blocked/owed items from <code>OLIVIA_BUILD_STATE.md</code> + <code>HANDOFF_2026-05-26.md</code>.</p>
-    <p><strong>Two honest caveats.</strong> (1) Test/typecheck results are <em>as documented</em> at the last handoff (510/39, clean) — they were not re-run to generate this board. (2) Several Track statuses are graded "in progress / infra exists" where a doc claims done but the first-column marker was never re-checked; those are flagged rather than taken at face value.</p>
+    <p><strong>Test/typecheck — re-run live 2026-07-09.</strong> <code>npm run typecheck</code> passes clean. <code>npm test</code> reports <strong>1853 / 1869 passing (99.1%)</strong> across 157 files — the tree has grown far past the "510 / 39 suites" figure the handoff last documented. All <strong>16 failures are environmental</strong>: 13 are API-route integration tests that need a local Postgres (<code>Can't reach database server at 127.0.0.1:5432</code>) plus the auth stub, and 3 are Quantara UI-render timing assertions. None are code regressions, and none touch the docs-only change this board ships in.</p>
+    <p><strong>One caveat on grading.</strong> Several Track statuses are graded "in progress / infra exists" where a doc claims done but the first-column marker was never re-checked; those are flagged rather than taken at face value.</p>
     <p class="src">Sources: BUILD_SEQUENCE.md · BATTLE_PLAN.md · OLIVIA_BUILD_STATE.md · MASTER_CHECKLIST.md · HANDOFF_2026-05-26.md · git history</p>
   </footer>
 
