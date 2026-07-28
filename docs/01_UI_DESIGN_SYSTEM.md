@@ -501,7 +501,7 @@ WCAG 2.2 AA on every screen. The list below is the minimum; AAA where it costs n
 8. **Form errors are NOT colour-only.** Coral text + `⚠` icon + descriptive message + `aria-describedby` linkage to the input.
 9. **Heading hierarchy is real.** `<h1>` once per page, `<h2>` per section, `<h3>` per sub-section. Don't use heading sizes purely for visual scaling — use the type scale tokens (§2.2).
 10. **Focus management on route changes.** New page → focus shifts to the first heading or main landmark. Don't make screen-reader users replay the rail.
-11. **Auto-translation friendly.** No baked-in English strings in business-logic code. All UI strings come from a translation function (`t("verdict.top_three")`) so we can ship i18n later without a rewrite.
+11. **~~Auto-translation friendly.~~ REMOVED — founder ruling 2026-07-28.** This rule previously required every UI string to come from a translation function (`t("verdict.top_three")`). It is withdrawn. **These are English-only products and plain English strings in the source are correct.** No repo in the wheel has an i18n layer, and wrapping every string for a translation system that may never arrive is speculative generalization — the exact anti-pattern §8.3 warns against elsewhere. If another language is ever accepted, that is its own project with its own budget; it does not get pre-paid now. **What survives:** numbers, dates and currency still go through `Intl.*Format` with the locale **pinned** — that is a correctness rule about server/client render agreement, not a translation rule.
 
 ### 9.1 Adopted from Vercel's Web Interface Guidelines (verbatim — drop into `AGENTS.md` so Claude Code applies them on every component)
 
