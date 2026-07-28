@@ -110,7 +110,7 @@ export function MapSearchBar({ onPlaceSelect, mapboxToken }: MapSearchBarProps) 
       if (!res.ok) { setPredictions([]); return; }
       const data = await res.json();
       setPredictions(
-        (data.features || []).slice(0, 5).map((f: any) => {
+        (data.features || []).slice(0, 5).map((f: { id: string; place_name?: string; text: string; center?: [number, number] }) => {
           const parts = f.place_name?.split(",") || [f.text];
           return {
             placeId: f.id,

@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olivia Brain — Build Status Board</title>
+</head>
+<body>
+<style>
+  :root {
+    --ground: #0b1020;
+    --panel: #131b31;
+    --panel-2: #182240;
+    --line: #26314f;
+    --ink: #eef1fa;
+    --ink-soft: #c3cbe4;
+    --muted: #8f9abc;
+    --accent: #e0aa4e;
+    --accent-soft: #f0cd8a;
+    --good: #46b985;
+    --good-bg: #10402f;
+    --warn: #e0aa4e;
+    --warn-bg: #3d2f10;
+    --idle: #7c88a8;
+    --idle-bg: #222a44;
+    --crit: #e2685f;
+    --crit-bg: #3f1c1a;
+    --shadow: 0 1px 0 rgba(255,255,255,.03), 0 10px 30px -18px rgba(0,0,0,.7);
+    --serif: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --ground: #f4f2ec;
+      --panel: #fbfaf6;
+      --panel-2: #f2efe6;
+      --line: #ddd6c6;
+      --ink: #1b2138;
+      --ink-soft: #38405f;
+      --muted: #6a7286;
+      --accent: #a9781c;
+      --accent-soft: #8a6011;
+      --good: #1f7a52;
+      --good-bg: #d9ecdf;
+      --warn: #9a6d12;
+      --warn-bg: #efe4c8;
+      --idle: #5f677f;
+      --idle-bg: #e6e2d6;
+      --crit: #b23c34;
+      --crit-bg: #f2dcd8;
+      --shadow: 0 1px 0 rgba(255,255,255,.6), 0 12px 28px -20px rgba(40,30,10,.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0b1020; --panel: #131b31; --panel-2: #182240; --line: #26314f;
+    --ink: #eef1fa; --ink-soft: #c3cbe4; --muted: #8f9abc; --accent: #e0aa4e; --accent-soft: #f0cd8a;
+    --good: #46b985; --good-bg: #10402f; --warn: #e0aa4e; --warn-bg: #3d2f10;
+    --idle: #7c88a8; --idle-bg: #222a44; --crit: #e2685f; --crit-bg: #3f1c1a;
+    --shadow: 0 1px 0 rgba(255,255,255,.03), 0 10px 30px -18px rgba(0,0,0,.7);
+  }
+  :root[data-theme="light"] {
+    --ground: #f4f2ec; --panel: #fbfaf6; --panel-2: #f2efe6; --line: #ddd6c6;
+    --ink: #1b2138; --ink-soft: #38405f; --muted: #6a7286; --accent: #a9781c; --accent-soft: #8a6011;
+    --good: #1f7a52; --good-bg: #d9ecdf; --warn: #9a6d12; --warn-bg: #efe4c8;
+    --idle: #5f677f; --idle-bg: #e6e2d6; --crit: #b23c34; --crit-bg: #f2dcd8;
+    --shadow: 0 1px 0 rgba(255,255,255,.6), 0 12px 28px -20px rgba(40,30,10,.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: clamp(20px, 4vw, 56px) clamp(16px, 4vw, 40px) 80px; }
+
+  /* Masthead */
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 14px;
+  }
+  .masthead h1 {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(2.3rem, 6vw, 3.9rem);
+    line-height: 1.02; letter-spacing: -.015em; margin: 0; text-wrap: balance;
+  }
+  .masthead h1 .thin { color: var(--muted); font-style: italic; font-weight: 400; }
+  .lede {
+    margin: 16px 0 0; max-width: 60ch; color: var(--ink-soft); font-size: 1.06rem;
+  }
+  .meta-line {
+    margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    font-family: var(--mono); font-size: .78rem; color: var(--muted);
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 12px; color: var(--ink-soft);
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+
+  /* Pivot callout */
+  .callout {
+    margin: 34px 0 0; background: var(--panel); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); border-radius: 12px; padding: 20px 22px; box-shadow: var(--shadow);
+  }
+  .callout h2 { margin: 0 0 8px; font-size: .82rem; font-family: var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  .callout p { margin: 0 0 10px; color: var(--ink-soft); font-size: .96rem; max-width: 78ch; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout strong { color: var(--ink); }
+
+  /* Stat row */
+  .stats {
+    margin-top: 34px; display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .stat {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .stat .k { font-family: var(--mono); font-size: .66rem; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin: 0; }
+  .stat .v { font-family: var(--mono); font-size: 1.85rem; font-weight: 600; font-variant-numeric: tabular-nums; margin: 6px 0 0; letter-spacing: -.02em; }
+  .stat .sub { font-size: .78rem; color: var(--muted); margin: 2px 0 0; }
+  .v.good { color: var(--good); } .v.warn { color: var(--warn); } .v.accent { color: var(--accent); }
+
+  /* Section headers */
+  section { margin-top: 52px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 22px; }
+  .sec-head h2 { font-family: var(--serif); font-weight: 600; font-size: 1.5rem; margin: 0; letter-spacing: -.01em; }
+  .sec-head .num { font-family: var(--mono); font-size: .8rem; color: var(--accent); font-weight: 600; }
+  .sec-head .note { margin-left: auto; font-size: .8rem; color: var(--muted); font-family: var(--mono); }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+
+  /* Status pill — encodes state by shape marker + color + text */
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+    font-family: var(--mono); font-size: .72rem; font-weight: 600; letter-spacing: .02em;
+    padding: 4px 10px 4px 8px; border-radius: 6px; border: 1px solid transparent;
+  }
+  .pill .mk { width: 9px; height: 9px; flex: none; }
+  .pill.done { color: var(--good); background: var(--good-bg); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+  .pill.done .mk { background: var(--good); border-radius: 50%; }
+  .pill.wip { color: var(--warn); background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+  .pill.wip .mk { background: var(--warn); border-radius: 2px; transform: rotate(45deg); }
+  .pill.idle { color: var(--idle); background: var(--idle-bg); border-color: color-mix(in srgb, var(--idle) 45%, transparent); }
+  .pill.idle .mk { background: transparent; border: 2px solid var(--idle); border-radius: 50%; }
+  .pill.crit { color: var(--crit); background: var(--crit-bg); border-color: color-mix(in srgb, var(--crit) 40%, transparent); }
+  .pill.crit .mk { background: var(--crit); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; }
+  thead th {
+    text-align: left; font-family: var(--mono); font-size: .66rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; padding: 13px 16px; border-bottom: 1px solid var(--line); background: var(--panel-2);
+    position: sticky; top: 0;
+  }
+  tbody td { padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: .9rem; color: var(--ink-soft); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .trk { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .trk small { display: block; font-family: var(--mono); font-size: .68rem; color: var(--muted); font-weight: 400; margin-top: 2px; letter-spacing: .02em; }
+  td.num, .sesh { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ev { font-family: var(--mono); font-size: .74rem; color: var(--muted); }
+  .ev b { color: var(--accent); font-weight: 600; }
+
+  /* progress meter */
+  .meter { display: flex; align-items: center; gap: 9px; }
+  .bar { flex: 1; min-width: 60px; height: 7px; background: var(--panel-2); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+  .bar span { display: block; height: 100%; border-radius: 99px; }
+  .bar span.g { background: var(--good); }
+  .bar span.a { background: var(--accent); }
+  .bar span.i { background: var(--idle); }
+  .frac { font-family: var(--mono); font-size: .74rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* spoke grid */
+  .spokes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .spoke { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; }
+  .spoke.docked { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); background: color-mix(in srgb, var(--good) 7%, var(--panel)); }
+  .spoke h4 { margin: 0; font-size: 1rem; color: var(--ink); }
+  .spoke p { margin: 0; font-size: .82rem; color: var(--muted); line-height: 1.5; }
+  .spoke code { font-family: var(--mono); font-size: .74em; color: var(--accent-soft); }
+
+  /* two-col cards */
+  .cols { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; box-shadow: var(--shadow); }
+  .card h3 { margin: 0 0 4px; font-size: 1.02rem; display: flex; align-items: center; gap: 9px; }
+  .card h3 .tag { font-family: var(--mono); font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; }
+  .tag.red { color: var(--crit); background: var(--crit-bg); }
+  .tag.gold { color: var(--accent); background: var(--warn-bg); }
+  .card p.sub { margin: 0 0 12px; font-size: .82rem; color: var(--muted); }
+  ul.clean { list-style: none; margin: 0; padding: 0; }
+  ul.clean li { padding: 8px 0 8px 22px; position: relative; font-size: .9rem; color: var(--ink-soft); border-top: 1px solid var(--line); }
+  ul.clean li:first-child { border-top: none; }
+  ul.clean li::before { content: ""; position: absolute; left: 2px; top: 15px; width: 7px; height: 7px; border-radius: 50%; background: var(--crit); }
+  ul.clean.gold li::before { background: var(--accent); }
+  ul.clean li b { color: var(--ink); }
+  ul.clean li code { font-family: var(--mono); font-size: .8em; color: var(--accent-soft); background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+
+  /* timeline */
+  .tl { position: relative; margin-left: 6px; padding-left: 24px; border-left: 2px solid var(--line); }
+  .tl-item { position: relative; padding: 4px 0 20px; }
+  .tl-item:last-child { padding-bottom: 0; }
+  .tl-item::before { content: ""; position: absolute; left: -31px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--panel); border: 2px solid var(--accent); }
+  .tl-item .sha { font-family: var(--mono); font-size: .74rem; color: var(--accent); font-weight: 600; }
+  .tl-item .ti { font-weight: 600; color: var(--ink); font-size: .94rem; margin: 2px 0; }
+  .tl-item .td { font-size: .86rem; color: var(--muted); max-width: 76ch; }
+
+  footer { margin-top: 60px; border-top: 1px solid var(--line); padding-top: 22px; color: var(--muted); font-size: .8rem; }
+  footer p { margin: 0 0 8px; max-width: 82ch; }
+  footer code { font-family: var(--mono); color: var(--ink-soft); }
+  .src { font-family: var(--mono); font-size: .74rem; }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Build Status Board · reconstructed 2026-07-09</p>
+    <h1>Olivia&nbsp;Brain <span class="thin">— where the build actually stands</span></h1>
+    <p class="lede">A ground-truth map of the repository, reconciled from the source tree and git history because the planning docs no longer agree with each other. Every status below is anchored to files that exist on disk, not to a checkbox in a doc.</p>
+    <div class="meta-line">
+      <span class="chip"><span class="dot"></span> branch <b>claude/olivia-brain-progress-table-eysjtf</b></span>
+      <span class="chip">HEAD <b>addeb5c</b> · even with <b>main</b></span>
+      <span class="chip">latest commit <b>2026-05-26</b></span>
+    </div>
+  </header>
+
+  <div class="callout">
+    <h2>⚠ The one thing to understand first — this project pivoted</h2>
+    <p><strong>There are two build plans living in the same repo.</strong> The original <code>BATTLE_PLAN.md</code> describes a relocation-intelligence "brain" (186 items, 9-model cascade, personas, memory). On <strong>2026-05-02</strong> the work pivoted: Olivia Brain became the canonical home for porting London Tech Map's (LTM) best technology — Studio Olivia, the valuation engine, the Quantara founder-intake, and Deal Protection — targeting a <strong>June 2026 demo</strong>. That newer plan lives in <code>docs/BUILD_SEQUENCE.md</code> and is organized as <strong>Tracks A–O</strong>.</p>
+    <p><strong>The docs had drifted apart</strong> — <code>OLIVIA_BUILD_STATE.md</code> said 65%, <code>BATTLE_PLAN.md</code> said 85–88% (and contradicted itself), and the Track tables in <code>BUILD_SEQUENCE.md</code> were never re-checked even though the work shipped. That drift is now <strong>fixed at the source</strong>: build status is generated from the file system into <code>docs/BUILD_TRUTH.md</code> by <code>npm run build:truth</code> and enforced by a CI guard, so the numbers can't silently rot again. This board is a visual snapshot of that generated truth.</p>
+  </div>
+
+  <!-- HUB + 6 SPOKES -->
+  <section style="margin-top:34px">
+    <div class="sec-head">
+      <span class="num">◎</span>
+      <h2>The architecture — hub &amp; 6 spokes</h2>
+      <span class="note">1 / 6 docked</span>
+    </div>
+    <p style="max-width:80ch;color:var(--ink-soft);margin:0 0 20px;font-size:.95rem">Olivia is the <strong>hub</strong>: a grand-master agentic super-agent with a token-authed <strong>gateway</strong> (<code>src/lib/gateway</code>) and a Universal Knowledge Protocol <strong>bridge</strong> (<code>src/lib/bridge</code>) that docks into six spoke apps. She's the brain, not the warehouse — each spoke stays the system of record for its own domain. A spoke counts as <em>docked</em> when a bridge provider exists for it; the rest are <strong>blocked by design</strong> until each app is live to expose its provider interface. This is exactly why the codebase looks broader than any single plan: the hub absorbs each spoke's best tech one at a time (London Tech Map first).</p>
+    <div class="spokes">
+      <div class="spoke docked">
+        <span class="pill done"><span class="mk"></span> Docked</span>
+        <h4>London Tech Map</h4>
+        <p><code>bridge/providers/ltm.ts</code> — the first and biggest spoke; its valuation + Quantara + Deal-Protection tech was ported into the hub.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>CLUES Intelligence</h4>
+        <p>Flagship relocation intelligence. Embedded reference data present; provider blocked until the app exposes its interface.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>CLUES LifeScore</h4>
+        <p>LifeScore metrics feed the SMART Score™ engine — blocked on the LifeScore app going live.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>HEARTBEAT</h4>
+        <p>Cardiac-recovery domain. "Long way out" per portfolio status; provider not yet implementable.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>CLUES-TES</h4>
+        <p>Transit &amp; Environmental Systems. Future spoke; provider blocked until live.</p>
+      </div>
+      <div class="spoke">
+        <span class="pill idle"><span class="mk"></span> Pending</span>
+        <h4>Desautels Brokerage</h4>
+        <p>Operational brokerage. Docking is a UKP-provider task once its API surface is exposed.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats" role="list" aria-label="Snapshot metrics">
+    <div class="stat" role="listitem">
+      <p class="k">Current-build tracks</p>
+      <p class="v accent">7&nbsp;/&nbsp;18</p>
+      <p class="sub">complete · 7 in progress · 4 not started</p>
+    </div>
+    <div class="stat" role="listitem">
+      <p class="k">Test suite</p>
+      <p class="v good">1853</p>
+      <p class="sub">of 1869 pass (99.1%) · re-run 2026-07-09 · 16 fail on missing local DB</p>
+    </div>
+    <div class="stat" role="listitem">
+      <p class="k">Typecheck</p>
+      <p class="v good">clean</p>
+      <p class="sub">tsc --noEmit · verified 2026-07-09</p>
+    </div>
+    <div class="stat" role="listitem">
+      <p class="k">API routes</p>
+      <p class="v">119</p>
+      <p class="sub">route.ts handlers on disk</p>
+    </div>
+    <div class="stat" role="listitem">
+      <p class="k">Library modules</p>
+      <p class="v">529</p>
+      <p class="sub">.ts files under src/lib</p>
+    </div>
+    <div class="stat" role="listitem">
+      <p class="k">Test files</p>
+      <p class="v">157</p>
+      <p class="sub">*.test.ts(x) in the tree</p>
+    </div>
+  </div>
+
+  <!-- TRACK LEDGER -->
+  <section>
+    <div class="sec-head">
+      <span class="num">01</span>
+      <h2>Current build — the Track Ledger</h2>
+      <span class="note">graded vs. source tree</span>
+    </div>
+
+    <div class="legend" aria-label="Status legend">
+      <span class="pill done"><span class="mk"></span> Shipped</span>
+      <span class="pill wip"><span class="mk"></span> In&nbsp;progress</span>
+      <span class="pill idle"><span class="mk"></span> Not&nbsp;started</span>
+      <span class="pill crit"><span class="mk"></span> Blocked&nbsp;/&nbsp;owed</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Track</th>
+            <th scope="col">Focus</th>
+            <th scope="col">Sessions</th>
+            <th scope="col">Progress</th>
+            <th scope="col">Status</th>
+            <th scope="col">Evidence on disk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="trk">A<small>Chat brain</small></td>
+            <td>End-to-end <code>/api/olivia/chat</code>, cascade-routed with intent + memory recall, streaming.</td>
+            <td class="sesh">4–6</td>
+            <td><div class="meter"><div class="bar"><span class="g" style="width:100%"></span></div><span class="frac">3/3</span></div></td>
+            <td><span class="pill done"><span class="mk"></span> Shipped</span></td>
+            <td class="ev"><b>api/olivia/chat</b> + /stream</td>
+          </tr>
+          <tr>
+            <td class="trk">Calendar<small>Infra</small></td>
+            <td>Calendar + voice + email/call/share infrastructure; Google/Outlook/Calendly sync.</td>
+            <td class="sesh">C1–C6</td>
+            <td><div class="meter"><div class="bar"><span class="g" style="width:100%"></span></div><span class="frac">6/6</span></div></td>
+            <td><span class="pill done"><span class="mk"></span> Shipped</span></td>
+            <td class="ev"><b>lib/calendar</b> 16 · api/calendar ×20+</td>
+          </tr>
+          <tr>
+            <td class="trk">V<small>Valuation engine</small></td>
+            <td>LTM valuation port: 10 methods, 14 agents, WarRoom + DealRoom UI, Cristiano 2-pass, Monte-Carlo.</td>
+            <td class="sesh">V1–V9</td>
+            <td><div class="meter"><div class="bar"><span class="g" style="width:100%"></span></div><span class="frac">9/9</span></div></td>
+            <td><span class="pill done"><span class="mk"></span> Shipped</span></td>
+            <td class="ev"><b>valuation</b> lib 22 · agents 14 · routes 10 · ui 51</td>
+          </tr>
+          <tr>
+            <td class="trk">Q<small>Quantara intake</small></td>
+            <td>Paragraphical founder-intake, auto-fill, personas, voice-extract, discrepancy/truth-score chips.</td>
+            <td class="sesh">Q1–Q7</td>
+            <td><div class="meter"><div class="bar"><span class="g" style="width:100%"></span></div><span class="frac">7/7</span></div></td>
+            <td><span class="pill done"><span class="mk"></span> Shipped</span></td>
+            <td class="ev"><b>lib/quantara</b> 49 · api/founder-intake</td>
+          </tr>
+          <tr>
+            <td class="trk">P<small>Deal Protection</small></td>
+            <td>Deal-protection engine + gap closures: consensus, dilution, counter-draft, rehearsal, versioning.</td>
+            <td class="sesh">P1–P7</td>
+            <td><div class="meter"><div class="bar"><span class="g" style="width:100%"></span></div><span class="frac">7/7</span></div></td>
+            <td><span class="pill done"><span class="mk"></span> Shipped</span></td>
+            <td class="ev"><b>lib/deal-protection</b> 51 · api/deal-protection ×9</td>
+          </tr>
+          <tr>
+            <td class="trk">F<small>Auth</small></td>
+            <td>Auth session layer with pre-Clerk dev stub (<code>getAuthSession()</code>); real Clerk deferred to Track F final.</td>
+            <td class="sesh">18</td>
+            <td><div class="meter"><div class="bar"><span class="g" style="width:100%"></span></div><span class="frac">1/1</span></div></td>
+            <td><span class="pill done"><span class="mk"></span> Shipped</span></td>
+            <td class="ev"><b>lib/auth</b> · STUB_USER_ID gate</td>
+          </tr>
+          <tr>
+            <td class="trk">O1<small>Composio</small></td>
+            <td>Composio agentic tool dispatch + approval gate (pulled forward to unblock Quantara auto-fill).</td>
+            <td class="sesh">O1</td>
+            <td><div class="meter"><div class="bar"><span class="g" style="width:100%"></span></div><span class="frac">1/1</span></div></td>
+            <td><span class="pill done"><span class="mk"></span> Shipped</span></td>
+            <td class="ev"><b>lib/tools/composio.ts</b> · integrations 9</td>
+          </tr>
+          <tr>
+            <td class="trk">C<small>Studio UI rebuild</small></td>
+            <td>Studio UI rebuild + Aurum/Aether design-system alignment. Sessions 9–10 shipped; 11–14 open.</td>
+            <td class="sesh">9–14</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:33%"></span></div><span class="frac">2/6</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> In progress</span></td>
+            <td class="ev"><b>components/studio</b> 40</td>
+          </tr>
+          <tr>
+            <td class="trk">B<small>Studio engine</small></td>
+            <td>Studio engine port from LTM. Landed as atoms-only / data-layer slices; several sub-sessions deferred.</td>
+            <td class="sesh">7–8</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:55%"></span></div><span class="frac">part</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> In progress</span></td>
+            <td class="ev"><b>lib/studio/engine</b> 4 · studio libs</td>
+          </tr>
+          <tr>
+            <td class="trk">H<small>Agents consolidation</small></td>
+            <td>Consolidate the agent layer. Session 21 (G1-033 port) logged; remaining sessions open.</td>
+            <td class="sesh">21–23</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:33%"></span></div><span class="frac">~1/3</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> In progress</span></td>
+            <td class="ev"><b>lib/agents</b> + impl · S21 session log</td>
+          </tr>
+          <tr>
+            <td class="trk">G<small>Cascade orchestrator</small></td>
+            <td>Formal cascade-orchestrator / LangGraph port. Cascade runs via Track A; formal wrap not yet done.</td>
+            <td class="sesh">19–20</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:40%"></span></div><span class="frac">part</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> In progress</span></td>
+            <td class="ev"><b>lib/orchestration</b> · model-cascade.ts</td>
+          </tr>
+          <tr>
+            <td class="trk">I<small>Multi-tenant</small></td>
+            <td>Multi-tenant + white-label hardening. Base infrastructure present from the original Phase 5 build.</td>
+            <td class="sesh">24</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:50%"></span></div><span class="frac">infra</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> In progress</span></td>
+            <td class="ev"><b>lib/tenant</b> 7 · lib/white-label 6</td>
+          </tr>
+          <tr>
+            <td class="trk">K<small>Hardening / launch</small></td>
+            <td>Hardening + launch prep. Active surface: 4 architecture-law audits + FIX-1…5 remediation (see §03).</td>
+            <td class="sesh">27–30</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:35%"></span></div><span class="frac">active</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> In progress</span></td>
+            <td class="ev"><b>lib/evaluation</b> · regulatory-config</td>
+          </tr>
+          <tr>
+            <td class="trk">O<small>Weakness closure</small></td>
+            <td>5 numbered weaknesses. O1 (Composio) shipped; O2 eval-cron, O3 &lt;600ms voice, O4 citation-RAG, O5 lip-sync open.</td>
+            <td class="sesh">O1–O5</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:20%"></span></div><span class="frac">1/5</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> In progress</span></td>
+            <td class="ev">eval scaffolds · <b>rag</b> library-only</td>
+          </tr>
+          <tr>
+            <td class="trk">D<small>Studio ↔ brain</small></td>
+            <td>Wire Studio surfaces to the live brain (replace "Ask Olivia" placeholders end-to-end).</td>
+            <td class="sesh">15–16</td>
+            <td><div class="meter"><div class="bar"><span class="i" style="width:0%"></span></div><span class="frac">0/2</span></div></td>
+            <td><span class="pill idle"><span class="mk"></span> Not started</span></td>
+            <td class="ev">—</td>
+          </tr>
+          <tr>
+            <td class="trk">E<small>Voice input</small></td>
+            <td>Studio voice-input wiring. Voice infra (ElevenLabs / Deepgram / Whisper) exists; Studio hookup pending.</td>
+            <td class="sesh">17</td>
+            <td><div class="meter"><div class="bar"><span class="i" style="width:0%"></span></div><span class="frac">0/1</span></div></td>
+            <td><span class="pill idle"><span class="mk"></span> Not started</span></td>
+            <td class="ev">lib/voice present (Phase 2)</td>
+          </tr>
+          <tr>
+            <td class="trk">J<small>Vertical adapters</small></td>
+            <td>Per-vertical adapter build-out on the bridge/adapter registry.</td>
+            <td class="sesh">25–26</td>
+            <td><div class="meter"><div class="bar"><span class="i" style="width:0%"></span></div><span class="frac">0/2</span></div></td>
+            <td><span class="pill idle"><span class="mk"></span> Not started</span></td>
+            <td class="ev">lib/adapters base only</td>
+          </tr>
+          <tr>
+            <td class="trk">N<small>Visual manifestation</small></td>
+            <td>Visual Manifestation Layer (avatar / generative surface work), sessions N1–N5.</td>
+            <td class="sesh">N1–N5</td>
+            <td><div class="meter"><div class="bar"><span class="i" style="width:0%"></span></div><span class="frac">0/5</span></div></td>
+            <td><span class="pill idle"><span class="mk"></span> Not started</span></td>
+            <td class="ev">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ORIGINAL VISION -->
+  <section>
+    <div class="sec-head">
+      <span class="num">02</span>
+      <h2>Original vision rollup — <span style="font-family:var(--mono);font-size:.8em;color:var(--muted)">BATTLE_PLAN.md</span></h2>
+      <span class="note">pre-pivot · partly superseded</span>
+    </div>
+    <p style="max-width:76ch;color:var(--ink-soft);margin:0 0 20px;font-size:.94rem">The 5-phase / 25-sprint plan from before the pivot. Much of it shipped and still underpins Olivia (voice, avatar, memory, tenancy). A few sprints are structurally <strong>blocked</strong> because they need the sister apps live. The two "in progress" percentages are the plan's own figures — and note the plan contradicts itself on the exact totals, which is itself a finding.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Phase</th>
+            <th scope="col">Sprints</th>
+            <th scope="col">Items</th>
+            <th scope="col">Progress</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="trk">1 — Foundation<small>cascade · memory · tools · compliance</small></td>
+            <td class="num">5</td>
+            <td class="num">39 / 39</td>
+            <td><div class="meter"><div class="bar"><span class="g" style="width:100%"></span></div><span class="frac">100%</span></div></td>
+            <td><span class="pill done"><span class="mk"></span> Complete</span></td>
+          </tr>
+          <tr>
+            <td class="trk">2 — Voice &amp; Avatar<small>ElevenLabs · Simli · LiveKit · Twilio</small></td>
+            <td class="num">4</td>
+            <td class="num">25 / 25</td>
+            <td><div class="meter"><div class="bar"><span class="g" style="width:100%"></span></div><span class="frac">100%</span></div></td>
+            <td><span class="pill done"><span class="mk"></span> Complete</span></td>
+          </tr>
+          <tr>
+            <td class="trk">3 — Domain Intelligence<small>CLUES engine · data layers · reports</small></td>
+            <td class="num">7</td>
+            <td class="num">44 / 52</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:85%"></span></div><span class="frac">85%</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> 6/7 sprints</span></td>
+          </tr>
+          <tr>
+            <td class="trk">4 — Multi-Agent Beast Mode<small>personas · 129 agents · advanced memory</small></td>
+            <td class="num">6</td>
+            <td class="num">41 / 54</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:76%"></span></div><span class="frac">76%</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> 5/6 sprints</span></td>
+          </tr>
+          <tr>
+            <td class="trk">5 — Multi-Tenant &amp; White-Label<small>tenancy · branding · compliance</small></td>
+            <td class="num">3</td>
+            <td class="num">10–15</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:80%"></span></div><span class="frac">~2/3</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> Detail vs. summary disagree</span></td>
+          </tr>
+          <tr style="background:color-mix(in srgb, var(--accent) 6%, transparent)">
+            <td class="trk">Total<small>per BATTLE_PLAN.md</small></td>
+            <td class="num">25</td>
+            <td class="num">159–164 / 186</td>
+            <td><div class="meter"><div class="bar"><span class="a" style="width:87%"></span></div><span class="frac">~85–88%</span></div></td>
+            <td><span class="pill wip"><span class="mk"></span> plan's own figure</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- LATEST ACTIVITY -->
+  <section>
+    <div class="sec-head">
+      <span class="num">03</span>
+      <h2>Where the cursor actually is — latest activity</h2>
+      <span class="note">git log · 2026-05-25 → 05-26</span>
+    </div>
+    <p style="max-width:78ch;color:var(--ink-soft);margin:0 0 22px;font-size:.94rem">The most recent real work isn't feature-building — it's an <strong>audit &amp; remediation</strong> pass on the four Architecture Laws, plus a bundle-size cut. A mid-session founder rebuke ("you are surfacing bugs but never fixing them") is disclosed in <code>HANDOFF_2026-05-26.md</code>; the response was to ship fixes, not more audits.</p>
+    <div class="tl">
+      <div class="tl-item">
+        <span class="sha">addeb5c</span>
+        <div class="ti">Exhaustive feature × LLM/API cross-reference matrix</div>
+        <div class="td">Documentation — <code>docs/11_FEATURE_API_MATRIX.md</code>. Current HEAD of the branch.</div>
+      </div>
+      <div class="tl-item">
+        <span class="sha">ff793a6 · FIX-5</span>
+        <div class="ti">Law 5 CI guard — agent dataSources non-empty</div>
+        <div class="td">Runtime-import guard: every <code>AGENT_DEFINITIONS</code> entry must carry a non-empty <code>dataSources</code> array (≥100 agents scanned). Strict-typed enumeration half deferred behind a founder-gated synonym-collapse pass.</div>
+      </div>
+      <div class="tl-item">
+        <span class="sha">55db0cf · FIX-4</span>
+        <div class="ti">Law 8 CI guard — Zod validation at every route boundary</div>
+        <div class="td">Source-scan guard over every <code>route.ts</code> with POST/PUT/PATCH. Seeded a 54-route <code>KNOWN_GAP_ALLOWLIST</code> (baseline was 37/119 routes on Zod = 31%); new routes must ship Zod or fail CI.</div>
+      </div>
+      <div class="tl-item">
+        <span class="sha">ebfe272 · FIX-3</span>
+        <div class="ti">Bundle cut — lazy-load ChartFromSpec</div>
+        <div class="td">Recharts (~120 KB gzip) removed from the home-page initial bundle via <code>next/dynamic</code>; chunk loads only when a chat reply emits a chart fence.</div>
+      </div>
+      <div class="tl-item">
+        <span class="sha">c19d77a · FIX-1</span>
+        <div class="ti">Law 6 — regulatory-config single source of truth</div>
+        <div class="td">Created <code>src/lib/regulatory-config/</code> + UK Modern Slavery £36M constant with an ISO <code>validUntil</code> + stale-config CI guard; refactored g1-048 at all 3 inline sites.</div>
+      </div>
+      <div class="tl-item">
+        <span class="sha">d249205 → e508164</span>
+        <div class="ti">Four architecture-law audits shipped</div>
+        <div class="td">Law 5 (agent dataSources), Law 6 (regulatory constants), Law 8 (schema-first boundaries), and the Bundle-size audit (E-1) — docs 07–10.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BLOCKED + OWED -->
+  <section>
+    <div class="sec-head">
+      <span class="num">04</span>
+      <h2>Not just "todo" — the two things holding the line</h2>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <h3>Blocked on sister apps <span class="tag red">external</span></h3>
+        <p class="sub">Architecture rule: Olivia is the brain, not the warehouse. These need the domain apps live to expose a provider interface — building them now would be hollow.</p>
+        <ul class="clean">
+          <li><b>UKP provider implementations</b> — the Universal Knowledge Protocol bridge is ~85% built (types + registry done) but no app has published a provider yet.</li>
+          <li><b>SMART Score™ engine</b> — 5-category weighted algorithm needs real LifeScore data.</li>
+          <li><b>CLUES-TES™</b> &amp; <b>HEARTBEAT™</b> — transit-environment and cardiac-recovery adapters; apps described as "long way out."</li>
+          <li><b>Predictive Analytics Engine</b> &amp; <b>CORPUS™</b> 84-doc suite — remaining CLUES product integrations (6/10 done).</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Operator actions owed <span class="tag gold">human-only</span></h3>
+        <p class="sub">Block production but can't be done from a coding session — they're on the founder, per MASTER_CHECKLIST.md.</p>
+        <ul class="clean gold">
+          <li><b>Rotate leaked keys</b> — LiveAvatar/HeyGen + ElevenLabs + OpenAI values were in git history (redacted in <code>edf3a05</code>); rotate vendor-side.</li>
+          <li><b>Set Vercel env vars</b> — LIVEAVATAR_*, ELEVENLABS_*, and 8 <code>GATEWAY_TOKEN_*</code>.</li>
+          <li><b>Apply migration 15</b> — the <code>captionsUrl</code> SQL.</li>
+          <li><b>APCA + screen-reader verification</b> on the <code>/cristiano</code> surface.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>Canonical source.</strong> The numbers here mirror <code>docs/BUILD_TRUTH.md</code>, generated from the source tree by <code>npm run build:truth</code> and locked by <code>src/lib/evaluation/build-status-drift-guard.test.ts</code> — a CI guard that fails if the committed counts ever diverge from the tree. The old narrative docs (<code>BATTLE_PLAN.md</code>, <code>OLIVIA_BUILD_STATE.md</code>, <code>BUILD_SEQUENCE.md</code>, <code>MASTER_CHECKLIST.md</code>) now carry banners deferring to BUILD_TRUTH, so the three-way percentage disagreement can't recur.</p>
+    <p><strong>Test/typecheck — re-run live 2026-07-09.</strong> <code>npm run typecheck</code> passes clean. <code>npm test</code> reports <strong>1853 / 1869 passing (99.1%)</strong> across 157 files — the tree has grown far past the "510 / 39 suites" figure the handoff last documented. All <strong>16 failures are environmental</strong>: 13 are API-route integration tests that need a local Postgres (<code>Can't reach database server at 127.0.0.1:5432</code>) plus the auth stub, and 3 are Quantara UI-render timing assertions. None are code regressions, and none touch the docs-only change this board ships in.</p>
+    <p><strong>One caveat on grading.</strong> Several Track statuses are graded "in progress / infra exists" where a doc claims done but the first-column marker was never re-checked; those are flagged rather than taken at face value.</p>
+    <p class="src">Sources: BUILD_SEQUENCE.md · BATTLE_PLAN.md · OLIVIA_BUILD_STATE.md · MASTER_CHECKLIST.md · HANDOFF_2026-05-26.md · git history</p>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,5 +1,11 @@
 # Olivia Brain — Master Checklist
 
+> ⚠️ **Scope note:** this file tracks the in-flight *audit/remediation* thread only. For overall
+> build status (tracks, spokes, counts) the single source of truth is the generated
+> [`BUILD_TRUTH.md`](./BUILD_TRUTH.md) (`npm run build:truth`, enforced by
+> `src/lib/evaluation/build-status-drift-guard.test.ts`). This checklist stays hand-maintained
+> because it records *narrative* remediation decisions, not countable facts.
+
 > **Running record of in-flight audit + remediation work.** Updated as
 > each item ships. Source of truth for "what is the next item on the
 > build" between handoffs. Locked 2026-05-25 per founder direction

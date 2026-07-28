@@ -299,7 +299,6 @@ async function createCalendarEntryFromAppointment(
   // userId IS the Clerk user ID directly — no UserProfile lookup needed.
   // Parse date/time
   let startDatetime: Date;
-  let endDatetime: Date;
 
   if (appointment.dateTime) {
     startDatetime = new Date(appointment.dateTime);
@@ -311,7 +310,7 @@ async function createCalendarEntryFromAppointment(
   }
 
   // Default 1 hour duration
-  endDatetime = new Date(startDatetime.getTime() + 60 * 60 * 1000);
+  const endDatetime = new Date(startDatetime.getTime() + 60 * 60 * 1000);
 
   // Build title
   const contactName = contact.fullName ||

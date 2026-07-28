@@ -1,5 +1,11 @@
 # OLIVIA BRAIN — BUILD STATE & INDEPENDENT TASK REFERENCE
 
+> ⚠️ **The completion numbers in this file are NOT authoritative (this doc predates the pivot).**
+> Live build status has a single generated source of truth: [`docs/BUILD_TRUTH.md`](./docs/BUILD_TRUTH.md)
+> (via `npm run build:truth`, enforced by `src/lib/evaluation/build-status-drift-guard.test.ts`).
+> The **hub + 6-spoke** framing and the "blocked until the app is live" reasoning below remain
+> correct and useful; the item counts do not. Where this disagrees with BUILD_TRUTH, BUILD_TRUTH wins.
+
 > **PURPOSE**: This document tracks which build items can be worked on NOW (independent of other apps)
 > versus which are BLOCKED until other apps in the portfolio are live.
 > Every AI assistant working on Olivia MUST read this file to avoid wasting time on blocked items.

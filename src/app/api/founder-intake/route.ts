@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
        2. Otherwise, find an existing non-archived subject by company name.
        3. Else, create one.
        Mutually exclusive — at most one subject is touched. */
-    let existing = subjectIdRaw
+    const existing = subjectIdRaw
       ? await prisma.valuationSubject.findFirst({
           where: { id: subjectIdRaw, userId, isArchived: false },
           select: shapeSelect,

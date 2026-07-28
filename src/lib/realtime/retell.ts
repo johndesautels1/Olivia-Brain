@@ -18,6 +18,7 @@
  * - Survey collection
  */
 
+import { createHmac } from "crypto";
 import { getServerEnv } from "@/lib/config/env";
 import { withTraceSpan } from "@/lib/observability/tracer";
 import type { RealtimeSession, RetellSessionConfig } from "./types";
@@ -308,9 +309,7 @@ export function verifyRetellWebhook(
     return false;
   }
 
-  const crypto = require("crypto");
-  const expectedSignature = crypto
-    .createHmac("sha256", env.RETELL_API_KEY)
+  const expectedSignature = createHmac("sha256", env.RETELL_API_KEY)
     .update(payload)
     .digest("hex");
 

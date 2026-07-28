@@ -227,7 +227,10 @@ export default function WarRoomDocumentBridge({
     recognition.interimResults = true;
     recognition.lang = 'en-GB';
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: {
+      resultIndex: number;
+      results: ArrayLike<{ isFinal: boolean; [index: number]: { transcript: string } }>;
+    }) => {
       // G-08: reset inactivity timeout on every speech result
       if (voiceTimeoutRef.current) clearTimeout(voiceTimeoutRef.current);
       voiceTimeoutRef.current = setTimeout(() => {

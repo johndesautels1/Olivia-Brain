@@ -113,7 +113,7 @@ export function applyRound(
   /* Step 3: Build the post-round entries. Start by cloning prev,
      applying the ESOP top-up, then anti-dilution adjustments, then
      adding the new investor. */
-  let entries: CapTableEntry[] = prev.entries.map((e) => ({ ...e }));
+  const entries: CapTableEntry[] = prev.entries.map((e) => ({ ...e }));
 
   if (esopTopUpShares > 0) {
     const esopIdx = entries.findIndex((e) => e.holderType === 'esop');

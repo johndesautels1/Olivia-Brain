@@ -23,9 +23,8 @@ export interface ExchangeRatesResponse {
   rates: Record<string, number>;
 }
 
-export interface HistoricalRatesResponse extends ExchangeRatesResponse {
-  // Same structure, just for a specific date
-}
+// Same structure as ExchangeRatesResponse, just for a specific date
+export type HistoricalRatesResponse = ExchangeRatesResponse;
 
 export interface CurrencyInfo {
   code: string;
